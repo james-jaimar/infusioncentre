@@ -16,10 +16,14 @@
 | Protected Routes | Complete | ProtectedRoute component with role-based access |
 | Admin Layout | Complete | Sidebar navigation, mobile responsive |
 | Admin Dashboard Shell | Complete | Stats cards (placeholder values), quick actions |
+| Nurse Layout & Dashboard | Complete | Sidebar, emergency protocol button, today's overview |
+| Patient Layout & Dashboard | Complete | Sidebar, welcome message, quick actions |
+| Session Timeout | Complete | 30-minute inactivity timeout with 2-minute warning |
+| Role-Based Routing | Complete | Login redirects to /admin, /nurse, or /patient based on role |
 
 **Minor Items to Address:**
 - Doctors page has placeholder image (IV drip bag emoji)
-- Admin pages are placeholder stubs (Patients, Appointments, Staff, etc.)
+- Password reset email edge function still needed (requires Resend API key)
 
 ---
 
