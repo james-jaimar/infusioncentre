@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -8,16 +8,37 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import logo from "@/assets/logo.png";
 
+function getRoleBasedPath(role: string | null): string {
+  switch (role) {
+    case "admin":
+      return "/admin";
+    case "nurse":
+      return "/nurse";
+    case "patient":
+      return "/patient";
+    default:
+      return "/";
+  }
+}
+
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn } = useAuth();
+  const { signIn, user, role, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
 
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || "/";
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!loading && user && role) {
+      const destination = from || getRoleBasedPath(role);
+      navigate(destination, { replace: true });
+    }
+  }, [user, role, loading, from, navigate]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -40,8 +61,8 @@ export default function Login() {
       description: "You have successfully logged in.",
     });
 
-    // Navigate to the intended destination or default dashboard
-    navigate(from === "/" ? "/admin" : from, { replace: true });
+    // Role-based routing happens in the useEffect above after auth state updates
+    setIsLoading(false);
   }
 
   return (
