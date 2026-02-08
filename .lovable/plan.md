@@ -1,11 +1,27 @@
 
-# Johannesburg Infusion Centre - Complete Medical CRM Implementation Plan
+# Johannesburg Infusion Centre - Implementation Progress
 
-## Current State Assessment
+## ✅ Completed Phases
 
-**What's Already Built:**
+### Phase 1: Public Website - COMPLETE
+- Homepage, Services, Training pages, Contact, Doctors page
+- Contact form with database storage
 
-| Component | Status | Notes |
+### Phase 2: Authentication - COMPLETE
+- Login/Register/Password reset pages
+- Role-based routing (admin → /admin, nurse → /nurse, patient → /patient)
+- Session timeout (30 min) with warning modal
+- Protected routes with role verification
+
+### Phase 3: Patient Management - COMPLETE
+- Database: `patients`, `patient_medical_history`, `patient_documents` tables with RLS
+- Storage: `patient-documents` bucket with RLS
+- UI: Patient directory with search/filter/pagination
+- UI: Multi-step patient intake form (Personal → Emergency → Medical Aid → Medical History)
+- UI: Patient detail view with tabs (Profile, Medical History, Documents)
+- UI: Document upload/download/delete functionality
+
+---
 |-----------|--------|-------|
 | Public Website | Complete | Homepage, Services, Training pages, Contact, Doctors page |
 | Contact Form | Complete | Saves to `contact_submissions` table with RLS |

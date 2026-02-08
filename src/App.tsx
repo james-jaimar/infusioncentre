@@ -26,6 +26,9 @@ import ResetPassword from "./pages/ResetPassword";
 import AdminLayout from "./components/layout/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminContacts from "./pages/admin/AdminContacts";
+import AdminPatients from "./pages/admin/AdminPatients";
+import PatientNew from "./pages/admin/PatientNew";
+import PatientDetail from "./pages/admin/PatientDetail";
 
 // Nurse pages
 import NurseLayout from "./components/layout/NurseLayout";
@@ -71,7 +74,9 @@ const App = () => (
             >
               <Route index element={<AdminDashboard />} />
               <Route path="contacts" element={<AdminContacts />} />
-              <Route path="patients" element={<div className="p-4">Patients - Coming Soon</div>} />
+              <Route path="patients" element={<AdminPatients />} />
+              <Route path="patients/new" element={<PatientNew />} />
+              <Route path="patients/:id" element={<PatientDetail />} />
               <Route path="appointments" element={<div className="p-4">Appointments - Coming Soon</div>} />
               <Route path="staff" element={<div className="p-4">Staff Management - Coming Soon</div>} />
               <Route path="training" element={<div className="p-4">Training Bookings - Coming Soon</div>} />

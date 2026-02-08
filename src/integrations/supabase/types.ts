@@ -68,6 +68,181 @@ export type Database = {
         }
         Relationships: []
       }
+      patient_documents: {
+        Row: {
+          document_type: Database["public"]["Enums"]["document_type"]
+          file_name: string
+          file_path: string
+          id: string
+          notes: string | null
+          patient_id: string
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          document_type: Database["public"]["Enums"]["document_type"]
+          file_name: string
+          file_path: string
+          id?: string
+          notes?: string | null
+          patient_id: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          document_type?: Database["public"]["Enums"]["document_type"]
+          file_name?: string
+          file_path?: string
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_documents_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patient_medical_history: {
+        Row: {
+          allergies: string[] | null
+          chronic_conditions: string[] | null
+          current_medications: Json | null
+          id: string
+          notes: string | null
+          patient_id: string
+          previous_surgeries: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          allergies?: string[] | null
+          chronic_conditions?: string[] | null
+          current_medications?: Json | null
+          id?: string
+          notes?: string | null
+          patient_id: string
+          previous_surgeries?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          allergies?: string[] | null
+          chronic_conditions?: string[] | null
+          current_medications?: Json | null
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          previous_surgeries?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_medical_history_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patients: {
+        Row: {
+          address_line_1: string | null
+          address_line_2: string | null
+          city: string | null
+          created_at: string
+          date_of_birth: string | null
+          email: string | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          emergency_contact_relationship: string | null
+          first_name: string
+          gender: Database["public"]["Enums"]["patient_gender"] | null
+          id: string
+          id_number: string | null
+          last_name: string
+          medical_aid_main_member: string | null
+          medical_aid_name: string | null
+          medical_aid_number: string | null
+          medical_aid_plan: string | null
+          notes: string | null
+          phone: string | null
+          postal_code: string | null
+          referring_doctor_name: string | null
+          referring_doctor_phone: string | null
+          referring_doctor_practice: string | null
+          status: Database["public"]["Enums"]["patient_status"]
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          address_line_1?: string | null
+          address_line_2?: string | null
+          city?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          email?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          emergency_contact_relationship?: string | null
+          first_name: string
+          gender?: Database["public"]["Enums"]["patient_gender"] | null
+          id?: string
+          id_number?: string | null
+          last_name: string
+          medical_aid_main_member?: string | null
+          medical_aid_name?: string | null
+          medical_aid_number?: string | null
+          medical_aid_plan?: string | null
+          notes?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          referring_doctor_name?: string | null
+          referring_doctor_phone?: string | null
+          referring_doctor_practice?: string | null
+          status?: Database["public"]["Enums"]["patient_status"]
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          address_line_1?: string | null
+          address_line_2?: string | null
+          city?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          email?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          emergency_contact_relationship?: string | null
+          first_name?: string
+          gender?: Database["public"]["Enums"]["patient_gender"] | null
+          id?: string
+          id_number?: string | null
+          last_name?: string
+          medical_aid_main_member?: string | null
+          medical_aid_name?: string | null
+          medical_aid_number?: string | null
+          medical_aid_plan?: string | null
+          notes?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          referring_doctor_name?: string | null
+          referring_doctor_phone?: string | null
+          referring_doctor_practice?: string | null
+          status?: Database["public"]["Enums"]["patient_status"]
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -138,6 +313,15 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "nurse" | "patient"
+      document_type:
+        | "prescription"
+        | "referral"
+        | "consent"
+        | "id_copy"
+        | "medical_aid_card"
+        | "other"
+      patient_gender: "male" | "female" | "other"
+      patient_status: "active" | "inactive" | "archived"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -266,6 +450,16 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "nurse", "patient"],
+      document_type: [
+        "prescription",
+        "referral",
+        "consent",
+        "id_copy",
+        "medical_aid_card",
+        "other",
+      ],
+      patient_gender: ["male", "female", "other"],
+      patient_status: ["active", "inactive", "archived"],
     },
   },
 } as const
