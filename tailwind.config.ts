@@ -57,33 +57,50 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // Custom Infusion Centre colours - matching #3E5B84
+        slate: {
+          blue: "hsl(var(--slate-blue))",
+          "blue-light": "hsl(var(--slate-blue-light))",
+          "blue-dark": "hsl(var(--slate-blue-dark))",
+        },
+        grey: {
+          bg: "hsl(var(--grey-bg))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      fontFamily: {
+        heading: ["Exo", "system-ui", "sans-serif"],
+        body: ["Poppins", "system-ui", "sans-serif"],
+        sans: ["Poppins", "system-ui", "sans-serif"],
+      },
+      fontSize: {
+        "h1": ["57.6px", { lineHeight: "1.1" }],
+        "h2": ["48px", { lineHeight: "1.2" }],
+        "h3": ["32px", { lineHeight: "1.3" }],
+        "body": ["17.6px", { lineHeight: "1.6" }],
+      },
       keyframes: {
         "accordion-down": {
-          from: {
-            height: "0",
-          },
-          to: {
-            height: "var(--radix-accordion-content-height)",
-          },
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
         },
         "accordion-up": {
-          from: {
-            height: "var(--radix-accordion-content-height)",
-          },
-          to: {
-            height: "0",
-          },
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
+        },
+        "fade-in": {
+          from: { opacity: "0", transform: "translateY(10px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "fade-in": "fade-in 0.5s ease-out forwards",
       },
     },
   },
