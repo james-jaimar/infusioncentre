@@ -33,6 +33,8 @@ import AdminAppointments from "./pages/admin/AdminAppointments";
 import AppointmentNew from "./pages/admin/AppointmentNew";
 import AppointmentDetail from "./pages/admin/AppointmentDetail";
 import AdminSettings from "./pages/admin/AdminSettings";
+import AdminStaff from "./pages/admin/AdminStaff";
+import AdminReports from "./pages/admin/AdminReports";
 
 // Nurse pages
 import NurseLayout from "./components/layout/NurseLayout";
@@ -90,9 +92,9 @@ const App = () => (
               <Route path="appointments" element={<AdminAppointments />} />
               <Route path="appointments/new" element={<AppointmentNew />} />
               <Route path="appointments/:id" element={<AppointmentDetail />} />
-              <Route path="staff" element={<div className="p-4">Staff Management - Coming Soon</div>} />
+              <Route path="staff" element={<AdminStaff />} />
               <Route path="training" element={<div className="p-4">Training Bookings - Coming Soon</div>} />
-              <Route path="reports" element={<div className="p-4">Reports - Coming Soon</div>} />
+              <Route path="reports" element={<AdminReports />} />
               <Route path="settings" element={<AdminSettings />} />
             </Route>
 
