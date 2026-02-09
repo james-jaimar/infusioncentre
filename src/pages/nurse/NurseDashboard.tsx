@@ -3,11 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useTodaysTreatments } from "@/hooks/useTreatments";
+import { useActiveTreatments } from "@/hooks/useActiveTreatments";
+import ActiveTreatmentTimer from "@/components/nurse/ActiveTreatmentTimer";
 import { Users, Clock, CheckCircle, AlertTriangle, ArrowRight } from "lucide-react";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 
 export default function NurseDashboard() {
   const { data: appointments, isLoading } = useTodaysTreatments();
+  const { data: activeTreatments } = useActiveTreatments();
   const navigate = useNavigate();
 
   const waiting = appointments?.filter((a: any) => a.status === "scheduled" || a.status === "confirmed") || [];
@@ -68,29 +71,10 @@ export default function NurseDashboard() {
         </Card>
       </div>
 
-      {/* Active Treatments */}
-      {inProgress.length > 0 && (
-        <Card className="border-primary/30">
-          <CardHeader>
-            <CardTitle>Active Treatments</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {inProgress.map((apt: any) => (
-              <div key={apt.id} className="flex items-center justify-between border-b pb-3 last:border-0">
-                <div>
-                  <p className="font-medium">{apt.patient.first_name} {apt.patient.last_name}</p>
-                  <p className="text-sm text-muted-foreground">{apt.appointment_type.name}</p>
-                </div>
-                <Button size="sm" variant="outline" onClick={() => navigate(`/nurse/checkin/${apt.id}`)}>
-                  View <ArrowRight className="ml-1 h-4 w-4" />
-                </Button>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
+      {/* Active Treatment Timer Widget */}
+      <ActiveTreatmentTimer treatments={activeTreatments || []} />
 
-      {/* Upcoming */}
+      {/* Today's Queue with time-since-arrival */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Today's Queue</CardTitle>
@@ -105,19 +89,28 @@ export default function NurseDashboard() {
             <p className="text-center py-6 text-muted-foreground">No patients waiting.</p>
           ) : (
             <div className="space-y-3">
-              {waiting.slice(0, 5).map((apt: any) => (
-                <div key={apt.id} className="flex items-center justify-between border-b pb-3 last:border-0">
-                  <div>
-                    <p className="font-medium">{apt.patient.first_name} {apt.patient.last_name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {format(new Date(apt.scheduled_start), "HH:mm")} • {apt.appointment_type.name}
-                    </p>
+              {waiting.slice(0, 8).map((apt: any) => {
+                const scheduledTime = new Date(apt.scheduled_start);
+                const isPast = scheduledTime < new Date();
+                return (
+                  <div key={apt.id} className="flex items-center justify-between border-b pb-3 last:border-0">
+                    <div className="space-y-0.5">
+                      <p className="font-medium">{apt.patient.first_name} {apt.patient.last_name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {format(scheduledTime, "HH:mm")} • {apt.appointment_type.name}
+                      </p>
+                      {isPast && (
+                        <p className="text-xs text-destructive font-medium">
+                          Waiting {formatDistanceToNow(scheduledTime)}
+                        </p>
+                      )}
+                    </div>
+                    <Button size="sm" onClick={() => navigate(`/nurse/checkin/${apt.id}`)}>
+                      Check In
+                    </Button>
                   </div>
-                  <Button size="sm" onClick={() => navigate(`/nurse/checkin/${apt.id}`)}>
-                    Check In
-                  </Button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
