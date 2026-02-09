@@ -37,6 +37,12 @@ import AdminSettings from "./pages/admin/AdminSettings";
 // Nurse pages
 import NurseLayout from "./components/layout/NurseLayout";
 import NurseDashboard from "./pages/nurse/NurseDashboard";
+import NurseTodaysPatients from "./pages/nurse/NurseTodaysPatients";
+import NurseCheckIn from "./pages/nurse/NurseCheckIn";
+import NurseActiveTreatment from "./pages/nurse/NurseActiveTreatment";
+import NurseKetamineMonitoring from "./pages/nurse/NurseKetamineMonitoring";
+import NurseDischarge from "./pages/nurse/NurseDischarge";
+import NurseEmergency from "./pages/nurse/NurseEmergency";
 
 // Patient pages
 import PatientLayout from "./components/layout/PatientLayout";
@@ -100,9 +106,13 @@ const App = () => (
               }
             >
               <Route index element={<NurseDashboard />} />
-              <Route path="patients" element={<div className="p-4">Today's Patients - Coming Soon</div>} />
-              <Route path="treatments" element={<div className="p-4">Active Treatments - Coming Soon</div>} />
-              <Route path="emergency" element={<div className="p-4">Emergency Protocol - Coming Soon</div>} />
+              <Route path="patients" element={<NurseTodaysPatients />} />
+              <Route path="checkin/:appointmentId" element={<NurseCheckIn />} />
+              <Route path="treatment/:treatmentId" element={<NurseActiveTreatment />} />
+              <Route path="ketamine/:treatmentId" element={<NurseKetamineMonitoring />} />
+              <Route path="discharge/:treatmentId" element={<NurseDischarge />} />
+              <Route path="treatments" element={<NurseTodaysPatients />} />
+              <Route path="emergency" element={<NurseEmergency />} />
             </Route>
 
             {/* Patient routes */}
