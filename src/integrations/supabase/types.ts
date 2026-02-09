@@ -14,6 +14,156 @@ export type Database = {
   }
   public: {
     Tables: {
+      appointment_reminders: {
+        Row: {
+          appointment_id: string
+          created_at: string
+          error_message: string | null
+          id: string
+          reminder_type: Database["public"]["Enums"]["reminder_type"]
+          scheduled_for: string
+          sent_at: string | null
+          status: Database["public"]["Enums"]["reminder_status"]
+        }
+        Insert: {
+          appointment_id: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          reminder_type: Database["public"]["Enums"]["reminder_type"]
+          scheduled_for: string
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["reminder_status"]
+        }
+        Update: {
+          appointment_id?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          reminder_type?: Database["public"]["Enums"]["reminder_type"]
+          scheduled_for?: string
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["reminder_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_reminders_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointment_types: {
+        Row: {
+          color: string
+          created_at: string
+          default_duration_minutes: number
+          display_order: number
+          id: string
+          is_active: boolean
+          name: string
+          preparation_instructions: string | null
+          requires_consent: boolean
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          default_duration_minutes?: number
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          preparation_instructions?: string | null
+          requires_consent?: boolean
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          default_duration_minutes?: number
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          preparation_instructions?: string | null
+          requires_consent?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      appointments: {
+        Row: {
+          appointment_type_id: string
+          assigned_nurse_id: string | null
+          cancellation_reason: string | null
+          chair_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          patient_id: string
+          scheduled_end: string
+          scheduled_start: string
+          status: Database["public"]["Enums"]["appointment_status"]
+          updated_at: string
+        }
+        Insert: {
+          appointment_type_id: string
+          assigned_nurse_id?: string | null
+          cancellation_reason?: string | null
+          chair_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          patient_id: string
+          scheduled_end: string
+          scheduled_start: string
+          status?: Database["public"]["Enums"]["appointment_status"]
+          updated_at?: string
+        }
+        Update: {
+          appointment_type_id?: string
+          assigned_nurse_id?: string | null
+          cancellation_reason?: string | null
+          chair_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          scheduled_end?: string
+          scheduled_start?: string
+          status?: Database["public"]["Enums"]["appointment_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_appointment_type_id_fkey"
+            columns: ["appointment_type_id"]
+            isOneToOne: false
+            referencedRelation: "appointment_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_chair_id_fkey"
+            columns: ["chair_id"]
+            isOneToOne: false
+            referencedRelation: "treatment_chairs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           action: string
@@ -273,6 +423,36 @@ export type Database = {
         }
         Relationships: []
       }
+      treatment_chairs: {
+        Row: {
+          created_at: string
+          display_order: number
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -313,6 +493,14 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "nurse" | "patient"
+      appointment_status:
+        | "scheduled"
+        | "confirmed"
+        | "checked_in"
+        | "in_progress"
+        | "completed"
+        | "cancelled"
+        | "no_show"
       document_type:
         | "prescription"
         | "referral"
@@ -322,6 +510,8 @@ export type Database = {
         | "other"
       patient_gender: "male" | "female" | "other"
       patient_status: "active" | "inactive" | "archived"
+      reminder_status: "pending" | "sent" | "failed"
+      reminder_type: "email" | "whatsapp" | "sms"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -450,6 +640,15 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "nurse", "patient"],
+      appointment_status: [
+        "scheduled",
+        "confirmed",
+        "checked_in",
+        "in_progress",
+        "completed",
+        "cancelled",
+        "no_show",
+      ],
       document_type: [
         "prescription",
         "referral",
@@ -460,6 +659,8 @@ export const Constants = {
       ],
       patient_gender: ["male", "female", "other"],
       patient_status: ["active", "inactive", "archived"],
+      reminder_status: ["pending", "sent", "failed"],
+      reminder_type: ["email", "whatsapp", "sms"],
     },
   },
 } as const

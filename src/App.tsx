@@ -29,6 +29,10 @@ import AdminContacts from "./pages/admin/AdminContacts";
 import AdminPatients from "./pages/admin/AdminPatients";
 import PatientNew from "./pages/admin/PatientNew";
 import PatientDetail from "./pages/admin/PatientDetail";
+import AdminAppointments from "./pages/admin/AdminAppointments";
+import AppointmentNew from "./pages/admin/AppointmentNew";
+import AppointmentDetail from "./pages/admin/AppointmentDetail";
+import AdminSettings from "./pages/admin/AdminSettings";
 
 // Nurse pages
 import NurseLayout from "./components/layout/NurseLayout";
@@ -77,11 +81,13 @@ const App = () => (
               <Route path="patients" element={<AdminPatients />} />
               <Route path="patients/new" element={<PatientNew />} />
               <Route path="patients/:id" element={<PatientDetail />} />
-              <Route path="appointments" element={<div className="p-4">Appointments - Coming Soon</div>} />
+              <Route path="appointments" element={<AdminAppointments />} />
+              <Route path="appointments/new" element={<AppointmentNew />} />
+              <Route path="appointments/:id" element={<AppointmentDetail />} />
               <Route path="staff" element={<div className="p-4">Staff Management - Coming Soon</div>} />
               <Route path="training" element={<div className="p-4">Training Bookings - Coming Soon</div>} />
               <Route path="reports" element={<div className="p-4">Reports - Coming Soon</div>} />
-              <Route path="settings" element={<div className="p-4">Settings - Coming Soon</div>} />
+              <Route path="settings" element={<AdminSettings />} />
             </Route>
 
             {/* Nurse routes */}
