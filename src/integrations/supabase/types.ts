@@ -218,6 +218,59 @@ export type Database = {
         }
         Relationships: []
       }
+      ketamine_monitoring: {
+        Row: {
+          alertness_score: number
+          anxiety_score: number | null
+          dissociation_level: number
+          id: string
+          minutes_from_start: number
+          mood_score: number
+          nausea_present: boolean
+          notes: string | null
+          pain_score: number
+          recorded_at: string
+          recorded_by: string | null
+          treatment_id: string
+        }
+        Insert: {
+          alertness_score: number
+          anxiety_score?: number | null
+          dissociation_level: number
+          id?: string
+          minutes_from_start: number
+          mood_score: number
+          nausea_present?: boolean
+          notes?: string | null
+          pain_score: number
+          recorded_at?: string
+          recorded_by?: string | null
+          treatment_id: string
+        }
+        Update: {
+          alertness_score?: number
+          anxiety_score?: number | null
+          dissociation_level?: number
+          id?: string
+          minutes_from_start?: number
+          mood_score?: number
+          nausea_present?: boolean
+          notes?: string | null
+          pain_score?: number
+          recorded_at?: string
+          recorded_by?: string | null
+          treatment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ketamine_monitoring_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "treatments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patient_documents: {
         Row: {
           document_type: Database["public"]["Enums"]["document_type"]
@@ -423,6 +476,41 @@ export type Database = {
         }
         Relationships: []
       }
+      treatment_assessments: {
+        Row: {
+          assessment_type: Database["public"]["Enums"]["assessment_type"]
+          data: Json
+          id: string
+          recorded_at: string
+          recorded_by: string | null
+          treatment_id: string
+        }
+        Insert: {
+          assessment_type: Database["public"]["Enums"]["assessment_type"]
+          data?: Json
+          id?: string
+          recorded_at?: string
+          recorded_by?: string | null
+          treatment_id: string
+        }
+        Update: {
+          assessment_type?: Database["public"]["Enums"]["assessment_type"]
+          data?: Json
+          id?: string
+          recorded_at?: string
+          recorded_by?: string | null
+          treatment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treatment_assessments_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "treatments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       treatment_chairs: {
         Row: {
           created_at: string
@@ -452,6 +540,164 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      treatment_medications: {
+        Row: {
+          administered_at: string
+          administered_by: string | null
+          dosage: string
+          id: string
+          lot_number: string | null
+          medication_name: string
+          notes: string | null
+          route: Database["public"]["Enums"]["medication_route"]
+          treatment_id: string
+        }
+        Insert: {
+          administered_at?: string
+          administered_by?: string | null
+          dosage: string
+          id?: string
+          lot_number?: string | null
+          medication_name: string
+          notes?: string | null
+          route?: Database["public"]["Enums"]["medication_route"]
+          treatment_id: string
+        }
+        Update: {
+          administered_at?: string
+          administered_by?: string | null
+          dosage?: string
+          id?: string
+          lot_number?: string | null
+          medication_name?: string
+          notes?: string | null
+          route?: Database["public"]["Enums"]["medication_route"]
+          treatment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treatment_medications_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "treatments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      treatment_vitals: {
+        Row: {
+          blood_pressure_diastolic: number | null
+          blood_pressure_systolic: number | null
+          heart_rate: number | null
+          id: string
+          notes: string | null
+          o2_saturation: number | null
+          phase: Database["public"]["Enums"]["vitals_phase"]
+          recorded_at: string
+          recorded_by: string | null
+          temperature: number | null
+          treatment_id: string
+          weight_kg: number | null
+        }
+        Insert: {
+          blood_pressure_diastolic?: number | null
+          blood_pressure_systolic?: number | null
+          heart_rate?: number | null
+          id?: string
+          notes?: string | null
+          o2_saturation?: number | null
+          phase: Database["public"]["Enums"]["vitals_phase"]
+          recorded_at?: string
+          recorded_by?: string | null
+          temperature?: number | null
+          treatment_id: string
+          weight_kg?: number | null
+        }
+        Update: {
+          blood_pressure_diastolic?: number | null
+          blood_pressure_systolic?: number | null
+          heart_rate?: number | null
+          id?: string
+          notes?: string | null
+          o2_saturation?: number | null
+          phase?: Database["public"]["Enums"]["vitals_phase"]
+          recorded_at?: string
+          recorded_by?: string | null
+          temperature?: number | null
+          treatment_id?: string
+          weight_kg?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treatment_vitals_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "treatments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      treatments: {
+        Row: {
+          appointment_id: string
+          created_at: string
+          ended_at: string | null
+          id: string
+          notes: string | null
+          nurse_id: string
+          patient_id: string
+          started_at: string | null
+          status: Database["public"]["Enums"]["treatment_status"]
+          treatment_type_id: string
+        }
+        Insert: {
+          appointment_id: string
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          notes?: string | null
+          nurse_id: string
+          patient_id: string
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["treatment_status"]
+          treatment_type_id: string
+        }
+        Update: {
+          appointment_id?: string
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          notes?: string | null
+          nurse_id?: string
+          patient_id?: string
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["treatment_status"]
+          treatment_type_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treatments_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatments_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatments_treatment_type_id_fkey"
+            columns: ["treatment_type_id"]
+            isOneToOne: false
+            referencedRelation: "appointment_types"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -501,6 +747,11 @@ export type Database = {
         | "completed"
         | "cancelled"
         | "no_show"
+      assessment_type:
+        | "pre_treatment"
+        | "during_treatment"
+        | "post_treatment"
+        | "ketamine_monitoring"
       document_type:
         | "prescription"
         | "referral"
@@ -508,10 +759,19 @@ export type Database = {
         | "id_copy"
         | "medical_aid_card"
         | "other"
+      medication_route: "iv" | "oral" | "im" | "sc"
       patient_gender: "male" | "female" | "other"
       patient_status: "active" | "inactive" | "archived"
       reminder_status: "pending" | "sent" | "failed"
       reminder_type: "email" | "whatsapp" | "sms"
+      treatment_status:
+        | "pending"
+        | "pre_assessment"
+        | "in_progress"
+        | "post_assessment"
+        | "completed"
+        | "cancelled"
+      vitals_phase: "pre" | "during" | "post"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -649,6 +909,12 @@ export const Constants = {
         "cancelled",
         "no_show",
       ],
+      assessment_type: [
+        "pre_treatment",
+        "during_treatment",
+        "post_treatment",
+        "ketamine_monitoring",
+      ],
       document_type: [
         "prescription",
         "referral",
@@ -657,10 +923,20 @@ export const Constants = {
         "medical_aid_card",
         "other",
       ],
+      medication_route: ["iv", "oral", "im", "sc"],
       patient_gender: ["male", "female", "other"],
       patient_status: ["active", "inactive", "archived"],
       reminder_status: ["pending", "sent", "failed"],
       reminder_type: ["email", "whatsapp", "sms"],
+      treatment_status: [
+        "pending",
+        "pre_assessment",
+        "in_progress",
+        "post_assessment",
+        "completed",
+        "cancelled",
+      ],
+      vitals_phase: ["pre", "during", "post"],
     },
   },
 } as const
