@@ -2,6 +2,23 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Patient, PatientStatus } from "@/types/patient";
 
+// Simple hook to get all patients for selection dropdowns
+export function usePatients() {
+  return useQuery({
+    queryKey: ['patients-all'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('patients')
+        .select('*')
+        .eq('status', 'active')
+        .order('first_name', { ascending: true });
+
+      if (error) throw error;
+      return data as Patient[];
+    },
+  });
+}
+
 interface UsePatientListOptions {
   search?: string;
   status?: PatientStatus | 'all';

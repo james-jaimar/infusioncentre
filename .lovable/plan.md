@@ -21,7 +21,13 @@
 - UI: Patient detail view with tabs (Profile, Medical History, Documents)
 - UI: Document upload/download/delete functionality
 
----
+### Phase 4: Appointment Scheduling - COMPLETE
+- Database: `treatment_chairs`, `appointment_types`, `appointments`, `appointment_reminders` tables with RLS
+- Default data: 4 treatment chairs, 5 appointment types seeded
+- UI: Calendar view with day/week toggle, chair lane layout
+- UI: Appointment booking wizard with patient search, type selection, conflict detection
+- UI: Appointment detail view with status management
+- UI: Settings page for chairs and appointment types configuration
 |-----------|--------|-------|
 | Public Website | Complete | Homepage, Services, Training pages, Contact, Doctors page |
 | Contact Form | Complete | Saves to `contact_submissions` table with RLS |
