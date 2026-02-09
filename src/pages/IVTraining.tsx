@@ -2,8 +2,12 @@ import PublicLayout from "@/components/layout/PublicLayout";
 import { Link } from "react-router-dom";
 import { Check } from "lucide-react";
 import ivTrainingImg from "@/assets/iv-training-course.webp";
+import CourseBookingForm from "@/components/training/CourseBookingForm";
+import { useTrainingCourses } from "@/hooks/useTrainingCourses";
 
 const IVTraining = () => {
+  const { data: courses } = useTrainingCourses();
+  const ivCourse = courses?.find((c) => c.name.toLowerCase().includes("iv"));
   const curriculum = [
     "Anatomy and physiology of veins",
     "Indications and contraindications for IV therapy",
@@ -83,12 +87,16 @@ const IVTraining = () => {
                 and available dates.
               </p>
 
-              <Link 
-                to="/contact" 
-                className="inline-block bg-primary text-white px-8 py-4 font-body font-medium uppercase tracking-wide hover:bg-primary/90 transition-colors"
-              >
-                Enquire Now
-              </Link>
+              {ivCourse ? (
+                <CourseBookingForm courseId={ivCourse.id} courseName={ivCourse.name} />
+              ) : (
+                <Link 
+                  to="/contact" 
+                  className="inline-block bg-primary text-white px-8 py-4 font-body font-medium uppercase tracking-wide hover:bg-primary/90 transition-colors"
+                >
+                  Enquire Now
+                </Link>
+              )}
             </div>
           </div>
         </div>

@@ -2,8 +2,12 @@ import PublicLayout from "@/components/layout/PublicLayout";
 import { Link } from "react-router-dom";
 import { Check } from "lucide-react";
 import anaphylaxisImg from "@/assets/anaphylaxis-training.webp";
+import CourseBookingForm from "@/components/training/CourseBookingForm";
+import { useTrainingCourses } from "@/hooks/useTrainingCourses";
 
 const AnaphylaxisTraining = () => {
+  const { data: courses } = useTrainingCourses();
+  const anaphylaxisCourse = courses?.find((c) => c.name.toLowerCase().includes("anaphylaxis"));
   const curriculum = [
     "Understanding anaphylaxis pathophysiology",
     "Recognising signs and symptoms",
@@ -85,12 +89,16 @@ const AnaphylaxisTraining = () => {
                 and available dates.
               </p>
 
-              <Link 
-                to="/contact" 
-                className="inline-block bg-primary text-white px-8 py-4 font-body font-medium uppercase tracking-wide hover:bg-primary/90 transition-colors"
-              >
-                Enquire Now
-              </Link>
+              {anaphylaxisCourse ? (
+                <CourseBookingForm courseId={anaphylaxisCourse.id} courseName={anaphylaxisCourse.name} />
+              ) : (
+                <Link 
+                  to="/contact" 
+                  className="inline-block bg-primary text-white px-8 py-4 font-body font-medium uppercase tracking-wide hover:bg-primary/90 transition-colors"
+                >
+                  Enquire Now
+                </Link>
+              )}
             </div>
           </div>
         </div>

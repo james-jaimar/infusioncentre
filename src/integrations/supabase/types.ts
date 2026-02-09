@@ -233,6 +233,56 @@ export type Database = {
         }
         Relationships: []
       }
+      course_bookings: {
+        Row: {
+          course_id: string
+          created_at: string
+          email: string
+          id: string
+          notes: string | null
+          organisation: string | null
+          participant_name: string
+          phone: string | null
+          preferred_dates: string | null
+          status: Database["public"]["Enums"]["booking_status"]
+          updated_at: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          email: string
+          id?: string
+          notes?: string | null
+          organisation?: string | null
+          participant_name: string
+          phone?: string | null
+          preferred_dates?: string | null
+          status?: Database["public"]["Enums"]["booking_status"]
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          email?: string
+          id?: string
+          notes?: string | null
+          organisation?: string | null
+          participant_name?: string
+          phone?: string | null
+          preferred_dates?: string | null
+          status?: Database["public"]["Enums"]["booking_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_bookings_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "training_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ketamine_monitoring: {
         Row: {
           alertness_score: number
@@ -488,6 +538,45 @@ export type Database = {
           phone?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      training_courses: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration_hours: number | null
+          id: string
+          includes: string[] | null
+          is_active: boolean
+          max_participants: number | null
+          name: string
+          price: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration_hours?: number | null
+          id?: string
+          includes?: string[] | null
+          is_active?: boolean
+          max_participants?: number | null
+          name: string
+          price?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration_hours?: number | null
+          id?: string
+          includes?: string[] | null
+          is_active?: boolean
+          max_participants?: number | null
+          name?: string
+          price?: number | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -767,6 +856,7 @@ export type Database = {
         | "during_treatment"
         | "post_treatment"
         | "ketamine_monitoring"
+      booking_status: "pending" | "confirmed" | "completed" | "cancelled"
       contact_status: "new" | "in_progress" | "resolved" | "archived"
       document_type:
         | "prescription"
@@ -931,6 +1021,7 @@ export const Constants = {
         "post_treatment",
         "ketamine_monitoring",
       ],
+      booking_status: ["pending", "confirmed", "completed", "cancelled"],
       contact_status: ["new", "in_progress", "resolved", "archived"],
       document_type: [
         "prescription",

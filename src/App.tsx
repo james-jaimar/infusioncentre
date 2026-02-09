@@ -35,6 +35,7 @@ import AppointmentDetail from "./pages/admin/AppointmentDetail";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminStaff from "./pages/admin/AdminStaff";
 import AdminReports from "./pages/admin/AdminReports";
+import AdminTraining from "./pages/admin/AdminTraining";
 
 // Nurse pages
 import NurseLayout from "./components/layout/NurseLayout";
@@ -93,7 +94,7 @@ const App = () => (
               <Route path="appointments/new" element={<AppointmentNew />} />
               <Route path="appointments/:id" element={<AppointmentDetail />} />
               <Route path="staff" element={<AdminStaff />} />
-              <Route path="training" element={<div className="p-4">Training Bookings - Coming Soon</div>} />
+              <Route path="training" element={<AdminTraining />} />
               <Route path="reports" element={<AdminReports />} />
               <Route path="settings" element={<AdminSettings />} />
             </Route>
