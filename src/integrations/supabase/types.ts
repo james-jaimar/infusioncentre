@@ -190,30 +190,45 @@ export type Database = {
       }
       contact_submissions: {
         Row: {
+          assigned_to: string | null
           created_at: string
           email: string
           id: string
+          is_read: boolean
           message: string
           name: string
           phone: string | null
+          read_at: string | null
+          response_notes: string | null
+          status: Database["public"]["Enums"]["contact_status"]
           subject: string
         }
         Insert: {
+          assigned_to?: string | null
           created_at?: string
           email: string
           id?: string
+          is_read?: boolean
           message: string
           name: string
           phone?: string | null
+          read_at?: string | null
+          response_notes?: string | null
+          status?: Database["public"]["Enums"]["contact_status"]
           subject: string
         }
         Update: {
+          assigned_to?: string | null
           created_at?: string
           email?: string
           id?: string
+          is_read?: boolean
           message?: string
           name?: string
           phone?: string | null
+          read_at?: string | null
+          response_notes?: string | null
+          status?: Database["public"]["Enums"]["contact_status"]
           subject?: string
         }
         Relationships: []
@@ -752,6 +767,7 @@ export type Database = {
         | "during_treatment"
         | "post_treatment"
         | "ketamine_monitoring"
+      contact_status: "new" | "in_progress" | "resolved" | "archived"
       document_type:
         | "prescription"
         | "referral"
@@ -915,6 +931,7 @@ export const Constants = {
         "post_treatment",
         "ketamine_monitoring",
       ],
+      contact_status: ["new", "in_progress", "resolved", "archived"],
       document_type: [
         "prescription",
         "referral",
