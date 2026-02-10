@@ -2,3 +2,6 @@ project_id = "fydpeoqwdnjfxxdsxvws"
 
 [functions.create-staff]
 verify_jwt = false
+
+[functions.send-patient-invite]
+verify_jwt = false

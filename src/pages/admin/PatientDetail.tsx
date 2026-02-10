@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import SendInviteDialog from "@/components/admin/SendInviteDialog";
 import { usePatient, useUpdatePatient, useDeletePatient } from "@/hooks/usePatients";
 import { usePatientMedicalHistory, useUpsertPatientMedicalHistory } from "@/hooks/usePatientMedicalHistory";
 import { usePatientDocuments, useUploadPatientDocument, useDeletePatientDocument, useGetDocumentUrl } from "@/hooks/usePatientDocuments";
@@ -284,6 +285,12 @@ export default function PatientDetail() {
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+              <SendInviteDialog
+                patientId={id!}
+                patientEmail={patient.email}
+                patientPhone={patient.phone}
+                patientName={`${patient.first_name} ${patient.last_name}`}
+              />
               <Button onClick={handleEdit}>
                 <Edit2 className="mr-2 h-4 w-4" />
                 Edit
