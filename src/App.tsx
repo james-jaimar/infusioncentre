@@ -59,6 +59,7 @@ import DoctorPatientView from "./pages/doctor/DoctorPatientView";
 // Patient pages
 import PatientLayout from "./components/layout/PatientLayout";
 import PatientDashboard from "./pages/patient/PatientDashboard";
+import InviteLanding from "./pages/InviteLanding";
 
 const queryClient = new QueryClient();
 
@@ -78,6 +79,9 @@ const App = () => (
             <Route path="/iv-training" element={<IVTraining />} />
             <Route path="/anaphylaxis-training" element={<AnaphylaxisTraining />} />
             <Route path="/doctors" element={<Doctors />} />
+
+            {/* Invite route (public) */}
+            <Route path="/invite/:token" element={<InviteLanding />} />
 
             {/* Auth routes */}
             <Route path="/login" element={<Login />} />
