@@ -1,177 +1,312 @@
 
 
-# Complete Clinical Workflow System - Phased Plan
+# Phase 2: Dynamic Onboarding Form System
 
 ## Overview
 
-This plan transforms the current application from a basic appointment/treatment tracker into a full end-to-end clinical management system covering: doctor referrals, patient onboarding with dynamic forms, treatment "job cards," nurse workflow, billing foundations, and post-treatment reporting.
-
-Given the scope, this is split into manageable phases that build on each other.
+Build a form template engine that lets admin define, manage, and assign clinical forms. Patients (or staff on their behalf) fill them in digitally. The system is driven by Gayle's actual forms, which I've analysed in detail below.
 
 ---
 
-## Phase 1: Doctor Role and Referral System
+## Forms Inventory (from uploaded documents)
 
-### What it does
-Doctors get their own login and portal where they can submit referrals and view treatment summaries for their patients.
+Based on the documents provided, here is the complete catalogue of forms to pre-seed into the system:
 
-### Database changes
-- Add `'doctor'` to the `app_role` enum
-- Create `doctors` table: id, user_id, practice_name, practice_number (HPCSA), phone, email, specialisation, address fields, is_active, created_at
-- Create `referrals` table: id, doctor_id, patient_id (nullable - patient may not exist yet), patient_first_name, patient_last_name, patient_email, patient_phone, diagnosis, treatment_requested, prescription_notes, urgency (routine/urgent), referral_document_path, status (pending/accepted/scheduled/completed), created_at, reviewed_by, reviewed_at
-- RLS: Doctors see only their own referrals and their referred patients' treatment summaries; admins see all
+### Universal (All Patients)
+1. **Patient Information and Agreement for Care** - patient details, medical aid info, terms/consent, cancellation policy, signatures
+2. **POPI Consent** - data processing consent with signature
 
-### Frontend changes
-- New `DoctorLayout` component (similar to NurseLayout)
-- Doctor dashboard: list of their referrals with status tracking
-- "New Referral" form: patient details, diagnosis, treatment requested, file upload for prescription/referral letter
-- Read-only treatment summary view for their patients (vitals, medications given, discharge notes)
-- Update `ProtectedRoute` and `Login.tsx` to handle the `doctor` role
-- Add doctor routes in `App.tsx`
+### Ketamine-Specific
+3. **Ketamine Consent (General)** - 6-page information and consent document with signature on each page
+4. **Ketamine Consent (Dr Rodseth)** - variant tied to a specific prescribing doctor
+5. **Ketamine Pre-Infusion Questionnaire (General 2025)** - 5-page detailed questionnaire: patient history, current medications (table), past medical history (checklist of ~28 conditions), personal history, family history, systems review (multi-category checklist), women's reproductive history, substance use table, signature
+6. **Ketamine Pre-Infusion Questionnaire (Dr Rodseth)** - similar but tied to Dr Rodseth
 
-### Admin side
-- Admin can manage doctors in `AdminStaff.tsx` (or a new "Doctors" section)
-- Admin can review/accept referrals and convert them into patient records + appointments
-- Update `create-staff` edge function to support the `doctor` role
+### Iron-Specific
+7. **Patient Information for Iron Infusions** - informational document (read-and-acknowledge, no data capture needed beyond signature)
+8. **Iron Infusion Pre-Questionnaire** - allergies, weight, prior infusion history, condition checklist (11 items: asthma, eczema, skin allergies, RA, kidney failure, infections, liver disease, lupus, beta-blockers, mastocytosis, pregnancy), emergency contact, medical history, surgical history, signature
 
----
+### Monitoring Forms (tied to active treatments, not onboarding)
+9. **IV Infusion Monitoring (Short)** - baseline vitals, test dose, pre-medication, hourly vitals table (15-min intervals), post-infusion vitals, discharge comments, cleaning record
+10. **Revellex/Remsima Infusion Monitoring** - pre-infusion assessment, pre-medication (paracetamol/cortisone/antihistamine with lot numbers), REMSIMA lot tracking, baseline vitals, standard vs accelerated protocol rates, continual monitoring table (15-min), reactions/adverse events, post-infusion vitals, discharge, cleaning record
 
-## Phase 2: Dynamic Onboarding Form System
-
-### What it does
-A configurable form template system so the admin can define which forms each patient must complete during onboarding. Forms can be filled by the patient (on tablet or at home via their portal) or by admin staff.
-
-### Database changes
-- Create `form_templates` table: id, name, description, category (consent/medical/administrative), form_schema (JSONB - defines fields, types, validation rules), is_active, display_order, required_for_treatment_types (uuid array, nullable - if null, required for all), version, created_at
-- Create `form_submissions` table: id, form_template_id, patient_id, submitted_by (user_id), data (JSONB - the actual answers), status (draft/submitted/reviewed/approved), reviewed_by, reviewed_at, signature_data (text, base64 of signature if needed), created_at
-- Create `onboarding_checklists` table: id, patient_id, form_template_id, status (pending/completed), completed_at, due_date
-
-### How it works
-- Admin creates form templates via a form builder (fields: text, number, date, select, checkbox, textarea, signature, file upload)
-- When a patient is created, the system auto-generates their onboarding checklist based on treatment type
-- Patient can fill forms in their portal (at home) or on a tablet in-practice
-- Admin/nurse can also fill forms on behalf of the patient
-- Onboarding progress is visible as a checklist with completion percentage
-
-### Frontend changes
-- New admin page: "Form Templates" - CRUD for form templates with a visual field builder
-- Update `PatientDetail.tsx`: add "Onboarding" tab showing checklist progress
-- Patient portal: "My Forms" section where they fill in outstanding forms
-- Form renderer component that reads JSONB schema and renders appropriate inputs
-- Signature capture component (canvas-based)
+### Still Needed (not yet provided by Gayle)
+- Monofer consent
+- Cosmofer consent
+- Ferinject consent
+- Biological medical history form
+- Polygam long infusion monitoring
+- Cosmofer long infusion monitoring
+- D.I.S Feedback form
+- Scriptwise integration details
 
 ---
 
-## Phase 3: Patient Invite / Magic Link System
+## Field Types Needed
 
-### What it does
-When admin creates a patient, they can send a login link to the patient's email so they can access their portal and fill in onboarding forms from home.
+From analysing all forms, the form builder must support these field types:
 
-### How it works
-- Admin clicks "Send Portal Invite" on a patient record
-- Edge function creates an auth user (if not already linked), assigns patient role, and sends a magic link or password-reset email
-- Patient clicks link, sets password (or is auto-logged in), and lands on their portal with outstanding forms
-- Links the `patients.user_id` to the new auth user
-
-### Changes
-- New edge function: `invite-patient` (creates auth user, links to patient record, sends invite email)
-- Button on `PatientDetail.tsx`: "Send Portal Invite"
-- Update patient portal to show onboarding forms prominently if incomplete
-
----
-
-## Phase 4: Treatment Job Card System
-
-### What it does
-A "treatment ticket" (job card) that bundles everything needed for a specific treatment visit: treatment type, required forms/consents, medications to administer (from prescription), nurse assignment, bay/chair assignment, time slot, and status tracking.
-
-### Database changes
-- Create `treatment_tickets` table: id, appointment_id, patient_id, referral_id (nullable), treatment_type_id, prescribed_medications (JSONB array), required_form_ids (uuid array referencing form_templates), nurse_id (nullable until assigned), chair_id (nullable until assigned), scheduled_date, scheduled_time, estimated_duration_minutes, status (created/forms_pending/ready/in_progress/completed/cancelled), priority (normal/urgent), notes, created_by, created_at, updated_at
-- Create `treatment_ticket_forms` table: id, ticket_id, form_template_id, form_submission_id (nullable - linked when completed), required (boolean), status (pending/completed/waived)
-
-### How it works
-- When an appointment is created (or a referral is accepted), a treatment ticket is auto-generated
-- The ticket lists all required forms for that treatment type
-- Admin can add/remove required forms, assign nurse/chair, set time
-- Ticket status progresses: created -> forms_pending -> ready (all forms done) -> in_progress -> completed
-- Nurse sees their assigned tickets on their dashboard with clear readiness indicators
-
-### Frontend changes
-- New "Job Cards" view for admin: kanban-style or list view of all tickets by status
-- Ticket detail page showing: patient info, required forms (with completion status), prescribed meds, nurse/chair assignment, timeline
-- Nurse dashboard updated to show assigned tickets with readiness status (green = all forms done, amber = forms pending)
-- Link ticket to existing treatment workflow (check-in, active treatment, discharge)
+| Type | Example from forms |
+|---|---|
+| text | Name, address, occupation |
+| textarea | Symptom description, notes |
+| number | Age, weight, dosage |
+| date | Date of birth, date signed |
+| select | Gender (Male/Female), marital status, education level |
+| radio | Yes/No questions (ECT, psychotherapy, working) |
+| checkbox | Medical condition checklists (28+ items), systems review |
+| checkbox_group | Multi-select condition lists with "other" option |
+| medication_table | Repeating rows: drug name, strength, dosage, duration |
+| substance_table | Repeating rows: drug category, age first used, frequency, etc. |
+| vitals_row | BP, pulse, temp, sats, RR at a point in time |
+| vitals_table | Repeating timed vitals (monitoring forms) |
+| signature | Patient signature, witness signature, RN signature |
+| section_header | Section dividers with titles |
+| info_text | Read-only informational paragraphs (consent documents) |
+| family_table | Father/Mother/Siblings - living/deceased status |
+| file_upload | Referral documents, prescriptions |
 
 ---
 
-## Phase 5: Billing Data Model (Foundation Only)
+## Database Changes (Migration)
 
-### What it does
-Creates the database tables for invoicing and billing so data is captured from day one, even though the payment UI comes later.
+### New Tables
 
-### Database changes
-- Create `invoices` table: id, patient_id, treatment_ticket_id, appointment_id, invoice_number (auto-generated), status (draft/sent/paid/overdue/cancelled), subtotal, tax_amount, total, medical_aid_claim_amount, patient_liability, due_date, paid_at, notes, created_by, created_at
-- Create `invoice_line_items` table: id, invoice_id, description, quantity, unit_price, total, icd10_code (nullable), tariff_code (nullable), notes
-- Create `payment_records` table: id, invoice_id, amount, payment_method (cash/card/eft/medical_aid), reference_number, paid_at, recorded_by, notes
+**form_templates**
+- id (uuid, PK)
+- name (text) - e.g. "POPI Consent"
+- description (text, nullable)
+- category (enum: consent, medical_questionnaire, administrative, monitoring)
+- form_schema (jsonb) - array of field definitions
+- is_active (boolean, default true)
+- display_order (integer, default 0)
+- version (integer, default 1)
+- required_for_treatment_types (uuid[], nullable) - links to appointment_types; null means universal
+- created_by (uuid, nullable)
+- created_at, updated_at (timestamptz)
 
-### No UI yet - just tables with RLS policies (admin full access, patients can view own invoices)
+**form_submissions**
+- id (uuid, PK)
+- form_template_id (uuid, FK)
+- patient_id (uuid, FK)
+- submitted_by (uuid, nullable) - who filled it in (could be patient, nurse, or admin)
+- data (jsonb) - the answers keyed by field_name
+- status (enum: draft, submitted, reviewed, approved)
+- signature_data (text, nullable) - base64 signature image
+- witness_signature_data (text, nullable)
+- reviewed_by (uuid, nullable)
+- reviewed_at (timestamptz, nullable)
+- created_at (timestamptz)
 
----
+**onboarding_checklists**
+- id (uuid, PK)
+- patient_id (uuid, FK)
+- form_template_id (uuid, FK)
+- form_submission_id (uuid, nullable, FK) - linked when completed
+- status (enum: pending, in_progress, completed, waived)
+- due_date (date, nullable)
+- completed_at (timestamptz, nullable)
+- notes (text, nullable)
+- created_at (timestamptz)
 
-## Phase 6: Post-Treatment Reporting
+### New Enums
+- form_category: consent, medical_questionnaire, administrative, monitoring
+- form_submission_status: draft, submitted, reviewed, approved
+- checklist_item_status: pending, in_progress, completed, waived
 
-### What it does
-After treatment completion, automatically generates reports for the referring doctor and the patient.
-
-### Changes
-- Doctor portal: treatment summary appears automatically after discharge (vitals, meds administered, nurse notes, discharge notes)
-- Patient portal: treatment history with downloadable summary
-- Admin: "Generate Report" button on completed treatments that creates a formatted summary
-- Future: PDF generation edge function (can be added later)
-
----
-
-## Implementation Priority
-
-Given the dependencies between phases, the recommended build order is:
-
-1. **Phase 1** - Doctor role (needed for referral flow)
-2. **Phase 2** - Form system (needed for onboarding and job cards)
-3. **Phase 3** - Patient invite (uses form system)
-4. **Phase 4** - Job cards (uses forms + referrals)
-5. **Phase 5** - Billing tables (independent, quick)
-6. **Phase 6** - Post-treatment reporting (uses all above)
-
-Each phase is self-contained and delivers working functionality. We would tackle them one at a time.
-
----
-
-## What you're NOT missing (things already built)
-
-- Patient CRUD with multi-step intake wizard
-- Appointment scheduling with calendar and chair lanes
-- Nurse clinical workflow (check-in, treatment, vitals, meds, ketamine monitoring, discharge)
-- Patient portal (basic - will be enhanced)
-- Staff management with edge function
-- Document upload/storage
-- Session timeout and auth
-
-## What you MIGHT be missing
-
-- **Inventory/stock management**: tracking medication stock levels, expiry dates, reorder alerts
-- **Reporting/analytics**: treatment volumes, nurse utilisation, revenue reports
-- **Audit trail**: already have `audit_log` table but it's not actively populated from all actions
-- **Notifications**: SMS/email reminders for appointments (you started the communication_log work)
-- **Waiting room display**: a screen showing queue status for patients in the waiting area
+### RLS Policies
+- Admins: full access to all three tables
+- Nurses: can read templates, read/insert/update submissions and checklists
+- Patients: can read own checklist items, read templates linked to their checklist, insert/update own submissions (draft/submitted only)
 
 ---
 
-## Technical Notes
+## JSONB Schema Format
 
-- The `app_role` enum needs extending to include `'doctor'`
-- The `handle_new_user()` trigger currently auto-assigns `'patient'` role to all new signups - this is fine since doctors/nurses are created via the admin edge function
-- All new tables will use RESTRICTIVE RLS policies with the existing `has_role()` function
-- The form schema in `form_templates.form_schema` uses a JSON structure like: `[{field_name, field_type, label, required, options, validation}]`
-- The treatment ticket system sits ABOVE the existing `treatments` table - a ticket references an appointment and gets linked to a treatment when the nurse starts it
-- No changes to existing nurse workflow needed initially - the job card wraps around it
+Each form template's `form_schema` is an array of field definitions:
+
+```text
+[
+  {
+    "field_name": "patient_name",
+    "field_type": "text",
+    "label": "Name & Surname",
+    "required": true,
+    "section": "Patient Details",
+    "placeholder": "Mr./Mrs./Ms./Miss./Child",
+    "max_length": 200
+  },
+  {
+    "field_name": "has_diabetes",
+    "field_type": "radio",
+    "label": "Diabetes",
+    "required": true,
+    "section": "Past Medical History",
+    "options": ["Yes", "No"]
+  },
+  {
+    "field_name": "current_medications",
+    "field_type": "medication_table",
+    "label": "Current Medications",
+    "section": "Current Medication",
+    "columns": ["Name of drug", "Strength & Dosage", "Number per day", "How long"],
+    "max_rows": 12
+  },
+  {
+    "field_name": "consent_info",
+    "field_type": "info_text",
+    "label": "",
+    "content": "Ketamine is a medication that has been used for more than 40 years..."
+  },
+  {
+    "field_name": "patient_signature",
+    "field_type": "signature",
+    "label": "Patient Signature",
+    "required": true
+  }
+]
+```
+
+---
+
+## Frontend Components
+
+### 1. Form Builder (Admin)
+**New page: `/admin/form-templates`**
+
+- List all form templates with search/filter by category
+- Create/Edit form template:
+  - Name, description, category, active toggle
+  - Link to treatment types (multi-select from appointment_types)
+  - Visual field list with drag-to-reorder (or up/down buttons)
+  - "Add Field" button opens a field configuration panel
+  - Field config: label, field_name (auto-generated from label), type selector, required toggle, options (for select/radio/checkbox), placeholder, section header
+  - Live preview panel showing what the form looks like
+- Pre-seed button or migration to create templates matching Gayle's forms
+
+### 2. Form Renderer Component
+**New component: `src/components/forms/FormRenderer.tsx`**
+
+A generic component that takes a `form_schema` JSON array and renders the appropriate UI:
+- Renders each field type with the correct input component
+- Groups fields by `section` with section headers
+- Handles validation (required fields, max lengths)
+- Supports read-only mode (for reviewing submitted forms)
+- Supports draft saving (auto-save or manual)
+
+Sub-components:
+- `SignatureCanvas.tsx` - HTML5 canvas for drawing signatures with clear/undo
+- `MedicationTable.tsx` - dynamic rows for medication entry
+- `SubstanceUseTable.tsx` - drug use tracking table
+- `VitalsTable.tsx` - timed vitals recording (for monitoring forms)
+- `ConditionChecklist.tsx` - renders a list of conditions with Yes/No toggles
+
+### 3. Onboarding Checklist (Admin + Patient)
+**Updates to `PatientDetail.tsx`:**
+
+- New "Onboarding" tab showing:
+  - Progress bar (e.g. 3/7 forms completed)
+  - List of required forms with status badges (Pending/In Progress/Completed/Waived)
+  - "Fill Form" button opens FormRenderer in a dialog or full-page view
+  - "Waive" option for admin to skip a form with a note
+  - "Auto-generate checklist" button that creates checklist items based on the patient's treatment type
+
+**Patient portal updates:**
+- "My Forms" section on PatientDashboard showing outstanding forms
+- Click to open FormRenderer and fill in
+- Submit button changes status from draft to submitted
+
+### 4. Admin Form Templates Page
+**New file: `src/pages/admin/AdminFormTemplates.tsx`**
+
+- Route: `/admin/form-templates`
+- Add to AdminLayout sidebar navigation
+- Table listing all templates with category badges, version, active status
+- CRUD operations
+
+---
+
+## Pre-seeded Form Templates
+
+The migration will create the following templates with full JSONB schemas based on the uploaded documents:
+
+1. **Patient Information & Agreement for Care** (category: administrative)
+   - Fields: name, title, ID, age, email, mobile, address, next of kin, representative details, medical aid info, agreement date, signatures
+
+2. **POPI Consent** (category: consent)
+   - Fields: consent checkboxes for each processing activity, full name, ID number, signature, date
+
+3. **Ketamine Consent** (category: consent, linked to ketamine appointment type)
+   - Fields: mostly info_text blocks (the educational content), signature fields on each logical page
+
+4. **Ketamine Pre-Infusion Questionnaire** (category: medical_questionnaire, linked to ketamine)
+   - Fields: date, full name, age, sex, DOB, ID, guardian info, symptoms (textarea), practitioners seen, hospitalisations, ECT (yes/no), psychotherapy (yes/no), treatment goals, medication table (12 rows), drug allergies, medical history checklist (~28 conditions), personal history fields, family history table, systems review checklist, women's health section (conditional), substance use table, consent to drug testing, signatures
+
+5. **Iron Information** (category: consent, linked to iron appointment types)
+   - Fields: info_text blocks, acknowledgement checkbox, signature
+
+6. **Iron Pre-Infusion Questionnaire** (category: medical_questionnaire, linked to iron)
+   - Fields: name, allergies, age, weight, prior infusion (yes/no + details), current medications, condition checklist (11 items), details textarea, emergency contact, signature, RN signature, referring doctor, diagnosis, medical history, surgical history
+
+7. **IV Infusion Monitoring (Short)** (category: monitoring)
+   - Fields: date, infusion number, IV site, patient name, allergies, drug/dosage, batch/expiry, prescribing doctor, baseline vitals, test dose, pre-medication, vitals table (15-min intervals), post-infusion vitals, RN signatures, discharge comments, cleaning checklist
+
+8. **Revellex/Remsima Monitoring** (category: monitoring)
+   - Fields: patient name, date, infusion number, weight, nurse/mask checkboxes, time in/out, dosage, prescribing doctor, pre-infusion assessment, pre-medication table (paracetamol/cortisone/antihistamine with lot numbers), REMSIMA lot tracking (6 entries), baseline vitals, protocol selection (standard/accelerated), vitals monitoring table, reactions, post-infusion vitals, discharge, cleaning
+
+---
+
+## New Files
+
+| File | Purpose |
+|---|---|
+| `supabase/migrations/XXXX_form_system.sql` | Tables, enums, RLS, pre-seeded templates |
+| `src/pages/admin/AdminFormTemplates.tsx` | Admin form template management page |
+| `src/components/forms/FormRenderer.tsx` | Generic form renderer from JSONB schema |
+| `src/components/forms/FormBuilder.tsx` | Admin form template builder |
+| `src/components/forms/SignatureCanvas.tsx` | Signature capture component |
+| `src/components/forms/MedicationTable.tsx` | Dynamic medication entry table |
+| `src/components/forms/ConditionChecklist.tsx` | Yes/No condition checklist |
+| `src/components/forms/InfoText.tsx` | Read-only informational text block |
+| `src/hooks/useFormTemplates.ts` | CRUD hooks for form_templates |
+| `src/hooks/useFormSubmissions.ts` | CRUD hooks for form_submissions |
+| `src/hooks/useOnboardingChecklist.ts` | Hooks for onboarding_checklists |
+
+## Modified Files
+
+| File | Change |
+|---|---|
+| `src/integrations/supabase/types.ts` | Add new table types (auto-generated after migration) |
+| `src/pages/admin/PatientDetail.tsx` | Add "Onboarding" tab with checklist |
+| `src/pages/patient/PatientDashboard.tsx` | Add "My Forms" section |
+| `src/components/layout/AdminLayout.tsx` | Add "Form Templates" nav item |
+| `src/App.tsx` | Add `/admin/form-templates` route |
+
+---
+
+## Implementation Order
+
+Given the size, this will be built in sub-steps:
+
+1. **Database migration** - tables, enums, RLS policies, and pre-seeded templates for the 8 forms above
+2. **Form renderer** - the core component that renders any JSONB schema into a fillable form (with signature canvas, medication table, condition checklist)
+3. **Admin form templates page** - list/create/edit/delete templates with the visual builder
+4. **Onboarding checklist** - integration into PatientDetail + auto-generation logic
+5. **Patient portal forms** - "My Forms" on PatientDashboard using FormRenderer
+
+---
+
+## Notes on Forms Still Needed
+
+The following forms were mentioned in Gayle's process map but not uploaded. They're tracked as placeholders and can be added later via the form builder:
+
+- Monofer consent
+- Cosmofer consent  
+- Ferinject consent
+- Biological medical history
+- Polygam long infusion monitoring
+- Cosmofer long infusion monitoring
+- D.I.S Feedback form
+
+These will appear in the admin form templates page as "Draft" or can be created from scratch using the builder once Gayle provides the content.
 
