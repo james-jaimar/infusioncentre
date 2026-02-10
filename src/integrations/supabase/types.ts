@@ -630,6 +630,53 @@ export type Database = {
           },
         ]
       }
+      patient_invites: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string
+          patient_id: string
+          phone: string | null
+          status: Database["public"]["Enums"]["invite_status"]
+          token: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          invited_by: string
+          patient_id: string
+          phone?: string | null
+          status?: Database["public"]["Enums"]["invite_status"]
+          token: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string
+          patient_id?: string
+          phone?: string | null
+          status?: Database["public"]["Enums"]["invite_status"]
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_invites_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patient_medical_history: {
         Row: {
           allergies: string[] | null
@@ -1205,6 +1252,7 @@ export type Database = {
         | "administrative"
         | "monitoring"
       form_submission_status: "draft" | "submitted" | "reviewed" | "approved"
+      invite_status: "pending" | "accepted" | "expired" | "revoked"
       medication_route: "iv" | "oral" | "im" | "sc"
       patient_gender: "male" | "female" | "other"
       patient_status: "active" | "inactive" | "archived"
@@ -1388,6 +1436,7 @@ export const Constants = {
         "monitoring",
       ],
       form_submission_status: ["draft", "submitted", "reviewed", "approved"],
+      invite_status: ["pending", "accepted", "expired", "revoked"],
       medication_route: ["iv", "oral", "im", "sc"],
       patient_gender: ["male", "female", "other"],
       patient_status: ["active", "inactive", "archived"],
