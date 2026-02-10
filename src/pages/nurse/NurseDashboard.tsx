@@ -105,8 +105,8 @@ export default function NurseDashboard() {
                         </p>
                       )}
                     </div>
-                    <Button size="sm" onClick={() => navigate(`/nurse/checkin/${apt.id}`)}>
-                      Check In
+                    <Button size="sm" onClick={() => navigate(`/nurse/job-card/${apt.id}`)}>
+                      Open Job Card
                     </Button>
                   </div>
                 );
