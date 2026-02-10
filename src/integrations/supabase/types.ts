@@ -325,6 +325,57 @@ export type Database = {
           },
         ]
       }
+      doctors: {
+        Row: {
+          address_line_1: string | null
+          address_line_2: string | null
+          city: string | null
+          created_at: string
+          email: string | null
+          id: string
+          is_active: boolean
+          phone: string | null
+          postal_code: string | null
+          practice_name: string | null
+          practice_number: string | null
+          specialisation: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address_line_1?: string | null
+          address_line_2?: string | null
+          city?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          phone?: string | null
+          postal_code?: string | null
+          practice_name?: string | null
+          practice_number?: string | null
+          specialisation?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address_line_1?: string | null
+          address_line_2?: string | null
+          city?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          phone?: string | null
+          postal_code?: string | null
+          practice_name?: string | null
+          practice_number?: string | null
+          specialisation?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ketamine_monitoring: {
         Row: {
           alertness_score: number
@@ -582,6 +633,84 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      referrals: {
+        Row: {
+          created_at: string
+          diagnosis: string | null
+          doctor_id: string
+          id: string
+          notes: string | null
+          patient_email: string | null
+          patient_first_name: string
+          patient_id: string | null
+          patient_last_name: string
+          patient_phone: string | null
+          prescription_notes: string | null
+          referral_document_path: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["referral_status"]
+          treatment_requested: string | null
+          updated_at: string
+          urgency: Database["public"]["Enums"]["referral_urgency"]
+        }
+        Insert: {
+          created_at?: string
+          diagnosis?: string | null
+          doctor_id: string
+          id?: string
+          notes?: string | null
+          patient_email?: string | null
+          patient_first_name: string
+          patient_id?: string | null
+          patient_last_name: string
+          patient_phone?: string | null
+          prescription_notes?: string | null
+          referral_document_path?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["referral_status"]
+          treatment_requested?: string | null
+          updated_at?: string
+          urgency?: Database["public"]["Enums"]["referral_urgency"]
+        }
+        Update: {
+          created_at?: string
+          diagnosis?: string | null
+          doctor_id?: string
+          id?: string
+          notes?: string | null
+          patient_email?: string | null
+          patient_first_name?: string
+          patient_id?: string | null
+          patient_last_name?: string
+          patient_phone?: string | null
+          prescription_notes?: string | null
+          referral_document_path?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["referral_status"]
+          treatment_requested?: string | null
+          updated_at?: string
+          urgency?: Database["public"]["Enums"]["referral_urgency"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrals_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "doctors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       training_courses: {
         Row: {
@@ -884,7 +1013,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "nurse" | "patient"
+      app_role: "admin" | "nurse" | "patient" | "doctor"
       appointment_status:
         | "scheduled"
         | "confirmed"
@@ -912,6 +1041,13 @@ export type Database = {
       medication_route: "iv" | "oral" | "im" | "sc"
       patient_gender: "male" | "female" | "other"
       patient_status: "active" | "inactive" | "archived"
+      referral_status:
+        | "pending"
+        | "accepted"
+        | "scheduled"
+        | "completed"
+        | "cancelled"
+      referral_urgency: "routine" | "urgent"
       reminder_status: "pending" | "sent" | "failed"
       reminder_type: "email" | "whatsapp" | "sms"
       treatment_status:
@@ -1049,7 +1185,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "nurse", "patient"],
+      app_role: ["admin", "nurse", "patient", "doctor"],
       appointment_status: [
         "scheduled",
         "confirmed",
@@ -1080,6 +1216,14 @@ export const Constants = {
       medication_route: ["iv", "oral", "im", "sc"],
       patient_gender: ["male", "female", "other"],
       patient_status: ["active", "inactive", "archived"],
+      referral_status: [
+        "pending",
+        "accepted",
+        "scheduled",
+        "completed",
+        "cancelled",
+      ],
+      referral_urgency: ["routine", "urgent"],
       reminder_status: ["pending", "sent", "failed"],
       reminder_type: ["email", "whatsapp", "sms"],
       treatment_status: [

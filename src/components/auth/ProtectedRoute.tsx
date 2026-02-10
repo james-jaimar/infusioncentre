@@ -2,7 +2,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
 
-type AppRole = "admin" | "nurse" | "patient";
+type AppRole = "admin" | "nurse" | "patient" | "doctor";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -29,7 +29,7 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
   if (allowedRoles && role && !allowedRoles.includes(role)) {
     // User is logged in but doesn't have the required role
     // Redirect to their appropriate dashboard
-    const redirectPath = role === "admin" ? "/admin" : role === "nurse" ? "/nurse" : "/patient";
+    const redirectPath = role === "admin" ? "/admin" : role === "nurse" ? "/nurse" : role === "doctor" ? "/doctor" : "/patient";
     return <Navigate to={redirectPath} replace />;
   }
 

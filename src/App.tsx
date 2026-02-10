@@ -36,6 +36,7 @@ import AdminSettings from "./pages/admin/AdminSettings";
 import AdminStaff from "./pages/admin/AdminStaff";
 import AdminReports from "./pages/admin/AdminReports";
 import AdminTraining from "./pages/admin/AdminTraining";
+import AdminReferrals from "./pages/admin/AdminReferrals";
 
 // Nurse pages
 import NurseLayout from "./components/layout/NurseLayout";
@@ -46,6 +47,13 @@ import NurseActiveTreatment from "./pages/nurse/NurseActiveTreatment";
 import NurseKetamineMonitoring from "./pages/nurse/NurseKetamineMonitoring";
 import NurseDischarge from "./pages/nurse/NurseDischarge";
 import NurseEmergency from "./pages/nurse/NurseEmergency";
+
+// Doctor pages
+import DoctorLayout from "./components/layout/DoctorLayout";
+import DoctorDashboard from "./pages/doctor/DoctorDashboard";
+import DoctorReferrals from "./pages/doctor/DoctorReferrals";
+import DoctorNewReferral from "./pages/doctor/DoctorNewReferral";
+import DoctorPatientView from "./pages/doctor/DoctorPatientView";
 
 // Patient pages
 import PatientLayout from "./components/layout/PatientLayout";
@@ -95,8 +103,24 @@ const App = () => (
               <Route path="appointments/:id" element={<AppointmentDetail />} />
               <Route path="staff" element={<AdminStaff />} />
               <Route path="training" element={<AdminTraining />} />
+              <Route path="referrals" element={<AdminReferrals />} />
               <Route path="reports" element={<AdminReports />} />
               <Route path="settings" element={<AdminSettings />} />
+            </Route>
+
+            {/* Doctor routes */}
+            <Route
+              path="/doctor"
+              element={
+                <ProtectedRoute allowedRoles={["doctor"]}>
+                  <DoctorLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<DoctorDashboard />} />
+              <Route path="referrals" element={<DoctorReferrals />} />
+              <Route path="referrals/new" element={<DoctorNewReferral />} />
+              <Route path="patients/:patientId" element={<DoctorPatientView />} />
             </Route>
 
             {/* Nurse routes */}
