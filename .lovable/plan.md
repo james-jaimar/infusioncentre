@@ -1,136 +1,177 @@
 
 
-# Full Admin CRUD Implementation
+# Complete Clinical Workflow System - Phased Plan
 
 ## Overview
 
-Add complete Create, Read, Update, and Delete capabilities across all admin-managed areas. Staff management is the biggest gap (currently read-only), but several other areas also need CRUD enhancements.
+This plan transforms the current application from a basic appointment/treatment tracker into a full end-to-end clinical management system covering: doctor referrals, patient onboarding with dynamic forms, treatment "job cards," nurse workflow, billing foundations, and post-treatment reporting.
+
+Given the scope, this is split into manageable phases that build on each other.
 
 ---
 
-## 1. Staff Management -- Full CRUD
+## Phase 1: Doctor Role and Referral System
 
-The staff page currently only lists staff and directs users to the Supabase dashboard to add new members. We will build full in-app management.
+### What it does
+Doctors get their own login and portal where they can submit referrals and view treatment summaries for their patients.
 
-### 1A. Create Staff Member
+### Database changes
+- Add `'doctor'` to the `app_role` enum
+- Create `doctors` table: id, user_id, practice_name, practice_number (HPCSA), phone, email, specialisation, address fields, is_active, created_at
+- Create `referrals` table: id, doctor_id, patient_id (nullable - patient may not exist yet), patient_first_name, patient_last_name, patient_email, patient_phone, diagnosis, treatment_requested, prescription_notes, urgency (routine/urgent), referral_document_path, status (pending/accepted/scheduled/completed), created_at, reviewed_by, reviewed_at
+- RLS: Doctors see only their own referrals and their referred patients' treatment summaries; admins see all
 
-- Add an "Add Staff" button to `AdminStaff.tsx`
-- Dialog form with fields: First Name, Last Name, Phone, Email, Password, Role (Admin/Nurse)
-- Uses Supabase Edge Function `create-staff` to:
-  - Call `supabase.auth.admin.createUser()` with the provided email/password (requires service role key)
-  - Insert into `profiles` table
-  - Insert into `user_roles` table
-- This avoids exposing the service role key on the client
+### Frontend changes
+- New `DoctorLayout` component (similar to NurseLayout)
+- Doctor dashboard: list of their referrals with status tracking
+- "New Referral" form: patient details, diagnosis, treatment requested, file upload for prescription/referral letter
+- Read-only treatment summary view for their patients (vitals, medications given, discharge notes)
+- Update `ProtectedRoute` and `Login.tsx` to handle the `doctor` role
+- Add doctor routes in `App.tsx`
 
-### 1B. Edit Staff Member
-
-- Add an "Edit" button on each staff card
-- Dialog form to update: First Name, Last Name, Phone, Role
-- Updates `profiles` table and `user_roles` table via client SDK (admin RLS policies already allow this)
-
-### 1C. Delete/Deactivate Staff
-
-- Add a "Remove" button with confirmation dialog
-- Deletes the `user_roles` entry and optionally the `profiles` entry
-- Does NOT delete the auth user (that would need the edge function); instead marks them as removed from staff view
-
-### Files:
-- **Create:** `supabase/functions/create-staff/index.ts` (new Edge Function)
-- **Modify:** `src/pages/admin/AdminStaff.tsx` (add Create/Edit/Delete dialogs)
+### Admin side
+- Admin can manage doctors in `AdminStaff.tsx` (or a new "Doctors" section)
+- Admin can review/accept referrals and convert them into patient records + appointments
+- Update `create-staff` edge function to support the `doctor` role
 
 ---
 
-## 2. Training Courses -- Admin CRUD
+## Phase 2: Dynamic Onboarding Form System
 
-Currently there is no admin UI to manage training courses (the `training_courses` table). Admins can only see bookings.
+### What it does
+A configurable form template system so the admin can define which forms each patient must complete during onboarding. Forms can be filled by the patient (on tablet or at home via their portal) or by admin staff.
 
-### Changes:
-- Add a "Courses" tab to `AdminTraining.tsx` (alongside the existing Bookings tab)
-- Full CRUD for courses: Name, Description, Duration, Price, Max Participants, Includes list, Active toggle
-- Table view with Edit and Delete actions
-- New hook: `src/hooks/useTrainingCourses.ts` -- add mutation hooks (currently only has a read query)
+### Database changes
+- Create `form_templates` table: id, name, description, category (consent/medical/administrative), form_schema (JSONB - defines fields, types, validation rules), is_active, display_order, required_for_treatment_types (uuid array, nullable - if null, required for all), version, created_at
+- Create `form_submissions` table: id, form_template_id, patient_id, submitted_by (user_id), data (JSONB - the actual answers), status (draft/submitted/reviewed/approved), reviewed_by, reviewed_at, signature_data (text, base64 of signature if needed), created_at
+- Create `onboarding_checklists` table: id, patient_id, form_template_id, status (pending/completed), completed_at, due_date
 
-### Files:
-- **Modify:** `src/pages/admin/AdminTraining.tsx` (add Courses tab with CRUD)
-- **Modify:** `src/hooks/useTrainingCourses.ts` (add create/update/delete mutations)
+### How it works
+- Admin creates form templates via a form builder (fields: text, number, date, select, checkbox, textarea, signature, file upload)
+- When a patient is created, the system auto-generates their onboarding checklist based on treatment type
+- Patient can fill forms in their portal (at home) or on a tablet in-practice
+- Admin/nurse can also fill forms on behalf of the patient
+- Onboarding progress is visible as a checklist with completion percentage
 
----
-
-## 3. Training Bookings -- Complete CRUD
-
-Currently bookings only support status changes. We need:
-- **Edit:** Click a booking row to open a detail dialog with editable fields (participant name, email, phone, organisation, preferred dates, notes)
-- **Delete:** Add delete button with confirmation
-
-### Files:
-- **Modify:** `src/pages/admin/AdminTraining.tsx` (add edit dialog and delete action to bookings)
-
----
-
-## 4. Contact Submissions -- Add Delete
-
-Contacts currently support status updates and notes but not deletion.
-- Add a delete button in the detail dialog with confirmation
-- Uses existing admin DELETE RLS policy on `contact_submissions`
-
-### Files:
-- **Modify:** `src/pages/admin/AdminContacts.tsx` (add delete button in dialog)
+### Frontend changes
+- New admin page: "Form Templates" - CRUD for form templates with a visual field builder
+- Update `PatientDetail.tsx`: add "Onboarding" tab showing checklist progress
+- Patient portal: "My Forms" section where they fill in outstanding forms
+- Form renderer component that reads JSONB schema and renders appropriate inputs
+- Signature capture component (canvas-based)
 
 ---
 
-## 5. Appointments -- Full Edit Capability
+## Phase 3: Patient Invite / Magic Link System
 
-The appointment detail page only allows status changes. We need full field editing:
-- Edit scheduled date/time, chair assignment, nurse assignment, appointment type, and notes
-- Add an "Edit" mode to `AppointmentDetail.tsx` similar to PatientDetail's edit pattern
+### What it does
+When admin creates a patient, they can send a login link to the patient's email so they can access their portal and fill in onboarding forms from home.
 
-### Files:
-- **Modify:** `src/pages/admin/AppointmentDetail.tsx` (add inline edit mode for all fields)
+### How it works
+- Admin clicks "Send Portal Invite" on a patient record
+- Edge function creates an auth user (if not already linked), assigns patient role, and sends a magic link or password-reset email
+- Patient clicks link, sets password (or is auto-logged in), and lands on their portal with outstanding forms
+- Links the `patients.user_id` to the new auth user
+
+### Changes
+- New edge function: `invite-patient` (creates auth user, links to patient record, sends invite email)
+- Button on `PatientDetail.tsx`: "Send Portal Invite"
+- Update patient portal to show onboarding forms prominently if incomplete
 
 ---
 
-## Technical Details
+## Phase 4: Treatment Job Card System
 
-### New Edge Function: `supabase/functions/create-staff/index.ts`
+### What it does
+A "treatment ticket" (job card) that bundles everything needed for a specific treatment visit: treatment type, required forms/consents, medications to administer (from prescription), nurse assignment, bay/chair assignment, time slot, and status tracking.
 
-This function is needed because creating auth users requires the service role key, which cannot be exposed to the client.
+### Database changes
+- Create `treatment_tickets` table: id, appointment_id, patient_id, referral_id (nullable), treatment_type_id, prescribed_medications (JSONB array), required_form_ids (uuid array referencing form_templates), nurse_id (nullable until assigned), chair_id (nullable until assigned), scheduled_date, scheduled_time, estimated_duration_minutes, status (created/forms_pending/ready/in_progress/completed/cancelled), priority (normal/urgent), notes, created_by, created_at, updated_at
+- Create `treatment_ticket_forms` table: id, ticket_id, form_template_id, form_submission_id (nullable - linked when completed), required (boolean), status (pending/completed/waived)
 
-```text
-Endpoint: POST /create-staff
-Body: { email, password, first_name, last_name, phone, role }
-Auth: Validates caller is admin via JWT
-Process:
-  1. Verify caller has admin role
-  2. Create auth user via supabase.auth.admin.createUser()
-  3. Insert profile record
-  4. Insert user_roles record
-  5. Return created user data
-```
+### How it works
+- When an appointment is created (or a referral is accepted), a treatment ticket is auto-generated
+- The ticket lists all required forms for that treatment type
+- Admin can add/remove required forms, assign nurse/chair, set time
+- Ticket status progresses: created -> forms_pending -> ready (all forms done) -> in_progress -> completed
+- Nurse sees their assigned tickets on their dashboard with clear readiness indicators
 
-### Hook Changes
+### Frontend changes
+- New "Job Cards" view for admin: kanban-style or list view of all tickets by status
+- Ticket detail page showing: patient info, required forms (with completion status), prescribed meds, nurse/chair assignment, timeline
+- Nurse dashboard updated to show assigned tickets with readiness status (green = all forms done, amber = forms pending)
+- Link ticket to existing treatment workflow (check-in, active treatment, discharge)
 
-**`src/hooks/useTrainingCourses.ts`** -- Add:
-- `useCreateTrainingCourse()` mutation
-- `useUpdateTrainingCourse()` mutation
-- `useDeleteTrainingCourse()` mutation
+---
 
-### No Database Migrations Required
+## Phase 5: Billing Data Model (Foundation Only)
 
-All existing tables and RLS policies already support the needed operations:
-- `profiles`: Admin can update all profiles (existing policy)
-- `user_roles`: Admin can insert, update, delete roles (existing policies)
-- `contact_submissions`: Admin can delete (existing policy)
-- `course_bookings`: Admin can manage all (existing ALL policy)
-- `training_courses`: Admin can manage all (existing ALL policy)
-- `appointments`: Admin can update all fields (existing policy)
+### What it does
+Creates the database tables for invoicing and billing so data is captured from day one, even though the payment UI comes later.
 
-### Implementation Sequence
+### Database changes
+- Create `invoices` table: id, patient_id, treatment_ticket_id, appointment_id, invoice_number (auto-generated), status (draft/sent/paid/overdue/cancelled), subtotal, tax_amount, total, medical_aid_claim_amount, patient_liability, due_date, paid_at, notes, created_by, created_at
+- Create `invoice_line_items` table: id, invoice_id, description, quantity, unit_price, total, icd10_code (nullable), tariff_code (nullable), notes
+- Create `payment_records` table: id, invoice_id, amount, payment_method (cash/card/eft/medical_aid), reference_number, paid_at, recorded_by, notes
 
-1. Create `create-staff` Edge Function and deploy
-2. Rebuild `AdminStaff.tsx` with full CRUD (create/edit/delete dialogs)
-3. Add training course management to `AdminTraining.tsx`
-4. Enhance training bookings with edit/delete
-5. Add delete to `AdminContacts.tsx`
-6. Add full edit mode to `AppointmentDetail.tsx`
-7. Update training courses hook with mutations
+### No UI yet - just tables with RLS policies (admin full access, patients can view own invoices)
+
+---
+
+## Phase 6: Post-Treatment Reporting
+
+### What it does
+After treatment completion, automatically generates reports for the referring doctor and the patient.
+
+### Changes
+- Doctor portal: treatment summary appears automatically after discharge (vitals, meds administered, nurse notes, discharge notes)
+- Patient portal: treatment history with downloadable summary
+- Admin: "Generate Report" button on completed treatments that creates a formatted summary
+- Future: PDF generation edge function (can be added later)
+
+---
+
+## Implementation Priority
+
+Given the dependencies between phases, the recommended build order is:
+
+1. **Phase 1** - Doctor role (needed for referral flow)
+2. **Phase 2** - Form system (needed for onboarding and job cards)
+3. **Phase 3** - Patient invite (uses form system)
+4. **Phase 4** - Job cards (uses forms + referrals)
+5. **Phase 5** - Billing tables (independent, quick)
+6. **Phase 6** - Post-treatment reporting (uses all above)
+
+Each phase is self-contained and delivers working functionality. We would tackle them one at a time.
+
+---
+
+## What you're NOT missing (things already built)
+
+- Patient CRUD with multi-step intake wizard
+- Appointment scheduling with calendar and chair lanes
+- Nurse clinical workflow (check-in, treatment, vitals, meds, ketamine monitoring, discharge)
+- Patient portal (basic - will be enhanced)
+- Staff management with edge function
+- Document upload/storage
+- Session timeout and auth
+
+## What you MIGHT be missing
+
+- **Inventory/stock management**: tracking medication stock levels, expiry dates, reorder alerts
+- **Reporting/analytics**: treatment volumes, nurse utilisation, revenue reports
+- **Audit trail**: already have `audit_log` table but it's not actively populated from all actions
+- **Notifications**: SMS/email reminders for appointments (you started the communication_log work)
+- **Waiting room display**: a screen showing queue status for patients in the waiting area
+
+---
+
+## Technical Notes
+
+- The `app_role` enum needs extending to include `'doctor'`
+- The `handle_new_user()` trigger currently auto-assigns `'patient'` role to all new signups - this is fine since doctors/nurses are created via the admin edge function
+- All new tables will use RESTRICTIVE RLS policies with the existing `has_role()` function
+- The form schema in `form_templates.form_schema` uses a JSON structure like: `[{field_name, field_type, label, required, options, validation}]`
+- The treatment ticket system sits ABOVE the existing `treatments` table - a ticket references an appointment and gets linked to a treatment when the nurse starts it
+- No changes to existing nurse workflow needed initially - the job card wraps around it
 
