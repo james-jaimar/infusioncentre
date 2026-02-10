@@ -1,145 +1,136 @@
 
 
-# Phase 10: Communication Hub
+# Full Admin CRUD Implementation
 
 ## Overview
 
-Build a unified communication system using a direct SMTP edge function ("send-email") for all email needs, plus WhatsApp Business API integration for appointment reminders. No Resend dependency -- all emails go through SMTP directly.
+Add complete Create, Read, Update, and Delete capabilities across all admin-managed areas. Staff management is the biggest gap (currently read-only), but several other areas also need CRUD enhancements.
 
 ---
 
-## 10A: SMTP Email Edge Function
+## 1. Staff Management -- Full CRUD
 
-### Edge Function: `supabase/functions/send-email/index.ts`
+The staff page currently only lists staff and directs users to the Supabase dashboard to add new members. We will build full in-app management.
 
-A single reusable edge function that connects to an SMTP server and sends templated emails. Uses the Deno `denomailer` library for SMTP.
+### 1A. Create Staff Member
 
-**Required secrets** (to be added before implementation):
-- `SMTP_HOST` -- e.g. `smtp.gmail.com` or mail server host
-- `SMTP_PORT` -- e.g. `587`
-- `SMTP_USERNAME` -- email account username
-- `SMTP_PASSWORD` -- email account password
-- `SMTP_FROM_EMAIL` -- sender address, e.g. `noreply@johannesburginfusion.co.za`
-- `SMTP_FROM_NAME` -- sender display name, e.g. `Johannesburg Infusion Centre`
+- Add an "Add Staff" button to `AdminStaff.tsx`
+- Dialog form with fields: First Name, Last Name, Phone, Email, Password, Role (Admin/Nurse)
+- Uses Supabase Edge Function `create-staff` to:
+  - Call `supabase.auth.admin.createUser()` with the provided email/password (requires service role key)
+  - Insert into `profiles` table
+  - Insert into `user_roles` table
+- This avoids exposing the service role key on the client
 
-**Functionality:**
-- Accepts a JSON body with `{ to, subject, html, text }` 
-- Optionally accepts a `template` field (e.g. `password_reset`, `booking_confirmation`, `appointment_reminder`) with template variables, so the edge function can render HTML from built-in templates
-- Returns success/failure response
-- Protected by service role key validation for internal calls
+### 1B. Edit Staff Member
 
-### Email Templates (built into the edge function)
+- Add an "Edit" button on each staff card
+- Dialog form to update: First Name, Last Name, Phone, Role
+- Updates `profiles` table and `user_roles` table via client SDK (admin RLS policies already allow this)
 
-1. **Password Reset** -- branded email with reset link button
-2. **Booking Confirmation** -- confirms training course registration with course details
-3. **Appointment Reminder** -- patient name, date/time, preparation instructions
+### 1C. Delete/Deactivate Staff
+
+- Add a "Remove" button with confirmation dialog
+- Deletes the `user_roles` entry and optionally the `profiles` entry
+- Does NOT delete the auth user (that would need the edge function); instead marks them as removed from staff view
+
+### Files:
+- **Create:** `supabase/functions/create-staff/index.ts` (new Edge Function)
+- **Modify:** `src/pages/admin/AdminStaff.tsx` (add Create/Edit/Delete dialogs)
 
 ---
 
-## 10B: Password Reset Email Flow
+## 2. Training Courses -- Admin CRUD
+
+Currently there is no admin UI to manage training courses (the `training_courses` table). Admins can only see bookings.
 
 ### Changes:
-- **`src/pages/ForgotPassword.tsx`**: After `supabase.auth.resetPasswordForEmail()` succeeds, also call the `send-email` edge function with the `password_reset` template to send a branded email (Supabase's built-in email still works as the primary mechanism; this adds a branded version)
-- Alternatively, configure Supabase Auth to use a custom SMTP server so the built-in password reset emails are sent from your domain. This is the cleaner approach -- update Supabase Auth SMTP settings in the dashboard.
+- Add a "Courses" tab to `AdminTraining.tsx` (alongside the existing Bookings tab)
+- Full CRUD for courses: Name, Description, Duration, Price, Max Participants, Includes list, Active toggle
+- Table view with Edit and Delete actions
+- New hook: `src/hooks/useTrainingCourses.ts` -- add mutation hooks (currently only has a read query)
 
-**Recommended approach**: Configure Supabase Auth SMTP settings in the Supabase dashboard (Authentication > Email Templates > SMTP Settings) with the same SMTP credentials. This way `resetPasswordForEmail()` sends branded emails automatically without needing a separate edge function call for password resets.
-
----
-
-## 10C: Booking Confirmation Emails
-
-### Changes:
-- **`src/components/training/CourseBookingForm.tsx`**: After successful booking insert, call the `send-email` edge function with the `booking_confirmation` template, passing participant name, course name, and email address.
+### Files:
+- **Modify:** `src/pages/admin/AdminTraining.tsx` (add Courses tab with CRUD)
+- **Modify:** `src/hooks/useTrainingCourses.ts` (add create/update/delete mutations)
 
 ---
 
-## 10D: Appointment Reminder Emails
+## 3. Training Bookings -- Complete CRUD
 
-### New Edge Function: `supabase/functions/send-appointment-reminders/index.ts`
+Currently bookings only support status changes. We need:
+- **Edit:** Click a booking row to open a detail dialog with editable fields (participant name, email, phone, organisation, preferred dates, notes)
+- **Delete:** Add delete button with confirmation
 
-A scheduled/callable function that:
-1. Queries `appointment_reminders` where `status = 'pending'` and `scheduled_for <= now()`
-2. Joins with `appointments`, `patients`, and `appointment_types` to get details
-3. Calls the `send-email` function internally for each reminder
-4. Updates `appointment_reminders.status` to `sent` (or `failed`) and records `sent_at`
-
-### Admin UI Addition:
-- **`src/pages/admin/AdminSettings.tsx`**: Add a "Reminders" configuration section where the admin can set default reminder timing (e.g. 24 hours before, 2 hours before)
+### Files:
+- **Modify:** `src/pages/admin/AdminTraining.tsx` (add edit dialog and delete action to bookings)
 
 ---
 
-## 10E: WhatsApp Integration (Placeholder)
+## 4. Contact Submissions -- Add Delete
 
-Since WhatsApp Business API credentials are not yet available, we will:
-1. Create the database infrastructure -- the `appointment_reminders` table already supports `reminder_type = 'whatsapp'`
-2. Create a stub edge function `supabase/functions/send-whatsapp/index.ts` that will be completed once credentials are provided
-3. Add a UI toggle in admin settings for enabling WhatsApp reminders per appointment type
+Contacts currently support status updates and notes but not deletion.
+- Add a delete button in the detail dialog with confirmation
+- Uses existing admin DELETE RLS policy on `contact_submissions`
 
-When the WhatsApp credentials become available, we will connect it and complete the integration.
-
----
-
-## 10F: Communication Log
-
-### Database Migration:
-- Create a `communication_log` table to track all sent communications:
-
-```text
-communication_log
------------------
-id (uuid, PK)
-type (enum: email, whatsapp, sms)
-recipient (text)
-subject (text, nullable)
-template (text, nullable)
-status (enum: pending, sent, failed)
-error_message (text, nullable)
-related_entity_type (text, nullable -- e.g. 'appointment', 'booking')
-related_entity_id (uuid, nullable)
-sent_at (timestamptz)
-created_at (timestamptz)
-```
-
-- RLS: Admin-only read access
-
-### Admin UI:
-- **`src/pages/admin/AdminContacts.tsx`** or new **Communications** tab: A log view showing all sent emails/messages with status, filterable by type and date.
+### Files:
+- **Modify:** `src/pages/admin/AdminContacts.tsx` (add delete button in dialog)
 
 ---
 
-## Implementation Sequence
+## 5. Appointments -- Full Edit Capability
 
-1. Add SMTP secrets (will prompt you for credentials)
-2. Create `send-email` edge function with templates
-3. Update `config.toml` with function config
-4. Wire up booking confirmation emails in `CourseBookingForm`
-5. Create `send-appointment-reminders` edge function
-6. Create `communication_log` table migration
-7. Add communication settings to Admin Settings
-8. Create WhatsApp stub for future completion
-9. Update plan document
+The appointment detail page only allows status changes. We need full field editing:
+- Edit scheduled date/time, chair assignment, nurse assignment, appointment type, and notes
+- Add an "Edit" mode to `AppointmentDetail.tsx` similar to PatientDetail's edit pattern
+
+### Files:
+- **Modify:** `src/pages/admin/AppointmentDetail.tsx` (add inline edit mode for all fields)
 
 ---
 
 ## Technical Details
 
-### Files to Create:
-- `supabase/functions/send-email/index.ts` -- SMTP email sender with templates
-- `supabase/functions/send-appointment-reminders/index.ts` -- reminder processor
+### New Edge Function: `supabase/functions/create-staff/index.ts`
 
-### Files to Modify:
-- `supabase/config.toml` -- add function configs with `verify_jwt = false`
-- `src/components/training/CourseBookingForm.tsx` -- add confirmation email call after booking
-- `src/pages/admin/AdminSettings.tsx` -- add reminder/communication settings
-- `src/integrations/supabase/types.ts` -- updated with new types
-- `src/App.tsx` -- add any new admin routes if needed
-- `.lovable/plan.md` -- update progress
+This function is needed because creating auth users requires the service role key, which cannot be exposed to the client.
 
-### Database Migration:
-- Create `communication_log` table with RLS policies
-- Add `communication_type` and `communication_status` enums
+```text
+Endpoint: POST /create-staff
+Body: { email, password, first_name, last_name, phone, role }
+Auth: Validates caller is admin via JWT
+Process:
+  1. Verify caller has admin role
+  2. Create auth user via supabase.auth.admin.createUser()
+  3. Insert profile record
+  4. Insert user_roles record
+  5. Return created user data
+```
 
-### Dependencies:
-- `denomailer` (Deno SMTP library, imported via URL in edge function)
-- No new npm packages needed on the frontend
+### Hook Changes
+
+**`src/hooks/useTrainingCourses.ts`** -- Add:
+- `useCreateTrainingCourse()` mutation
+- `useUpdateTrainingCourse()` mutation
+- `useDeleteTrainingCourse()` mutation
+
+### No Database Migrations Required
+
+All existing tables and RLS policies already support the needed operations:
+- `profiles`: Admin can update all profiles (existing policy)
+- `user_roles`: Admin can insert, update, delete roles (existing policies)
+- `contact_submissions`: Admin can delete (existing policy)
+- `course_bookings`: Admin can manage all (existing ALL policy)
+- `training_courses`: Admin can manage all (existing ALL policy)
+- `appointments`: Admin can update all fields (existing policy)
+
+### Implementation Sequence
+
+1. Create `create-staff` Edge Function and deploy
+2. Rebuild `AdminStaff.tsx` with full CRUD (create/edit/delete dialogs)
+3. Add training course management to `AdminTraining.tsx`
+4. Enhance training bookings with edit/delete
+5. Add delete to `AdminContacts.tsx`
+6. Add full edit mode to `AppointmentDetail.tsx`
+7. Update training courses hook with mutations
 
