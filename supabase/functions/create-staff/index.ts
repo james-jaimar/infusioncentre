@@ -52,7 +52,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { email, password, first_name, last_name, phone, role } = await req.json();
+    const body = await req.json();
+    const { email, password, first_name, last_name, phone, role, practice_name, practice_number, specialisation } = body;
 
     if (!email || !password || !role) {
       return new Response(
@@ -61,9 +62,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (!["admin", "nurse"].includes(role)) {
+    if (!["admin", "nurse", "doctor"].includes(role)) {
       return new Response(
-        JSON.stringify({ error: "Role must be admin or nurse" }),
+        JSON.stringify({ error: "Role must be admin, nurse, or doctor" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -100,6 +101,18 @@ Deno.serve(async (req) => {
       user_id: userId,
       role,
     });
+
+    // If doctor, also create a doctors table entry
+    if (role === "doctor") {
+      await adminClient.from("doctors").insert({
+        user_id: userId,
+        practice_name: practice_name || null,
+        practice_number: practice_number || null,
+        phone: phone || null,
+        email: email,
+        specialisation: specialisation || null,
+      });
+    }
 
     return new Response(
       JSON.stringify({

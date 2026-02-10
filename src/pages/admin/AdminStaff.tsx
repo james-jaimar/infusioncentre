@@ -32,24 +32,26 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { Search, UserCog, Shield, Stethoscope, Plus, Pencil, Trash2 } from "lucide-react";
+import { Search, UserCog, Shield, Stethoscope, Plus, Pencil, Trash2, Briefcase } from "lucide-react";
 
 const roleIcons: Record<string, any> = {
   admin: Shield,
   nurse: Stethoscope,
+  doctor: Briefcase,
 };
 
 const roleColors: Record<string, string> = {
   admin: "bg-primary/10 text-primary",
   nurse: "bg-accent text-accent-foreground",
+  doctor: "bg-green-100 text-green-800",
 };
 
 function useStaffMembers(roleFilter: string) {
   return useQuery({
     queryKey: ["staff-members", roleFilter],
     queryFn: async () => {
-      const filterRoles: ("admin" | "nurse")[] =
-        roleFilter === "all" ? ["admin", "nurse"] : [roleFilter as "admin" | "nurse"];
+      const filterRoles: ("admin" | "nurse" | "doctor")[] =
+        roleFilter === "all" ? ["admin", "nurse", "doctor"] : [roleFilter as "admin" | "nurse" | "doctor"];
       const { data: roles, error: rolesError } = await supabase
         .from("user_roles")
         .select("user_id, role")
@@ -80,7 +82,10 @@ type StaffFormData = {
   phone: string;
   email: string;
   password: string;
-  role: "admin" | "nurse";
+  role: "admin" | "nurse" | "doctor";
+  practice_name: string;
+  practice_number: string;
+  specialisation: string;
 };
 
 const emptyForm: StaffFormData = {
@@ -90,6 +95,9 @@ const emptyForm: StaffFormData = {
   email: "",
   password: "",
   role: "nurse",
+  practice_name: "",
+  practice_number: "",
+  specialisation: "",
 };
 
 export default function AdminStaff() {
@@ -130,6 +138,9 @@ export default function AdminStaff() {
           last_name: formData.last_name,
           phone: formData.phone,
           role: formData.role,
+          practice_name: formData.practice_name,
+          practice_number: formData.practice_number,
+          specialisation: formData.specialisation,
         },
       });
       if (res.error || res.data?.error) {
@@ -242,6 +253,7 @@ export default function AdminStaff() {
             <SelectItem value="all">All Roles</SelectItem>
             <SelectItem value="admin">Admin</SelectItem>
             <SelectItem value="nurse">Nurse</SelectItem>
+            <SelectItem value="doctor">Doctor</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -322,16 +334,33 @@ export default function AdminStaff() {
             </div>
             <div>
               <Label>Role *</Label>
-              <Select value={formData.role} onValueChange={(v) => setFormData({ ...formData, role: v as "admin" | "nurse" })}>
+              <Select value={formData.role} onValueChange={(v) => setFormData({ ...formData, role: v as "admin" | "nurse" | "doctor" })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="nurse">Nurse</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="doctor">Doctor</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+            {formData.role === "doctor" && (
+              <>
+                <div>
+                  <Label>Practice Name</Label>
+                  <Input value={formData.practice_name} onChange={(e) => setFormData({ ...formData, practice_name: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Practice Number (HPCSA)</Label>
+                  <Input value={formData.practice_number} onChange={(e) => setFormData({ ...formData, practice_number: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Specialisation</Label>
+                  <Input value={formData.specialisation} onChange={(e) => setFormData({ ...formData, specialisation: e.target.value })} />
+                </div>
+              </>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
@@ -370,6 +399,7 @@ export default function AdminStaff() {
                 <SelectContent>
                   <SelectItem value="nurse">Nurse</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="doctor">Doctor</SelectItem>
                 </SelectContent>
               </Select>
             </div>

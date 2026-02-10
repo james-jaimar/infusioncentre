@@ -14,6 +14,8 @@ function getRoleBasedPath(role: string | null): string {
       return "/admin";
     case "nurse":
       return "/nurse";
+    case "doctor":
+      return "/doctor";
     case "patient":
       return "/patient";
     default:
