@@ -36,6 +36,8 @@ export default function JobCardVitals({ treatmentId, phase = "during", isComplet
     heart_rate: "",
     o2_saturation: "",
     temperature: "",
+    respiratory_rate: "",
+    pain_score: "",
     notes: "",
   });
 
@@ -53,11 +55,13 @@ export default function JobCardVitals({ treatmentId, phase = "during", isComplet
         o2_saturation: form.o2_saturation ? Number(form.o2_saturation) : null,
         temperature: form.temperature ? Number(form.temperature) : null,
         weight_kg: null,
+        respiratory_rate: form.respiratory_rate ? Number(form.respiratory_rate) : null,
+        pain_score: form.pain_score ? Number(form.pain_score) : null,
         notes: form.notes || null,
         recorded_by: user.id,
       });
       setOpen(false);
-      setForm({ blood_pressure_systolic: "", blood_pressure_diastolic: "", heart_rate: "", o2_saturation: "", temperature: "", notes: "" });
+      setForm({ blood_pressure_systolic: "", blood_pressure_diastolic: "", heart_rate: "", o2_saturation: "", temperature: "", respiratory_rate: "", pain_score: "", notes: "" });
       toast({ title: "Vitals recorded" });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -100,10 +104,20 @@ export default function JobCardVitals({ treatmentId, phase = "during", isComplet
                   <Input type="number" className="h-12 text-lg" value={form.o2_saturation}
                     onChange={(e) => setForm((v) => ({ ...v, o2_saturation: e.target.value }))} />
                 </div>
-                <div className="col-span-2">
+                <div>
                   <Label>Temp (°C)</Label>
                   <Input type="number" step="0.1" className="h-12 text-lg" value={form.temperature}
                     onChange={(e) => setForm((v) => ({ ...v, temperature: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>Resp Rate</Label>
+                  <Input type="number" className="h-12 text-lg" value={form.respiratory_rate}
+                    onChange={(e) => setForm((v) => ({ ...v, respiratory_rate: e.target.value }))} placeholder="16" />
+                </div>
+                <div className="col-span-2">
+                  <Label>Pain Score (0-10)</Label>
+                  <Input type="number" min="0" max="10" className="h-12 text-lg" value={form.pain_score}
+                    onChange={(e) => setForm((v) => ({ ...v, pain_score: e.target.value }))} placeholder="0" />
                 </div>
                 <div className="col-span-2">
                   <Label>Notes</Label>

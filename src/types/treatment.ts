@@ -2,6 +2,9 @@ export type TreatmentStatus = 'pending' | 'pre_assessment' | 'in_progress' | 'po
 export type VitalsPhase = 'pre' | 'during' | 'post';
 export type MedicationRoute = 'iv' | 'oral' | 'im' | 'sc';
 export type AssessmentType = 'pre_treatment' | 'during_treatment' | 'post_treatment' | 'ketamine_monitoring';
+export type IVAccessType = 'peripheral' | 'midline' | 'picc' | 'port' | 'central';
+export type ReactionOutcome = 'resolved' | 'ongoing' | 'escalated' | 'emergency_transfer';
+export type InfusionMethod = 'continuous' | 'intermittent' | 'bolus' | 'push';
 
 export interface Treatment {
   id: string;
@@ -54,6 +57,8 @@ export interface TreatmentVitals {
   o2_saturation: number | null;
   temperature: number | null;
   weight_kg: number | null;
+  respiratory_rate: number | null;
+  pain_score: number | null;
   notes: string | null;
   recorded_by: string | null;
 }
@@ -68,6 +73,14 @@ export interface TreatmentMedication {
   administered_by: string | null;
   lot_number: string | null;
   notes: string | null;
+  diluent: string | null;
+  infusion_rate: string | null;
+  infusion_method: string | null;
+  started_at: string | null;
+  stopped_at: string | null;
+  volume_infused_ml: number | null;
+  site_assessment_pre: string | null;
+  site_assessment_post: string | null;
 }
 
 export interface TreatmentAssessment {
@@ -93,3 +106,69 @@ export interface KetamineMonitoring {
   recorded_at: string;
   recorded_by: string | null;
 }
+
+export interface TreatmentIVAccess {
+  id: string;
+  treatment_id: string;
+  access_type: IVAccessType;
+  gauge: string | null;
+  site_location: string | null;
+  insertion_attempts: number;
+  inserted_at: string;
+  inserted_by: string | null;
+  dressing_type: string | null;
+  flush_solution: string | null;
+  removed_at: string | null;
+  removal_site_condition: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface TreatmentSiteCheck {
+  id: string;
+  treatment_id: string;
+  iv_access_id: string;
+  checked_at: string;
+  checked_by: string | null;
+  site_appearance: string[];
+  phlebitis_grade: number | null;
+  infiltration_grade: number | null;
+  action_taken: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface TreatmentReaction {
+  id: string;
+  treatment_id: string;
+  onset_at: string;
+  onset_minutes_from_start: number | null;
+  severity_grade: number;
+  symptoms: string[];
+  other_symptoms: string | null;
+  intervention: string[];
+  intervention_details: string | null;
+  infusion_resumed: boolean | null;
+  resumed_at_rate: string | null;
+  outcome: ReactionOutcome;
+  resolved_at: string | null;
+  recorded_by: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+// Constants for UI pickers
+export const REACTION_SYMPTOMS = [
+  'flushing', 'rigors', 'urticaria', 'pruritus', 'dyspnoea', 'wheezing',
+  'chest_pain', 'hypotension', 'hypertension', 'tachycardia', 'nausea',
+  'vomiting', 'fever', 'headache', 'back_pain', 'other',
+] as const;
+
+export const REACTION_INTERVENTIONS = [
+  'rate_reduced', 'infusion_paused', 'infusion_stopped', 'antihistamine',
+  'corticosteroid', 'adrenaline', 'oxygen', 'iv_fluids', 'other',
+] as const;
+
+export const SITE_APPEARANCE_OPTIONS = [
+  'normal', 'redness', 'swelling', 'pain', 'warmth', 'leaking', 'hardness',
+] as const;

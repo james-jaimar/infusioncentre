@@ -70,6 +70,8 @@ export default function NurseDischarge() {
           o2_saturation: vitals.o2_saturation ? Number(vitals.o2_saturation) : null,
           temperature: vitals.temperature ? Number(vitals.temperature) : null,
           weight_kg: null,
+          respiratory_rate: null,
+          pain_score: null,
           notes: null,
           recorded_by: user.id,
         });

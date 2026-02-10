@@ -99,6 +99,8 @@ export default function NurseCheckIn() {
           o2_saturation: vitals.o2_saturation ? Number(vitals.o2_saturation) : null,
           temperature: vitals.temperature ? Number(vitals.temperature) : null,
           weight_kg: vitals.weight_kg ? Number(vitals.weight_kg) : null,
+          respiratory_rate: null,
+          pain_score: null,
           notes: notes || null,
           recorded_by: user.id,
         });
