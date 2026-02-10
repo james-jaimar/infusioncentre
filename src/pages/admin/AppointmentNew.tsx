@@ -34,11 +34,13 @@ import { usePatients } from "@/hooks/usePatients";
 import { useAppointmentTypes } from "@/hooks/useAppointmentTypes";
 import { useTreatmentChairs } from "@/hooks/useTreatmentChairs";
 import { useCreateAppointment, useCheckConflicts } from "@/hooks/useAppointments";
+import { useNurseStaff } from "@/hooks/useNurseStaff";
 
 const formSchema = z.object({
   patient_id: z.string().min(1, "Please select a patient"),
   appointment_type_id: z.string().min(1, "Please select an appointment type"),
   chair_id: z.string().optional(),
+  assigned_nurse_id: z.string().optional(),
   date: z.date({ required_error: "Please select a date" }),
   time: z.string().min(1, "Please select a time"),
   duration_minutes: z.number().min(15, "Duration must be at least 15 minutes"),
@@ -61,6 +63,7 @@ export default function AppointmentNew() {
   const { data: patients = [], isLoading: loadingPatients } = usePatients();
   const { data: appointmentTypes = [] } = useAppointmentTypes();
   const { data: chairs = [] } = useTreatmentChairs();
+  const { data: nurses = [] } = useNurseStaff();
   const createAppointment = useCreateAppointment();
   const checkConflicts = useCheckConflicts();
 
@@ -70,6 +73,7 @@ export default function AppointmentNew() {
       patient_id: "",
       appointment_type_id: "",
       chair_id: "",
+      assigned_nurse_id: "",
       time: "09:00",
       duration_minutes: 60,
       notes: "",
@@ -129,7 +133,7 @@ export default function AppointmentNew() {
         patient_id: data.patient_id,
         appointment_type_id: data.appointment_type_id,
         chair_id: data.chair_id || null,
-        assigned_nurse_id: null,
+        assigned_nurse_id: data.assigned_nurse_id || null,
         scheduled_start: scheduledStart,
         duration_minutes: data.duration_minutes,
         notes: data.notes || "",
@@ -423,6 +427,44 @@ export default function AppointmentNew() {
                     <span className="text-sm">Chair is available</span>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* Nurse Assignment */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Assigned Nurse</CardTitle>
+                <CardDescription>Assign a nurse to this appointment (optional)</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <FormField
+                  control={form.control}
+                  name="assigned_nurse_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nurse</FormLabel>
+                      <Select
+                        onValueChange={(v) => field.onChange(v === "none" ? "" : v)}
+                        value={field.value || "none"}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select nurse..." />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">No nurse assigned</SelectItem>
+                          {nurses.map((nurse) => (
+                            <SelectItem key={nurse.user_id} value={nurse.user_id}>
+                              {nurse.first_name || ""} {nurse.last_name || ""} 
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </CardContent>
             </Card>
           </div>

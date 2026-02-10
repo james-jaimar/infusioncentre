@@ -115,8 +115,8 @@ export default function NurseDischarge() {
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
-      <Button variant="ghost" onClick={() => navigate(`/nurse/treatment/${treatmentId}`)} className="gap-2">
-        <ArrowLeft className="h-4 w-4" /> Back to treatment
+      <Button variant="ghost" onClick={() => navigate(treatment.appointment_id ? `/nurse/job-card/${treatment.appointment_id}` : "/nurse")} className="gap-2">
+        <ArrowLeft className="h-4 w-4" /> Back to Job Card
       </Button>
 
       <h1 className="text-2xl font-semibold text-foreground">Discharge Patient</h1>
