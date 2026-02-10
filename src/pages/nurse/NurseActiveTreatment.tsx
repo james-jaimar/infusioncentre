@@ -126,6 +126,8 @@ export default function NurseActiveTreatment() {
         o2_saturation: newVitals.o2_saturation ? Number(newVitals.o2_saturation) : null,
         temperature: newVitals.temperature ? Number(newVitals.temperature) : null,
         weight_kg: null,
+        respiratory_rate: null,
+        pain_score: null,
         notes: newVitals.notes || null,
         recorded_by: user.id,
       });
@@ -149,6 +151,14 @@ export default function NurseActiveTreatment() {
         administered_by: user.id,
         lot_number: newMed.lot_number || null,
         notes: newMed.notes || null,
+        diluent: null,
+        infusion_rate: null,
+        infusion_method: null,
+        started_at: null,
+        stopped_at: null,
+        volume_infused_ml: null,
+        site_assessment_pre: null,
+        site_assessment_post: null,
       });
       setMedsOpen(false);
       setNewMed({ medication_name: "", dosage: "", route: "iv", lot_number: "", notes: "" });

@@ -26,6 +26,8 @@ import JobCardVitals from "@/components/nurse/JobCardVitals";
 import JobCardMedications from "@/components/nurse/JobCardMedications";
 import JobCardActions from "@/components/nurse/JobCardActions";
 import JobCardBilling from "@/components/nurse/JobCardBilling";
+import JobCardIVAccess from "@/components/nurse/JobCardIVAccess";
+import JobCardReactions from "@/components/nurse/JobCardReactions";
 
 // ── Pre-treatment checklist items ──
 const preChecklist = [
@@ -157,6 +159,8 @@ export default function NurseJobCard() {
           o2_saturation: preVitals.o2_saturation ? Number(preVitals.o2_saturation) : null,
           temperature: preVitals.temperature ? Number(preVitals.temperature) : null,
           weight_kg: preVitals.weight_kg ? Number(preVitals.weight_kg) : null,
+          respiratory_rate: null,
+          pain_score: null,
           notes: preNotes || null,
           recorded_by: user.id,
         });
@@ -328,7 +332,9 @@ export default function NurseJobCard() {
                 phase={treatment.status === "in_progress" ? "during" : "post"}
                 isCompleted={isCompleted}
               />
+              <JobCardIVAccess treatmentId={treatment.id} isCompleted={isCompleted} />
               <JobCardMedications treatmentId={treatment.id} isCompleted={isCompleted} />
+              <JobCardReactions treatmentId={treatment.id} treatmentStartedAt={treatment.started_at} isCompleted={isCompleted} />
 
               {/* Ketamine protocol link */}
               {isKetamine && !isCompleted && (

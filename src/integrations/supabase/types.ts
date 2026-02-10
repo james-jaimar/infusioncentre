@@ -1139,43 +1139,248 @@ export type Database = {
         }
         Relationships: []
       }
-      treatment_medications: {
+      treatment_iv_access: {
         Row: {
-          administered_at: string
-          administered_by: string | null
-          dosage: string
+          access_type: Database["public"]["Enums"]["iv_access_type"]
+          created_at: string
+          dressing_type: string | null
+          flush_solution: string | null
+          gauge: string | null
           id: string
-          lot_number: string | null
-          medication_name: string
+          inserted_at: string
+          inserted_by: string | null
+          insertion_attempts: number | null
           notes: string | null
-          route: Database["public"]["Enums"]["medication_route"]
+          removal_site_condition: string | null
+          removed_at: string | null
+          site_location: string | null
           treatment_id: string
         }
         Insert: {
-          administered_at?: string
-          administered_by?: string | null
-          dosage: string
+          access_type?: Database["public"]["Enums"]["iv_access_type"]
+          created_at?: string
+          dressing_type?: string | null
+          flush_solution?: string | null
+          gauge?: string | null
           id?: string
-          lot_number?: string | null
-          medication_name: string
+          inserted_at?: string
+          inserted_by?: string | null
+          insertion_attempts?: number | null
           notes?: string | null
-          route?: Database["public"]["Enums"]["medication_route"]
+          removal_site_condition?: string | null
+          removed_at?: string | null
+          site_location?: string | null
           treatment_id: string
         }
         Update: {
-          administered_at?: string
-          administered_by?: string | null
-          dosage?: string
+          access_type?: Database["public"]["Enums"]["iv_access_type"]
+          created_at?: string
+          dressing_type?: string | null
+          flush_solution?: string | null
+          gauge?: string | null
           id?: string
-          lot_number?: string | null
-          medication_name?: string
+          inserted_at?: string
+          inserted_by?: string | null
+          insertion_attempts?: number | null
           notes?: string | null
-          route?: Database["public"]["Enums"]["medication_route"]
+          removal_site_condition?: string | null
+          removed_at?: string | null
+          site_location?: string | null
           treatment_id?: string
         }
         Relationships: [
           {
+            foreignKeyName: "treatment_iv_access_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "treatments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      treatment_medications: {
+        Row: {
+          administered_at: string
+          administered_by: string | null
+          diluent: string | null
+          dosage: string
+          id: string
+          infusion_method: string | null
+          infusion_rate: string | null
+          lot_number: string | null
+          medication_name: string
+          notes: string | null
+          route: Database["public"]["Enums"]["medication_route"]
+          site_assessment_post: string | null
+          site_assessment_pre: string | null
+          started_at: string | null
+          stopped_at: string | null
+          treatment_id: string
+          volume_infused_ml: number | null
+        }
+        Insert: {
+          administered_at?: string
+          administered_by?: string | null
+          diluent?: string | null
+          dosage: string
+          id?: string
+          infusion_method?: string | null
+          infusion_rate?: string | null
+          lot_number?: string | null
+          medication_name: string
+          notes?: string | null
+          route?: Database["public"]["Enums"]["medication_route"]
+          site_assessment_post?: string | null
+          site_assessment_pre?: string | null
+          started_at?: string | null
+          stopped_at?: string | null
+          treatment_id: string
+          volume_infused_ml?: number | null
+        }
+        Update: {
+          administered_at?: string
+          administered_by?: string | null
+          diluent?: string | null
+          dosage?: string
+          id?: string
+          infusion_method?: string | null
+          infusion_rate?: string | null
+          lot_number?: string | null
+          medication_name?: string
+          notes?: string | null
+          route?: Database["public"]["Enums"]["medication_route"]
+          site_assessment_post?: string | null
+          site_assessment_pre?: string | null
+          started_at?: string | null
+          stopped_at?: string | null
+          treatment_id?: string
+          volume_infused_ml?: number | null
+        }
+        Relationships: [
+          {
             foreignKeyName: "treatment_medications_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "treatments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      treatment_reactions: {
+        Row: {
+          created_at: string
+          id: string
+          infusion_resumed: boolean | null
+          intervention: string[] | null
+          intervention_details: string | null
+          notes: string | null
+          onset_at: string
+          onset_minutes_from_start: number | null
+          other_symptoms: string | null
+          outcome: Database["public"]["Enums"]["reaction_outcome"]
+          recorded_by: string | null
+          resolved_at: string | null
+          resumed_at_rate: string | null
+          severity_grade: number
+          symptoms: string[] | null
+          treatment_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          infusion_resumed?: boolean | null
+          intervention?: string[] | null
+          intervention_details?: string | null
+          notes?: string | null
+          onset_at?: string
+          onset_minutes_from_start?: number | null
+          other_symptoms?: string | null
+          outcome?: Database["public"]["Enums"]["reaction_outcome"]
+          recorded_by?: string | null
+          resolved_at?: string | null
+          resumed_at_rate?: string | null
+          severity_grade: number
+          symptoms?: string[] | null
+          treatment_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          infusion_resumed?: boolean | null
+          intervention?: string[] | null
+          intervention_details?: string | null
+          notes?: string | null
+          onset_at?: string
+          onset_minutes_from_start?: number | null
+          other_symptoms?: string | null
+          outcome?: Database["public"]["Enums"]["reaction_outcome"]
+          recorded_by?: string | null
+          resolved_at?: string | null
+          resumed_at_rate?: string | null
+          severity_grade?: number
+          symptoms?: string[] | null
+          treatment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treatment_reactions_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "treatments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      treatment_site_checks: {
+        Row: {
+          action_taken: string | null
+          checked_at: string
+          checked_by: string | null
+          created_at: string
+          id: string
+          infiltration_grade: number | null
+          iv_access_id: string
+          notes: string | null
+          phlebitis_grade: number | null
+          site_appearance: string[] | null
+          treatment_id: string
+        }
+        Insert: {
+          action_taken?: string | null
+          checked_at?: string
+          checked_by?: string | null
+          created_at?: string
+          id?: string
+          infiltration_grade?: number | null
+          iv_access_id: string
+          notes?: string | null
+          phlebitis_grade?: number | null
+          site_appearance?: string[] | null
+          treatment_id: string
+        }
+        Update: {
+          action_taken?: string | null
+          checked_at?: string
+          checked_by?: string | null
+          created_at?: string
+          id?: string
+          infiltration_grade?: number | null
+          iv_access_id?: string
+          notes?: string | null
+          phlebitis_grade?: number | null
+          site_appearance?: string[] | null
+          treatment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treatment_site_checks_iv_access_id_fkey"
+            columns: ["iv_access_id"]
+            isOneToOne: false
+            referencedRelation: "treatment_iv_access"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_site_checks_treatment_id_fkey"
             columns: ["treatment_id"]
             isOneToOne: false
             referencedRelation: "treatments"
@@ -1191,9 +1396,11 @@ export type Database = {
           id: string
           notes: string | null
           o2_saturation: number | null
+          pain_score: number | null
           phase: Database["public"]["Enums"]["vitals_phase"]
           recorded_at: string
           recorded_by: string | null
+          respiratory_rate: number | null
           temperature: number | null
           treatment_id: string
           weight_kg: number | null
@@ -1205,9 +1412,11 @@ export type Database = {
           id?: string
           notes?: string | null
           o2_saturation?: number | null
+          pain_score?: number | null
           phase: Database["public"]["Enums"]["vitals_phase"]
           recorded_at?: string
           recorded_by?: string | null
+          respiratory_rate?: number | null
           temperature?: number | null
           treatment_id: string
           weight_kg?: number | null
@@ -1219,9 +1428,11 @@ export type Database = {
           id?: string
           notes?: string | null
           o2_saturation?: number | null
+          pain_score?: number | null
           phase?: Database["public"]["Enums"]["vitals_phase"]
           recorded_at?: string
           recorded_by?: string | null
+          respiratory_rate?: number | null
           temperature?: number | null
           treatment_id?: string
           weight_kg?: number | null
@@ -1376,9 +1587,15 @@ export type Database = {
         | "monitoring"
       form_submission_status: "draft" | "submitted" | "reviewed" | "approved"
       invite_status: "pending" | "accepted" | "expired" | "revoked"
+      iv_access_type: "peripheral" | "midline" | "picc" | "port" | "central"
       medication_route: "iv" | "oral" | "im" | "sc"
       patient_gender: "male" | "female" | "other"
       patient_status: "active" | "inactive" | "archived"
+      reaction_outcome:
+        | "resolved"
+        | "ongoing"
+        | "escalated"
+        | "emergency_transfer"
       referral_status:
         | "pending"
         | "accepted"
@@ -1568,9 +1785,16 @@ export const Constants = {
       ],
       form_submission_status: ["draft", "submitted", "reviewed", "approved"],
       invite_status: ["pending", "accepted", "expired", "revoked"],
+      iv_access_type: ["peripheral", "midline", "picc", "port", "central"],
       medication_route: ["iv", "oral", "im", "sc"],
       patient_gender: ["male", "female", "other"],
       patient_status: ["active", "inactive", "archived"],
+      reaction_outcome: [
+        "resolved",
+        "ongoing",
+        "escalated",
+        "emergency_transfer",
+      ],
       referral_status: [
         "pending",
         "accepted",

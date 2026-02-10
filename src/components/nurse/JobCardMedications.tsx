@@ -35,6 +35,9 @@ export default function JobCardMedications({ treatmentId, isCompleted }: JobCard
     route: "iv" as MedicationRoute,
     lot_number: "",
     notes: "",
+    diluent: "",
+    infusion_rate: "",
+    infusion_method: "",
   });
 
   const handleSave = async () => {
@@ -49,9 +52,17 @@ export default function JobCardMedications({ treatmentId, isCompleted }: JobCard
         administered_by: user.id,
         lot_number: form.lot_number || null,
         notes: form.notes || null,
+        diluent: form.diluent || null,
+        infusion_rate: form.infusion_rate || null,
+        infusion_method: form.infusion_method || null,
+        started_at: new Date().toISOString(),
+        stopped_at: null,
+        volume_infused_ml: null,
+        site_assessment_pre: null,
+        site_assessment_post: null,
       });
       setOpen(false);
-      setForm({ medication_name: "", dosage: "", route: "iv", lot_number: "", notes: "" });
+      setForm({ medication_name: "", dosage: "", route: "iv", lot_number: "", notes: "", diluent: "", infusion_rate: "", infusion_method: "" });
       toast({ title: "Medication recorded" });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -93,6 +104,27 @@ export default function JobCardMedications({ treatmentId, isCompleted }: JobCard
                       <SelectItem value="oral">Oral</SelectItem>
                       <SelectItem value="im">IM</SelectItem>
                       <SelectItem value="sc">SC</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Diluent</Label>
+                  <Input value={form.diluent} onChange={(e) => setForm((m) => ({ ...m, diluent: e.target.value }))} placeholder="e.g., 250ml Normal Saline" />
+                </div>
+                <div>
+                  <Label>Infusion Rate</Label>
+                  <Input value={form.infusion_rate} onChange={(e) => setForm((m) => ({ ...m, infusion_rate: e.target.value }))} placeholder="e.g., 125 ml/hr" />
+                </div>
+                <div>
+                  <Label>Method</Label>
+                  <Select value={form.infusion_method || "none"} onValueChange={(v) => setForm((m) => ({ ...m, infusion_method: v === "none" ? "" : v }))}>
+                    <SelectTrigger className="h-12"><SelectValue placeholder="Select" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Select</SelectItem>
+                      <SelectItem value="continuous">Continuous</SelectItem>
+                      <SelectItem value="intermittent">Intermittent</SelectItem>
+                      <SelectItem value="bolus">Bolus</SelectItem>
+                      <SelectItem value="push">IV Push</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
