@@ -25,6 +25,7 @@ import JobCardSidebar from "@/components/nurse/JobCardSidebar";
 import JobCardVitals from "@/components/nurse/JobCardVitals";
 import JobCardMedications from "@/components/nurse/JobCardMedications";
 import JobCardActions from "@/components/nurse/JobCardActions";
+import JobCardBilling from "@/components/nurse/JobCardBilling";
 
 // ── Pre-treatment checklist items ──
 const preChecklist = [
@@ -346,6 +347,12 @@ export default function NurseJobCard() {
                   </CardContent>
                 </Card>
               )}
+
+              <JobCardBilling
+                treatmentId={treatment.id}
+                appointmentTypeId={appointment.appointment_type?.id}
+                isCompleted={isCompleted}
+              />
 
               {/* Treatment notes */}
               {treatment.notes && (

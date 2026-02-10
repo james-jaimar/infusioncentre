@@ -188,6 +188,74 @@ export type Database = {
         }
         Relationships: []
       }
+      billable_items: {
+        Row: {
+          appointment_type_id: string | null
+          category: Database["public"]["Enums"]["billable_item_category"]
+          code: string | null
+          cost_price: number | null
+          created_at: string
+          default_price: number
+          display_order: number
+          icd10_code: string | null
+          id: string
+          is_active: boolean
+          name: string
+          reorder_level: number | null
+          stock_quantity: number
+          tariff_code: string | null
+          track_stock: boolean
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          appointment_type_id?: string | null
+          category?: Database["public"]["Enums"]["billable_item_category"]
+          code?: string | null
+          cost_price?: number | null
+          created_at?: string
+          default_price?: number
+          display_order?: number
+          icd10_code?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          reorder_level?: number | null
+          stock_quantity?: number
+          tariff_code?: string | null
+          track_stock?: boolean
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          appointment_type_id?: string | null
+          category?: Database["public"]["Enums"]["billable_item_category"]
+          code?: string | null
+          cost_price?: number | null
+          created_at?: string
+          default_price?: number
+          display_order?: number
+          icd10_code?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          reorder_level?: number | null
+          stock_quantity?: number
+          tariff_code?: string | null
+          track_stock?: boolean
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billable_items_appointment_type_id_fkey"
+            columns: ["appointment_type_id"]
+            isOneToOne: false
+            referencedRelation: "appointment_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       communication_log: {
         Row: {
           created_at: string
@@ -993,6 +1061,54 @@ export type Database = {
           },
         ]
       }
+      treatment_billable_items: {
+        Row: {
+          billable_item_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          quantity: number
+          recorded_by: string | null
+          treatment_id: string
+          unit_price: number
+        }
+        Insert: {
+          billable_item_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          quantity?: number
+          recorded_by?: string | null
+          treatment_id: string
+          unit_price?: number
+        }
+        Update: {
+          billable_item_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          quantity?: number
+          recorded_by?: string | null
+          treatment_id?: string
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treatment_billable_items_billable_item_id_fkey"
+            columns: ["billable_item_id"]
+            isOneToOne: false
+            referencedRelation: "billable_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_billable_items_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "treatments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       treatment_chairs: {
         Row: {
           created_at: string
@@ -1234,6 +1350,13 @@ export type Database = {
         | "during_treatment"
         | "post_treatment"
         | "ketamine_monitoring"
+      billable_item_category:
+        | "drug"
+        | "consumable"
+        | "procedure"
+        | "nursing_fee"
+        | "facility_fee"
+        | "other"
       booking_status: "pending" | "confirmed" | "completed" | "cancelled"
       checklist_item_status: "pending" | "in_progress" | "completed" | "waived"
       communication_status: "pending" | "sent" | "failed"
@@ -1415,6 +1538,14 @@ export const Constants = {
         "during_treatment",
         "post_treatment",
         "ketamine_monitoring",
+      ],
+      billable_item_category: [
+        "drug",
+        "consumable",
+        "procedure",
+        "nursing_fee",
+        "facility_fee",
+        "other",
       ],
       booking_status: ["pending", "confirmed", "completed", "cancelled"],
       checklist_item_status: ["pending", "in_progress", "completed", "waived"],
