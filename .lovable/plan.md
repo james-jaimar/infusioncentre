@@ -1,107 +1,179 @@
 
-# Phase 4: Treatment Job Cards
 
-## Overview
+# Phase 5: Billable Items Catalogue and Treatment Billing Foundation
 
-Treatment Job Cards transform the nurse's workflow from separate, disconnected screens into a single unified "work order" view. When a nurse taps on a patient, they see everything they need on one screen: patient info, allergies, medical history, onboarding status, vitals, medications, treatment progress, and previous visit history -- all optimised for tablets in landscape mode.
+## The Problem
 
-No new database tables are required. This phase is a UI/UX layer built on top of existing data.
+Today the system tracks *what* happens clinically (treatments, vitals, medications) but has no concept of *what to charge for*. There are no prices, no product codes, no way to generate an invoice. Before billing can work, you need a configurable catalogue of "things that cost money" -- drugs, consumables, nursing time, procedures -- that can be linked to treatments and eventually invoiced.
 
----
+## Design Approach
 
-## What the Nurse Will See
+Rather than trying to build the full invoicing/payments system now (which needs Gail's input on medical aid submissions, ICD-10 coding, tariff structures, etc.), this phase builds the **foundation layer**: a flexible product catalogue that the admin can configure, and the link between treatments and billable items so that when a nurse records a medication or completes a treatment, the system knows what to charge.
 
-### 1. Job Card Screen (the core deliverable)
+Think of it as three layers:
 
-A single-page view at `/nurse/job-card/:appointmentId` that consolidates:
+```text
+Layer 1: Catalogue (this phase)
+  "What can we charge for, and how much?"
 
-**Header Strip**
-- Patient name, age, gender, medical aid info
-- Treatment type badge (colour-coded: Ketamine = amber, Iron = blue, etc.)
-- Chair assignment and assigned nurse
-- Appointment time window
-- Allergy flags (red alert banner if allergies exist)
+Layer 2: Treatment-to-billing link (this phase)
+  "When a nurse does X, automatically create a billable line"
 
-**Sidebar / Collapsible Panels**
-- **Patient Summary**: Emergency contact, referring doctor, medical aid details
-- **Medical Flags**: Allergies (highlighted in red), chronic conditions, current medications
-- **Onboarding Status**: Progress bar showing completed/pending forms with the ability to view submitted forms inline
-- **Previous Treatments**: A compact history of past visits showing date, treatment type, duration, and any notes -- giving the nurse instant context on whether this is a first visit or a returning patient
+Layer 3: Invoicing & payments (future phase)
+  "Generate an invoice, submit to medical aid, collect payment"
+```
 
-**Main Treatment Area**
-- **Status Stepper**: Visual progress indicator showing the workflow stages: Check-In, Pre-Assessment, In Progress, Post-Assessment, Discharged
-- **Vitals Panel**: Latest readings with quick-add button, plus a mini chart/sparkline of trends from this session
-- **Medications Panel**: Current session medications with quick-add, showing lot numbers
-- **Treatment Timer**: Large, prominent elapsed time display
-- **Protocol-Specific Section**: Automatically shows Ketamine monitoring controls when the treatment type is Ketamine, or wound care notes fields for wound care appointments (placeholder for now -- detailed medical fields to be populated after Gail's input)
-- **Notes**: Running treatment notes for this session
-
-**Action Bar (sticky bottom on tablet)**
-- Large touch-friendly buttons: "Record Vitals", "Add Medication", "End Treatment"
-- Emergency Protocol button always visible
-
-### 2. Updated Navigation Flow
-
-Currently the nurse workflow is: Dashboard -> Today's Patients -> Check In -> Active Treatment -> Discharge (5 separate pages).
-
-The Job Card consolidates Check-In + Active Treatment + Discharge into one tabbed/stepped view. The nurse taps a patient from the queue and lands on the Job Card, which guides them through each stage without page navigation.
-
-### 3. Treatment History on Job Card
-
-A collapsible "Previous Visits" section that queries past completed treatments for this patient, showing:
-- Date and treatment type
-- Duration (started_at to ended_at)
-- Medications administered
-- Any discharge notes
-- Number of vitals readings
-
-This gives the nurse instant visual context: "This patient has had 4 previous ketamine sessions, last one was 2 weeks ago."
+This phase builds Layers 1 and 2. Layer 3 comes later once you have Gail's input on medical aid workflows.
 
 ---
 
-## Files to Create
+## What Gets Built
+
+### 1. Billable Items Catalogue (the "SKU" system)
+
+A new `billable_items` table -- essentially a product/service catalogue. Each item represents something that can appear on an invoice. Fully configurable by admin.
+
+**Fields per item:**
+- **Name** -- e.g. "Ketamine 100mg", "Iron Infusion (Venofer 200mg)", "Nursing Hour", "IV Cannulation"
+- **Category** -- Drug, Consumable, Procedure, Nursing Fee, Facility Fee (configurable enum)
+- **Code** -- Optional NAPPI code (SA drug code), tariff code, or internal SKU
+- **Unit** -- e.g. "per vial", "per hour", "per session", "per ml"
+- **Default Price** -- Base price in ZAR (can be overridden per invoice line)
+- **Cost Price** -- Optional, for margin tracking
+- **Track Stock** -- Boolean flag; if true, stock quantity is tracked
+- **Stock Quantity** -- Current stock on hand (only relevant if track_stock is true)
+- **Reorder Level** -- Optional minimum stock threshold for alerts
+- **Linked Appointment Type** -- Optional FK to appointment_types, for auto-suggesting items when a treatment type is selected
+- **ICD-10 Code** -- Optional, for medical aid claims
+- **Tariff Code** -- Optional, for medical aid billing
+- **Active** -- Can be deactivated without deleting
+
+### 2. Treatment Billable Lines
+
+A new `treatment_billable_items` table that records what was actually used/charged during a specific treatment session. When a nurse administers a medication, a corresponding billable line can be created (manually for now, auto-suggested in future).
+
+**Fields per line:**
+- Treatment ID (FK)
+- Billable Item ID (FK)
+- Quantity
+- Unit Price (copied from catalogue but editable)
+- Total (computed: quantity x unit_price)
+- Notes
+- Recorded by (nurse/admin user ID)
+
+### 3. Admin UI: Catalogue Management
+
+A new tab in Admin Settings called "Billable Items" where the admin can:
+- View all items in a searchable, filterable table
+- Add/edit/deactivate items
+- Filter by category
+- See stock levels for tracked items
+- Import items in bulk (future enhancement)
+
+### 4. Nurse Job Card: Billing Panel
+
+A new collapsible section on the Job Card showing:
+- Auto-suggested billable items based on the treatment type
+- Items added during the session (from medication recording)
+- Quick-add button for additional items
+- Running total for the session
+- This is informational for the nurse -- final billing is handled by admin
+
+---
+
+## Database Changes
+
+### New Enum: billable_item_category
+Values: `drug`, `consumable`, `procedure`, `nursing_fee`, `facility_fee`, `other`
+
+### New Table: billable_items
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid, PK | |
+| name | text, NOT NULL | Display name |
+| category | billable_item_category | |
+| code | text, nullable | NAPPI, tariff, or internal code |
+| unit | text | "per vial", "per hour", etc. |
+| default_price | decimal(10,2) | Base price in ZAR |
+| cost_price | decimal(10,2), nullable | For margin tracking |
+| track_stock | boolean, default false | Whether to track inventory |
+| stock_quantity | integer, default 0 | Current stock on hand |
+| reorder_level | integer, nullable | Alert threshold |
+| appointment_type_id | uuid, FK, nullable | Auto-suggest for this treatment type |
+| icd10_code | text, nullable | For medical aid claims |
+| tariff_code | text, nullable | For medical aid billing |
+| is_active | boolean, default true | |
+| display_order | integer, default 0 | |
+| created_at | timestamptz | |
+| updated_at | timestamptz | |
+
+### New Table: treatment_billable_items
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid, PK | |
+| treatment_id | uuid, FK | Links to treatments table |
+| billable_item_id | uuid, FK | Links to billable_items |
+| quantity | decimal(10,2), default 1 | |
+| unit_price | decimal(10,2) | Copied from catalogue, editable |
+| notes | text, nullable | |
+| recorded_by | uuid, nullable | Staff who added this |
+| created_at | timestamptz | |
+
+### RLS Policies
+
+**billable_items:**
+- Admins: full CRUD
+- Nurses: SELECT only (need to see catalogue to add items during treatment)
+- Authenticated users with active types only for general visibility
+
+**treatment_billable_items:**
+- Admins: full CRUD
+- Nurses: INSERT + SELECT (can add items during treatment and view them)
+- Doctors: SELECT on referred patient treatments (same pattern as medications/vitals)
+
+---
+
+## New Files
 
 | File | Purpose |
 |---|---|
-| `src/pages/nurse/NurseJobCard.tsx` | Main Job Card page -- the unified treatment view |
-| `src/components/nurse/JobCardHeader.tsx` | Patient info strip with allergy flags and treatment badge |
-| `src/components/nurse/JobCardSidebar.tsx` | Collapsible panels for medical history, onboarding, and previous treatments |
-| `src/components/nurse/JobCardVitals.tsx` | Vitals display with quick-add and trend sparklines |
-| `src/components/nurse/JobCardMedications.tsx` | Medication list with quick-add dialog |
-| `src/components/nurse/JobCardStepper.tsx` | Visual workflow stepper (Check-In through Discharge) |
-| `src/components/nurse/JobCardActions.tsx` | Sticky bottom action bar for tablets |
-| `src/components/nurse/TreatmentHistory.tsx` | Previous visits summary component |
-| `src/hooks/useTreatmentHistory.ts` | Hook to fetch past treatments for a patient |
+| supabase/migrations/XXXX_billable_items.sql | Tables, enums, RLS, indexes |
+| src/types/billing.ts | TypeScript interfaces for billable items |
+| src/hooks/useBillableItems.ts | CRUD hooks for the catalogue |
+| src/hooks/useTreatmentBilling.ts | Hooks for treatment billable lines |
+| src/pages/admin/AdminBillableItems.tsx | Full catalogue management page |
+| src/components/nurse/JobCardBilling.tsx | Billing panel on the Job Card |
 
-## Files to Modify
+## Modified Files
 
 | File | Change |
 |---|---|
-| `src/App.tsx` | Add `/nurse/job-card/:appointmentId` route |
-| `src/pages/nurse/NurseDashboard.tsx` | Update queue links to point to Job Card instead of check-in |
-| `src/pages/nurse/NurseTodaysPatients.tsx` | Update action buttons to open Job Card |
-| `src/components/layout/NurseLayout.tsx` | No changes needed (navigation stays the same) |
+| src/pages/admin/AdminSettings.tsx | Add "Billable Items" tab linking to the new page, or integrate inline |
+| src/pages/nurse/NurseJobCard.tsx | Add the billing panel component |
+| src/App.tsx | Add route for admin billable items page (if standalone) |
+| src/components/layout/AdminLayout.tsx | Add sidebar link if standalone page |
 
 ---
 
 ## Implementation Order
 
-1. **Treatment History hook** -- query past treatments for a patient so the Job Card can show previous visits
-2. **Job Card Header** -- patient info strip with allergy alerts, treatment badge, chair assignment
-3. **Job Card Sidebar** -- medical history panels, onboarding checklist status, previous treatment history
-4. **Job Card Stepper** -- visual workflow from check-in to discharge with stage transitions
-5. **Job Card Vitals and Medications** -- extract and enhance from current `NurseActiveTreatment.tsx`
-6. **Job Card Actions** -- sticky bottom bar with large touch targets
-7. **Main Job Card page** -- assemble all components into the unified view
-8. **Route and navigation updates** -- wire up the new route and update dashboard/queue links
+1. Database migration -- billable_items table, treatment_billable_items table, enum, RLS, foreign keys
+2. TypeScript types and CRUD hooks for billable items
+3. Admin catalogue management UI (new tab in Settings or standalone page)
+4. Treatment billing hooks (linking items to treatments)
+5. Nurse Job Card billing panel (view and add billable items during treatment)
+6. Seed some example items based on known JIC treatment types (Ketamine, Iron variants, biologics, nursing fees)
 
 ---
 
 ## Technical Notes
 
-- **Tablet-first layout**: Uses CSS Grid with a sidebar + main area layout. Min touch targets of 44x44px maintained throughout. Landscape-optimised with horizontal panels.
-- **No new database tables**: All data comes from existing tables: `appointments`, `treatments`, `patients`, `patient_medical_history`, `onboarding_checklists`, `treatment_vitals`, `treatment_medications`, `treatment_assessments`, `ketamine_monitoring`.
-- **Treatment history query**: Joins `treatments` with `appointments` and `appointment_types` for the same `patient_id`, filtered to `status = 'completed'`, ordered by date descending.
-- **Existing pages preserved**: The current `NurseCheckIn`, `NurseActiveTreatment`, and `NurseDischarge` pages remain functional as fallbacks. The Job Card is the new primary entry point but doesn't delete anything.
-- **Protocol-specific sections**: The Ketamine monitoring UI (sliders for alertness, mood, pain, dissociation) is embedded directly in the Job Card when the treatment type is Ketamine. For wound care and stoma therapy, placeholder sections will be created with a note that detailed fields will be added after clinical input from Gail.
-- **Stepper state management**: The stepper maps directly to the existing `treatment_status` enum (`pending` -> `pre_assessment` -> `in_progress` -> `post_assessment` -> `completed`). Stage transitions call the same `useUpdateTreatment` and `useUpdateAppointment` hooks already in use.
+- The `billable_items` table is intentionally flexible -- it covers drugs, consumables, time-based fees, and flat-rate procedures. This avoids needing separate tables for each category.
+- Stock tracking is opt-in per item. Most services (nursing time, facility fees) won't track stock, but drugs and consumables can.
+- The `appointment_type_id` link on billable items enables auto-suggestion: when a Ketamine treatment starts, the system can pre-populate suggested items (Ketamine vial, IV line, nursing fee, etc.).
+- Prices are in ZAR (South African Rand) to match the clinic's location.
+- The `treatment_billable_items` table stores the actual price at time of use, not a reference to the catalogue price. This means historical invoices remain accurate even if catalogue prices change.
+- ICD-10 and tariff code fields are optional placeholders for the future medical aid billing integration. They can be populated once Gail provides the specific codes used.
+- This design is compatible with the billing foundation memory note (subtotal, tax, total, medical aid claim, patient liability) -- those invoice-level fields will be added in the invoicing phase.
