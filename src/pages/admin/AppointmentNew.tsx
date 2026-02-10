@@ -386,10 +386,10 @@ export default function AppointmentNew() {
                       <FormLabel>Chair</FormLabel>
                       <Select
                         onValueChange={(v) => {
-                          field.onChange(v);
+                          field.onChange(v === "none" ? "" : v);
                           handleCheckConflict();
                         }}
-                        value={field.value}
+                        value={field.value || "none"}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -397,7 +397,7 @@ export default function AppointmentNew() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">No chair assigned</SelectItem>
+                          <SelectItem value="none">No chair assigned</SelectItem>
                           {chairs.map((chair) => (
                             <SelectItem key={chair.id} value={chair.id}>
                               {chair.name}
