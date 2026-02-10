@@ -34,9 +34,14 @@ export default function Login() {
 
   // Redirect if already logged in
   useEffect(() => {
-    if (!loading && user && role) {
-      const destination = from || getRoleBasedPath(role);
-      navigate(destination, { replace: true });
+    if (!loading && user) {
+      if (role) {
+        const destination = from || getRoleBasedPath(role);
+        navigate(destination, { replace: true });
+      } else {
+        // User authenticated but no role assigned — redirect to home
+        navigate("/", { replace: true });
+      }
     }
   }, [user, role, loading, from, navigate]);
 
