@@ -16,29 +16,29 @@ export default function FamilyTable({ label, rows, columns, value = {}, onChange
   };
 
   return (
-    <div className="space-y-2">
-      <label className="text-sm font-medium">{label}</label>
-      <div className="overflow-x-auto border rounded-md">
+    <div className="space-y-2.5">
+      <label className="text-sm font-medium text-foreground">{label}</label>
+      <div className="overflow-x-auto rounded-lg border border-border/50">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-muted/50">
-              <th className="px-2 py-1.5 text-left font-medium">Family Member</th>
+            <tr className="bg-muted/40">
+              <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs uppercase tracking-wider">Family Member</th>
               {columns.map((col) => (
-                <th key={col} className="px-2 py-1.5 text-left font-medium">{col}</th>
+                <th key={col} className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs uppercase tracking-wider">{col}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row} className="border-t">
-                <td className="px-2 py-1 font-medium">{row}</td>
+              <tr key={row} className="border-t border-border/30 hover:bg-muted/20 transition-colors">
+                <td className="px-3 py-2 font-medium text-foreground">{row}</td>
                 {columns.map((col) => (
-                  <td key={col} className="px-1 py-1">
+                  <td key={col} className="px-2 py-1.5">
                     {readOnly ? (
-                      <span>{value[row]?.[col] || "-"}</span>
+                      <span className="text-sm">{value[row]?.[col] || "—"}</span>
                     ) : (
                       <Input
-                        className="h-8 text-sm"
+                        className="h-9 text-sm rounded-lg border-border/40 bg-background"
                         value={value[row]?.[col] || ""}
                         onChange={(e) => updateCell(row, col, e.target.value)}
                       />

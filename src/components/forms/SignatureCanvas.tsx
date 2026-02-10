@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Eraser } from "lucide-react";
+import { Eraser, PenTool } from "lucide-react";
 
 interface SignatureCanvasProps {
   label: string;
@@ -12,6 +12,7 @@ interface SignatureCanvasProps {
 export default function SignatureCanvas({ label, value, onChange, readOnly }: SignatureCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [hasSignature, setHasSignature] = useState(!!value);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -19,7 +20,6 @@ export default function SignatureCanvas({ label, value, onChange, readOnly }: Si
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Set canvas size
     const rect = canvas.getBoundingClientRect();
     canvas.width = rect.width * 2;
     canvas.height = rect.height * 2;
@@ -29,7 +29,6 @@ export default function SignatureCanvas({ label, value, onChange, readOnly }: Si
     ctx.lineWidth = 2;
     ctx.strokeStyle = "hsl(var(--foreground))";
 
-    // Restore from saved value
     if (value) {
       const img = new Image();
       img.onload = () => {
@@ -58,6 +57,7 @@ export default function SignatureCanvas({ label, value, onChange, readOnly }: Si
     ctx.beginPath();
     ctx.moveTo(pos.x, pos.y);
     setIsDrawing(true);
+    setHasSignature(true);
   };
 
   const draw = (e: React.MouseEvent | React.TouchEvent) => {
@@ -85,16 +85,30 @@ export default function SignatureCanvas({ label, value, onChange, readOnly }: Si
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setHasSignature(false);
     onChange("");
   };
 
   return (
-    <div className="space-y-1">
-      <label className="text-sm font-medium">{label}</label>
-      <div className="relative border rounded-md bg-background">
+    <div className="space-y-2">
+      <label className="text-sm font-medium text-foreground">{label}</label>
+      <div className="relative rounded-xl border-2 border-dashed border-border/60 bg-muted/20 overflow-hidden transition-colors hover:border-primary/30">
+        {/* Signature line */}
+        <div className="absolute bottom-8 left-6 right-6 border-b border-muted-foreground/20" />
+        
+        {/* Hint */}
+        {!hasSignature && !readOnly && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="flex items-center gap-2 text-muted-foreground/40">
+              <PenTool className="h-5 w-5" />
+              <span className="text-sm">Sign here</span>
+            </div>
+          </div>
+        )}
+
         <canvas
           ref={canvasRef}
-          className="w-full h-24 cursor-crosshair touch-none"
+          className="w-full h-32 cursor-crosshair touch-none relative z-10"
           onMouseDown={startDraw}
           onMouseMove={draw}
           onMouseUp={endDraw}
@@ -103,15 +117,17 @@ export default function SignatureCanvas({ label, value, onChange, readOnly }: Si
           onTouchMove={draw}
           onTouchEnd={endDraw}
         />
-        {!readOnly && (
+
+        {!readOnly && hasSignature && (
           <Button
             type="button"
-            variant="ghost"
+            variant="secondary"
             size="sm"
-            className="absolute top-1 right-1"
+            className="absolute top-2 right-2 h-7 px-2 text-xs z-20 rounded-lg"
             onClick={clear}
           >
-            <Eraser className="h-4 w-4" />
+            <Eraser className="h-3 w-3 mr-1" />
+            Clear
           </Button>
         )}
       </div>
