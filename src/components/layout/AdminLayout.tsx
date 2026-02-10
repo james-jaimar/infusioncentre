@@ -13,6 +13,7 @@ import {
   Menu,
   X,
   FileText,
+  ClipboardList,
 } from "lucide-react";
 import { useState } from "react";
 import logo from "@/assets/logo.png";
@@ -23,6 +24,7 @@ const navigation = [
   { name: "Patients", href: "/admin/patients", icon: Users },
   { name: "Appointments", href: "/admin/appointments", icon: Calendar },
   { name: "Referrals", href: "/admin/referrals", icon: FileText },
+  { name: "Form Templates", href: "/admin/form-templates", icon: ClipboardList },
   { name: "Staff", href: "/admin/staff", icon: Users },
   { name: "Training Bookings", href: "/admin/training", icon: GraduationCap },
   { name: "Reports", href: "/admin/reports", icon: BarChart3 },

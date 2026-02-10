@@ -1,13 +1,34 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, FileText, Phone } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Calendar, FileText, Phone, ClipboardList, CheckCircle2, Circle } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useOnboardingChecklist } from "@/hooks/useOnboardingChecklist";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function PatientDashboard() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
 
   const firstName = profile?.first_name || "there";
+
+  // Get the patient record linked to this user
+  const { data: patientRecord } = useQuery({
+    queryKey: ["my_patient_record"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("patients")
+        .select("id")
+        .eq("user_id", user?.id)
+        .single();
+      return data;
+    },
+    enabled: !!user?.id,
+  });
+
+  const { data: checklist } = useOnboardingChecklist(patientRecord?.id);
+  const pendingForms = checklist?.filter(c => c.status === 'pending' || c.status === 'in_progress') || [];
 
   return (
     <div className="space-y-6">
@@ -19,6 +40,34 @@ export default function PatientDashboard() {
           Manage your appointments and view your treatment records.
         </p>
       </div>
+
+      {/* Outstanding Forms */}
+      {pendingForms.length > 0 && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ClipboardList className="h-5 w-5" />
+              Outstanding Forms ({pendingForms.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {pendingForms.map((item) => (
+              <div key={item.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                <div className="flex items-center gap-2">
+                  <Circle className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">{item.form_templates?.name}</span>
+                  <Badge variant="secondary" className="text-xs">
+                    {item.form_templates?.category?.replace('_', ' ')}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+            <p className="text-xs text-muted-foreground pt-2">
+              Please complete these forms. You may be asked to fill them in at the practice.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Quick Actions */}
       <div className="grid gap-4 md:grid-cols-3">
