@@ -48,6 +48,7 @@ import NurseActiveTreatment from "./pages/nurse/NurseActiveTreatment";
 import NurseKetamineMonitoring from "./pages/nurse/NurseKetamineMonitoring";
 import NurseDischarge from "./pages/nurse/NurseDischarge";
 import NurseEmergency from "./pages/nurse/NurseEmergency";
+import NurseJobCard from "./pages/nurse/NurseJobCard";
 
 // Doctor pages
 import DoctorLayout from "./components/layout/DoctorLayout";
@@ -145,6 +146,7 @@ const App = () => (
               <Route path="ketamine/:treatmentId" element={<NurseKetamineMonitoring />} />
               <Route path="discharge/:treatmentId" element={<NurseDischarge />} />
               <Route path="treatments" element={<NurseTodaysPatients />} />
+              <Route path="job-card/:appointmentId" element={<NurseJobCard />} />
               <Route path="emergency" element={<NurseEmergency />} />
             </Route>
 

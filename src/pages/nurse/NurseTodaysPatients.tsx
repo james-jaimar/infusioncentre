@@ -66,34 +66,14 @@ export default function NurseTodaysPatients() {
                     <Badge className={statusColors[apt.status] || ""}>
                       {apt.status.replace("_", " ")}
                     </Badge>
-                    {(apt.status === "confirmed" || apt.status === "scheduled") && (
-                      <Button
-                        size="sm"
-                        onClick={() => navigate(`/nurse/checkin/${apt.id}`)}
-                      >
-                        Check In
-                        <ArrowRight className="ml-1 h-4 w-4" />
-                      </Button>
-                    )}
-                    {apt.status === "checked_in" && (
-                      <Button
-                        size="sm"
-                        onClick={() => navigate(`/nurse/checkin/${apt.id}`)}
-                      >
-                        Start Treatment
-                        <ArrowRight className="ml-1 h-4 w-4" />
-                      </Button>
-                    )}
-                    {apt.status === "in_progress" && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => navigate(`/nurse/treatment/${apt.id}`)}
-                      >
-                        View Treatment
-                        <ArrowRight className="ml-1 h-4 w-4" />
-                      </Button>
-                    )}
+                    <Button
+                      size="sm"
+                      variant={apt.status === "in_progress" ? "outline" : "default"}
+                      onClick={() => navigate(`/nurse/job-card/${apt.id}`)}
+                    >
+                      {apt.status === "in_progress" ? "View" : "Open"} Job Card
+                      <ArrowRight className="ml-1 h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               </CardContent>
