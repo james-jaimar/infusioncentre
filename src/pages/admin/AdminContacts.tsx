@@ -20,7 +20,18 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { Mail, Phone, Eye, Archive, CheckCircle, Clock, Inbox } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Mail, Phone, Eye, Archive, CheckCircle, Clock, Inbox, Trash2 } from "lucide-react";
 
 type ContactStatus = "new" | "in_progress" | "resolved" | "archived";
 
@@ -75,6 +86,19 @@ export default function AdminContacts() {
   const [responseNotes, setResponseNotes] = useState("");
   const { data: contacts, isLoading } = useContactSubmissions(statusFilter);
   const updateContact = useUpdateContact();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const deleteContact = async (id: string) => {
+    const { error } = await supabase.from("contact_submissions").delete().eq("id", id);
+    if (error) {
+      toast({ title: "Failed to delete", variant: "destructive" });
+      return;
+    }
+    toast({ title: "Contact deleted" });
+    queryClient.invalidateQueries({ queryKey: ["contact-submissions"] });
+    setSelectedContact(null);
+  };
 
   const unreadCount = contacts?.filter((c: any) => !c.is_read).length || 0;
 
@@ -228,9 +252,37 @@ export default function AdminContacts() {
                   onChange={(e) => setResponseNotes(e.target.value)}
                   rows={3}
                 />
-                <Button size="sm" className="mt-2" onClick={saveNotes}>
-                  Save Notes
-                </Button>
+                <div className="flex gap-2 mt-2">
+                  <Button size="sm" onClick={saveNotes}>
+                    Save Notes
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button size="sm" variant="outline" className="text-destructive hover:text-destructive gap-1">
+                        <Trash2 className="h-3.5 w-3.5" /> Delete
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Contact Submission</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Permanently delete this submission from {selectedContact?.name}? This cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-destructive hover:bg-destructive/90"
+                          onClick={() => {
+                            deleteContact(selectedContact.id);
+                          }}
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </div>
             </div>
           )}
