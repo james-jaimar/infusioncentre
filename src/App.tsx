@@ -37,6 +37,7 @@ import AdminStaff from "./pages/admin/AdminStaff";
 import AdminReports from "./pages/admin/AdminReports";
 import AdminTraining from "./pages/admin/AdminTraining";
 import AdminReferrals from "./pages/admin/AdminReferrals";
+import AdminFormTemplates from "./pages/admin/AdminFormTemplates";
 
 // Nurse pages
 import NurseLayout from "./components/layout/NurseLayout";
@@ -104,6 +105,7 @@ const App = () => (
               <Route path="staff" element={<AdminStaff />} />
               <Route path="training" element={<AdminTraining />} />
               <Route path="referrals" element={<AdminReferrals />} />
+              <Route path="form-templates" element={<AdminFormTemplates />} />
               <Route path="reports" element={<AdminReports />} />
               <Route path="settings" element={<AdminSettings />} />
             </Route>

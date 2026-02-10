@@ -3,11 +3,17 @@ import { useParams, useNavigate } from "react-router-dom";
 import { usePatient, useUpdatePatient, useDeletePatient } from "@/hooks/usePatients";
 import { usePatientMedicalHistory, useUpsertPatientMedicalHistory } from "@/hooks/usePatientMedicalHistory";
 import { usePatientDocuments, useUploadPatientDocument, useDeletePatientDocument, useGetDocumentUrl } from "@/hooks/usePatientDocuments";
+import { useOnboardingChecklist, useGenerateChecklist, useUpdateChecklistItem } from "@/hooks/useOnboardingChecklist";
+import { useFormTemplate } from "@/hooks/useFormTemplates";
+import { useCreateFormSubmission } from "@/hooks/useFormSubmissions";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -46,8 +52,14 @@ import {
   Heart,
   Stethoscope,
   FileCheck,
+  ClipboardList,
+  CheckCircle2,
+  Circle,
+  Ban,
+  Eye,
 } from "lucide-react";
 import type { PatientStatus, DocumentType } from "@/types/patient";
+import FormRenderer from "@/components/forms/FormRenderer";
 
 const documentTypeLabels: Record<DocumentType, string> = {
   prescription: "Prescription",
@@ -65,10 +77,17 @@ export default function PatientDetail() {
   const [editedData, setEditedData] = useState<any>(null);
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [selectedDocType, setSelectedDocType] = useState<DocumentType>("other");
+  const [formDialogOpen, setFormDialogOpen] = useState(false);
+  const [activeFormTemplateId, setActiveFormTemplateId] = useState<string | undefined>();
+  const [activeChecklistItemId, setActiveChecklistItemId] = useState<string | undefined>();
+  const [formValues, setFormValues] = useState<Record<string, any>>({});
 
   const { data: patient, isLoading, error } = usePatient(id);
   const { data: medicalHistory } = usePatientMedicalHistory(id);
   const { data: documents } = usePatientDocuments(id);
+  const { data: checklist } = useOnboardingChecklist(id);
+  const { data: activeFormTemplate } = useFormTemplate(activeFormTemplateId);
+  const { user } = useAuth();
   
   const updatePatient = useUpdatePatient();
   const deletePatient = useDeletePatient();
@@ -76,6 +95,9 @@ export default function PatientDetail() {
   const uploadDocument = useUploadPatientDocument();
   const deleteDocument = useDeletePatientDocument();
   const getDocumentUrl = useGetDocumentUrl();
+  const generateChecklist = useGenerateChecklist();
+  const updateChecklistItem = useUpdateChecklistItem();
+  const createSubmission = useCreateFormSubmission();
 
   const handleEdit = () => {
     setEditedData({ ...patient });
@@ -285,6 +307,15 @@ export default function PatientDetail() {
           <TabsTrigger value="documents">
             <FileCheck className="mr-2 h-4 w-4" />
             Documents
+          </TabsTrigger>
+          <TabsTrigger value="onboarding">
+            <ClipboardList className="mr-2 h-4 w-4" />
+            Onboarding
+            {checklist && checklist.length > 0 && (
+              <Badge variant="secondary" className="ml-2 text-xs">
+                {checklist.filter(c => c.status === 'completed').length}/{checklist.length}
+              </Badge>
+            )}
           </TabsTrigger>
         </TabsList>
 
@@ -801,7 +832,187 @@ export default function PatientDetail() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Onboarding Tab */}
+        <TabsContent value="onboarding" className="space-y-4">
+          {/* Progress */}
+          {checklist && checklist.length > 0 && (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">Onboarding Progress</span>
+                  <span className="text-sm text-muted-foreground">
+                    {checklist.filter(c => c.status === 'completed').length} of {checklist.length} forms completed
+                  </span>
+                </div>
+                <Progress
+                  value={(checklist.filter(c => c.status === 'completed').length / checklist.length) * 100}
+                />
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Generate Checklist */}
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => id && generateChecklist.mutateAsync({ patientId: id })}
+              disabled={generateChecklist.isPending}
+            >
+              {generateChecklist.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <ClipboardList className="mr-2 h-4 w-4" />
+              )}
+              Generate Checklist
+            </Button>
+          </div>
+
+          {/* Checklist Items */}
+          {!checklist || checklist.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                <ClipboardList className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p>No onboarding forms assigned yet.</p>
+                <p className="text-sm">Click "Generate Checklist" to assign forms based on treatment type.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-2">
+              {checklist.map((item) => (
+                <Card key={item.id}>
+                  <CardContent className="py-3 px-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {item.status === 'completed' ? (
+                        <CheckCircle2 className="h-5 w-5 text-green-600" />
+                      ) : item.status === 'waived' ? (
+                        <Ban className="h-5 w-5 text-muted-foreground" />
+                      ) : (
+                        <Circle className="h-5 w-5 text-muted-foreground" />
+                      )}
+                      <div>
+                        <p className="font-medium text-sm">{item.form_templates?.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {item.form_templates?.category && (
+                            <Badge variant="secondary" className="text-xs mr-2">
+                              {item.form_templates.category.replace('_', ' ')}
+                            </Badge>
+                          )}
+                          {item.status === 'completed' && item.completed_at && (
+                            <span>Completed {new Date(item.completed_at).toLocaleDateString('en-ZA')}</span>
+                          )}
+                          {item.status === 'waived' && item.notes && (
+                            <span>Waived: {item.notes}</span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      {item.status !== 'completed' && item.status !== 'waived' && (
+                        <>
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setActiveFormTemplateId(item.form_template_id);
+                              setActiveChecklistItemId(item.id);
+                              setFormValues({});
+                              setFormDialogOpen(true);
+                            }}
+                          >
+                            Fill Form
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={async () => {
+                              const note = prompt("Reason for waiving this form:");
+                              if (note !== null) {
+                                await updateChecklistItem.mutateAsync({
+                                  id: item.id,
+                                  status: 'waived',
+                                  notes: note || 'Waived by admin',
+                                });
+                              }
+                            }}
+                          >
+                            Waive
+                          </Button>
+                        </>
+                      )}
+                      {item.status === 'completed' && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setActiveFormTemplateId(item.form_template_id);
+                            setActiveChecklistItemId(undefined);
+                            setFormValues({});
+                            setFormDialogOpen(true);
+                          }}
+                        >
+                          <Eye className="h-4 w-4 mr-1" /> View
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
+
+      {/* Form Fill Dialog */}
+      <Dialog open={formDialogOpen} onOpenChange={setFormDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{activeFormTemplate?.name}</DialogTitle>
+          </DialogHeader>
+          {activeFormTemplate && (
+            <div className="space-y-4">
+              <FormRenderer
+                schema={activeFormTemplate.form_schema as any[]}
+                values={formValues}
+                onChange={setFormValues}
+              />
+              {activeChecklistItemId && (
+                <div className="flex justify-end gap-2 pt-4 border-t">
+                  <Button variant="outline" onClick={() => setFormDialogOpen(false)}>Cancel</Button>
+                  <Button
+                    onClick={async () => {
+                      if (!id || !activeFormTemplate || !activeChecklistItemId) return;
+                      try {
+                        const submission = await createSubmission.mutateAsync({
+                          form_template_id: activeFormTemplate.id,
+                          patient_id: id,
+                          data: formValues,
+                          status: 'submitted',
+                          submitted_by: user?.id,
+                        });
+                        await updateChecklistItem.mutateAsync({
+                          id: activeChecklistItemId,
+                          status: 'completed',
+                          form_submission_id: submission.id,
+                          completed_at: new Date().toISOString(),
+                        });
+                        toast.success("Form submitted successfully");
+                        setFormDialogOpen(false);
+                      } catch (err) {
+                        console.error(err);
+                        toast.error("Failed to submit form");
+                      }
+                    }}
+                    disabled={createSubmission.isPending}
+                  >
+                    {createSubmission.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Submit Form
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

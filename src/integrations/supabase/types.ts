@@ -376,6 +376,108 @@ export type Database = {
         }
         Relationships: []
       }
+      form_submissions: {
+        Row: {
+          created_at: string
+          data: Json
+          form_template_id: string
+          id: string
+          patient_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          signature_data: string | null
+          status: Database["public"]["Enums"]["form_submission_status"]
+          submitted_by: string | null
+          witness_signature_data: string | null
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          form_template_id: string
+          id?: string
+          patient_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          signature_data?: string | null
+          status?: Database["public"]["Enums"]["form_submission_status"]
+          submitted_by?: string | null
+          witness_signature_data?: string | null
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          form_template_id?: string
+          id?: string
+          patient_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          signature_data?: string | null
+          status?: Database["public"]["Enums"]["form_submission_status"]
+          submitted_by?: string | null
+          witness_signature_data?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_submissions_form_template_id_fkey"
+            columns: ["form_template_id"]
+            isOneToOne: false
+            referencedRelation: "form_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_submissions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      form_templates: {
+        Row: {
+          category: Database["public"]["Enums"]["form_category"]
+          created_at: string
+          created_by: string | null
+          description: string | null
+          display_order: number
+          form_schema: Json
+          id: string
+          is_active: boolean
+          name: string
+          required_for_treatment_types: string[] | null
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["form_category"]
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          display_order?: number
+          form_schema?: Json
+          id?: string
+          is_active?: boolean
+          name: string
+          required_for_treatment_types?: string[] | null
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["form_category"]
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          display_order?: number
+          form_schema?: Json
+          id?: string
+          is_active?: boolean
+          name?: string
+          required_for_treatment_types?: string[] | null
+          updated_at?: string
+          version?: number
+        }
+        Relationships: []
+      }
       ketamine_monitoring: {
         Row: {
           alertness_score: number
@@ -425,6 +527,64 @@ export type Database = {
             columns: ["treatment_id"]
             isOneToOne: false
             referencedRelation: "treatments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onboarding_checklists: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          due_date: string | null
+          form_submission_id: string | null
+          form_template_id: string
+          id: string
+          notes: string | null
+          patient_id: string
+          status: Database["public"]["Enums"]["checklist_item_status"]
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          due_date?: string | null
+          form_submission_id?: string | null
+          form_template_id: string
+          id?: string
+          notes?: string | null
+          patient_id: string
+          status?: Database["public"]["Enums"]["checklist_item_status"]
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          due_date?: string | null
+          form_submission_id?: string | null
+          form_template_id?: string
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          status?: Database["public"]["Enums"]["checklist_item_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_checklists_form_submission_id_fkey"
+            columns: ["form_submission_id"]
+            isOneToOne: false
+            referencedRelation: "form_submissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_checklists_form_template_id_fkey"
+            columns: ["form_template_id"]
+            isOneToOne: false
+            referencedRelation: "form_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_checklists_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
             referencedColumns: ["id"]
           },
         ]
@@ -1028,6 +1188,7 @@ export type Database = {
         | "post_treatment"
         | "ketamine_monitoring"
       booking_status: "pending" | "confirmed" | "completed" | "cancelled"
+      checklist_item_status: "pending" | "in_progress" | "completed" | "waived"
       communication_status: "pending" | "sent" | "failed"
       communication_type: "email" | "whatsapp" | "sms"
       contact_status: "new" | "in_progress" | "resolved" | "archived"
@@ -1038,6 +1199,12 @@ export type Database = {
         | "id_copy"
         | "medical_aid_card"
         | "other"
+      form_category:
+        | "consent"
+        | "medical_questionnaire"
+        | "administrative"
+        | "monitoring"
+      form_submission_status: "draft" | "submitted" | "reviewed" | "approved"
       medication_route: "iv" | "oral" | "im" | "sc"
       patient_gender: "male" | "female" | "other"
       patient_status: "active" | "inactive" | "archived"
@@ -1202,6 +1369,7 @@ export const Constants = {
         "ketamine_monitoring",
       ],
       booking_status: ["pending", "confirmed", "completed", "cancelled"],
+      checklist_item_status: ["pending", "in_progress", "completed", "waived"],
       communication_status: ["pending", "sent", "failed"],
       communication_type: ["email", "whatsapp", "sms"],
       contact_status: ["new", "in_progress", "resolved", "archived"],
@@ -1213,6 +1381,13 @@ export const Constants = {
         "medical_aid_card",
         "other",
       ],
+      form_category: [
+        "consent",
+        "medical_questionnaire",
+        "administrative",
+        "monitoring",
+      ],
+      form_submission_status: ["draft", "submitted", "reviewed", "approved"],
       medication_route: ["iv", "oral", "im", "sc"],
       patient_gender: ["male", "female", "other"],
       patient_status: ["active", "inactive", "archived"],
