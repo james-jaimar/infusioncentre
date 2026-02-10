@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import FullScreenFormDialog from "@/components/forms/FullScreenFormDialog";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -59,7 +59,7 @@ import {
   Eye,
 } from "lucide-react";
 import type { PatientStatus, DocumentType } from "@/types/patient";
-import FormRenderer from "@/components/forms/FormRenderer";
+import type { FormField } from "@/components/forms/FormRenderer";
 
 const documentTypeLabels: Record<DocumentType, string> = {
   prescription: "Prescription",
@@ -962,57 +962,41 @@ export default function PatientDetail() {
         </TabsContent>
       </Tabs>
 
-      {/* Form Fill Dialog */}
-      <Dialog open={formDialogOpen} onOpenChange={setFormDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{activeFormTemplate?.name}</DialogTitle>
-          </DialogHeader>
-          {activeFormTemplate && (
-            <div className="space-y-4">
-              <FormRenderer
-                schema={activeFormTemplate.form_schema as any[]}
-                values={formValues}
-                onChange={setFormValues}
-              />
-              {activeChecklistItemId && (
-                <div className="flex justify-end gap-2 pt-4 border-t">
-                  <Button variant="outline" onClick={() => setFormDialogOpen(false)}>Cancel</Button>
-                  <Button
-                    onClick={async () => {
-                      if (!id || !activeFormTemplate || !activeChecklistItemId) return;
-                      try {
-                        const submission = await createSubmission.mutateAsync({
-                          form_template_id: activeFormTemplate.id,
-                          patient_id: id,
-                          data: formValues,
-                          status: 'submitted',
-                          submitted_by: user?.id,
-                        });
-                        await updateChecklistItem.mutateAsync({
-                          id: activeChecklistItemId,
-                          status: 'completed',
-                          form_submission_id: submission.id,
-                          completed_at: new Date().toISOString(),
-                        });
-                        toast.success("Form submitted successfully");
-                        setFormDialogOpen(false);
-                      } catch (err) {
-                        console.error(err);
-                        toast.error("Failed to submit form");
-                      }
-                    }}
-                    disabled={createSubmission.isPending}
-                  >
-                    {createSubmission.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    Submit Form
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Full-screen Form Dialog */}
+      <FullScreenFormDialog
+        open={formDialogOpen}
+        onClose={() => setFormDialogOpen(false)}
+        title={activeFormTemplate?.name || ""}
+        description={activeFormTemplate?.description || undefined}
+        schema={(activeFormTemplate?.form_schema as FormField[]) || []}
+        values={formValues}
+        onChange={setFormValues}
+        readOnly={!activeChecklistItemId}
+        onSubmit={activeChecklistItemId ? async () => {
+          if (!id || !activeFormTemplate || !activeChecklistItemId) return;
+          try {
+            const submission = await createSubmission.mutateAsync({
+              form_template_id: activeFormTemplate.id,
+              patient_id: id,
+              data: formValues,
+              status: 'submitted',
+              submitted_by: user?.id,
+            });
+            await updateChecklistItem.mutateAsync({
+              id: activeChecklistItemId,
+              status: 'completed',
+              form_submission_id: submission.id,
+              completed_at: new Date().toISOString(),
+            });
+            toast.success("Form submitted successfully");
+            setFormDialogOpen(false);
+          } catch (err) {
+            console.error(err);
+            toast.error("Failed to submit form");
+          }
+        } : undefined}
+        isSubmitting={createSubmission.isPending}
+      />
     </div>
   );
 }

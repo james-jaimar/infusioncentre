@@ -5,11 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Search, Eye, Trash2, FileText } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import FormRenderer from "@/components/forms/FormRenderer";
+import FullScreenFormDialog from "@/components/forms/FullScreenFormDialog";
+import type { FormField } from "@/components/forms/FormRenderer";
 
 const categoryLabels: Record<string, string> = {
   administrative: "Administrative",
@@ -163,28 +163,17 @@ export default function AdminFormTemplates() {
         </CardContent>
       </Card>
 
-      {/* Preview Dialog */}
-      <Dialog open={!!previewTemplate} onOpenChange={() => setPreviewTemplate(null)}>
-        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              {previewTemplate?.name}
-            </DialogTitle>
-            {previewTemplate?.description && (
-              <p className="text-sm text-muted-foreground">{previewTemplate.description}</p>
-            )}
-          </DialogHeader>
-          {previewTemplate && (
-            <FormRenderer
-              schema={previewTemplate.form_schema as any[]}
-              values={previewValues}
-              onChange={setPreviewValues}
-              readOnly={false}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Full-screen Preview */}
+      <FullScreenFormDialog
+        open={!!previewTemplate}
+        onClose={() => setPreviewTemplate(null)}
+        title={previewTemplate?.name || ""}
+        description={previewTemplate?.description || undefined}
+        schema={(previewTemplate?.form_schema as FormField[]) || []}
+        values={previewValues}
+        onChange={setPreviewValues}
+        readOnly={false}
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
