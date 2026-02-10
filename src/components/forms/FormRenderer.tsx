@@ -116,7 +116,7 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
     switch (field.field_type) {
       case "info_text":
         return (
-          <div className="rounded-lg border border-primary/10 bg-primary/[0.03] px-5 py-4 text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+          <div className="rounded-lg border border-primary/20 bg-primary/[0.04] px-5 py-4 text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
             {field.content}
           </div>
         );
@@ -133,7 +133,7 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
                 placeholder={field.placeholder}
                 maxLength={field.max_length}
                 onChange={(e) => updateValue(field.field_name, e.target.value)}
-                className="h-11 rounded-lg border-border/60 bg-background focus-visible:ring-primary/30 transition-shadow"
+                className="h-11 rounded-lg border-border bg-background focus-visible:ring-primary/30 transition-shadow"
               />
             )}
           </div>
@@ -150,7 +150,7 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
                 value={val || ""}
                 placeholder={field.placeholder}
                 onChange={(e) => updateValue(field.field_name, e.target.value)}
-                className="min-h-[100px] rounded-lg border-border/60 bg-background focus-visible:ring-primary/30 transition-shadow resize-y"
+                className="min-h-[100px] rounded-lg border-border bg-background focus-visible:ring-primary/30 transition-shadow resize-y"
               />
             )}
           </div>
@@ -167,7 +167,7 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
                 type="number"
                 value={val ?? ""}
                 onChange={(e) => updateValue(field.field_name, e.target.value ? Number(e.target.value) : "")}
-                className="h-11 rounded-lg border-border/60 bg-background focus-visible:ring-primary/30 transition-shadow"
+                className="h-11 rounded-lg border-border bg-background focus-visible:ring-primary/30 transition-shadow"
               />
             )}
           </div>
@@ -184,7 +184,7 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
                 type="date"
                 value={val || ""}
                 onChange={(e) => updateValue(field.field_name, e.target.value)}
-                className="h-11 rounded-lg border-border/60 bg-background focus-visible:ring-primary/30 transition-shadow"
+                className="h-11 rounded-lg border-border bg-background focus-visible:ring-primary/30 transition-shadow"
               />
             )}
           </div>
@@ -198,7 +198,7 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
               <p className="text-sm px-3 py-2.5 bg-muted/40 rounded-lg border border-border/50 min-h-[40px]">{val || "—"}</p>
             ) : (
               <Select value={val || ""} onValueChange={(v) => updateValue(field.field_name, v)}>
-                <SelectTrigger className="h-11 rounded-lg border-border/60">
+                <SelectTrigger className="h-11 rounded-lg border-border">
                   <SelectValue placeholder="Select..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -388,7 +388,7 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
     <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 w-full">
       {/* Sidebar nav for sections */}
       {sections.length > 1 && (
-        <aside className="hidden lg:block lg:w-56 xl:w-64 flex-shrink-0">
+        <aside className="hidden lg:block lg:w-48 xl:w-56 flex-shrink-0">
           <div className="sticky top-6 space-y-1">
             {/* Progress ring */}
             <div className="flex items-center gap-3 px-3 py-3 mb-3">
@@ -472,9 +472,9 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
             className="scroll-mt-6"
           >
             {/* Section card */}
-            <div className="bg-card border border-border/50 rounded-xl shadow-sm overflow-hidden">
+            <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
               {section.title && (
-                <div className="px-5 sm:px-7 py-4 bg-muted/30 border-b border-border/40">
+                <div className="px-5 sm:px-7 py-4 bg-primary/[0.06] border-b border-primary/20">
                   <h3 className="text-base font-semibold text-foreground tracking-tight" style={{ fontSize: '16px', lineHeight: '1.4' }}>
                     {section.title}
                   </h3>
