@@ -115,9 +115,10 @@ export function useUpdateTreatment() {
       if (error) throw error;
       return result as Treatment;
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["treatments"] });
-      queryClient.invalidateQueries({ queryKey: ["treatment"] });
+      queryClient.invalidateQueries({ queryKey: ["treatment", result.id] });
+      queryClient.invalidateQueries({ queryKey: ["treatment", "appointment", result.appointment_id] });
     },
   });
 }

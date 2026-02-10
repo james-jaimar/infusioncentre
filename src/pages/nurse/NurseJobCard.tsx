@@ -176,6 +176,12 @@ export default function NurseJobCard() {
         recorded_by: user.id,
       });
 
+      // Transition treatment to in_progress with started_at
+      await updateTreatment.mutateAsync({
+        id: t.id,
+        data: { status: "in_progress", started_at: new Date().toISOString() },
+      });
+
       await updateAppointment.mutateAsync({ id: appointment.id, data: { status: "in_progress" } });
       toast({ title: "Treatment started!" });
     } catch (err: any) {

@@ -44,6 +44,7 @@ import { cn } from "@/lib/utils";
 import { useAppointment, useUpdateAppointment, useDeleteAppointment } from "@/hooks/useAppointments";
 import { useAppointmentTypes } from "@/hooks/useAppointmentTypes";
 import { useTreatmentChairs } from "@/hooks/useTreatmentChairs";
+import { useNurseStaff } from "@/hooks/useNurseStaff";
 import { AppointmentStatus } from "@/types/appointment";
 
 const statusColors: Record<AppointmentStatus, string> = {
@@ -76,6 +77,7 @@ export default function AppointmentDetail() {
   const { data: appointment, isLoading } = useAppointment(id);
   const { data: appointmentTypes } = useAppointmentTypes(true);
   const { data: chairs } = useTreatmentChairs();
+  const { data: nurses = [] } = useNurseStaff();
   const updateAppointment = useUpdateAppointment();
   const deleteAppointment = useDeleteAppointment();
 
@@ -84,6 +86,7 @@ export default function AppointmentDetail() {
     setEditForm({
       appointment_type_id: appointment.appointment_type_id,
       chair_id: appointment.chair_id || "",
+      assigned_nurse_id: appointment.assigned_nurse_id || "",
       notes: appointment.notes || "",
       scheduled_date: format(parseISO(appointment.scheduled_start), "yyyy-MM-dd"),
       scheduled_time: format(parseISO(appointment.scheduled_start), "HH:mm"),
@@ -102,6 +105,7 @@ export default function AppointmentDetail() {
         data: {
           appointment_type_id: editForm.appointment_type_id,
           chair_id: editForm.chair_id || null,
+          assigned_nurse_id: editForm.assigned_nurse_id || null,
           notes: editForm.notes || null,
           scheduled_start,
           scheduled_end,
@@ -240,6 +244,18 @@ export default function AppointmentDetail() {
                   </Select>
                 </div>
                 <div>
+                  <Label>Assigned Nurse</Label>
+                  <Select value={editForm.assigned_nurse_id || "none"} onValueChange={(v) => setEditForm({ ...editForm, assigned_nurse_id: v === "none" ? "" : v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Not assigned</SelectItem>
+                      {nurses.map((n) => (
+                        <SelectItem key={n.user_id} value={n.user_id}>{n.first_name || ""} {n.last_name || ""}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
                   <Label>Notes</Label>
                   <Textarea value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} rows={3} />
                 </div>
@@ -277,6 +293,19 @@ export default function AppointmentDetail() {
                     <div>
                       <p className="text-sm text-muted-foreground">Treatment Type</p>
                       <p className="font-medium">{appointment.appointment_type.name}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <User className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Assigned Nurse</p>
+                      <p className="font-medium">
+                        {appointment.assigned_nurse_id
+                          ? nurses.find((n) => n.user_id === appointment.assigned_nurse_id)
+                            ? `${nurses.find((n) => n.user_id === appointment.assigned_nurse_id)!.first_name || ""} ${nurses.find((n) => n.user_id === appointment.assigned_nurse_id)!.last_name || ""}`
+                            : "Assigned"
+                          : "Not assigned"}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -348,6 +377,11 @@ export default function AppointmentDetail() {
               {appointment.status === "in_progress" && (
                 <Button variant="outline" onClick={() => handleStatusChange("completed")} className="gap-2">
                   <CheckCircle className="h-4 w-4 text-gray-600" /> Complete
+                </Button>
+              )}
+              {(appointment.status === "checked_in" || appointment.status === "in_progress") && (
+                <Button variant="outline" onClick={() => navigate(`/nurse/job-card/${appointment.id}`)} className="gap-2">
+                  Open Job Card
                 </Button>
               )}
             </div>
