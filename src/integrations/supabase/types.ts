@@ -188,6 +188,48 @@ export type Database = {
         }
         Relationships: []
       }
+      communication_log: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          recipient: string
+          related_entity_id: string | null
+          related_entity_type: string | null
+          sent_at: string | null
+          status: Database["public"]["Enums"]["communication_status"]
+          subject: string | null
+          template: string | null
+          type: Database["public"]["Enums"]["communication_type"]
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          recipient: string
+          related_entity_id?: string | null
+          related_entity_type?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["communication_status"]
+          subject?: string | null
+          template?: string | null
+          type: Database["public"]["Enums"]["communication_type"]
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          recipient?: string
+          related_entity_id?: string | null
+          related_entity_type?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["communication_status"]
+          subject?: string | null
+          template?: string | null
+          type?: Database["public"]["Enums"]["communication_type"]
+        }
+        Relationships: []
+      }
       contact_submissions: {
         Row: {
           assigned_to: string | null
@@ -857,6 +899,8 @@ export type Database = {
         | "post_treatment"
         | "ketamine_monitoring"
       booking_status: "pending" | "confirmed" | "completed" | "cancelled"
+      communication_status: "pending" | "sent" | "failed"
+      communication_type: "email" | "whatsapp" | "sms"
       contact_status: "new" | "in_progress" | "resolved" | "archived"
       document_type:
         | "prescription"
@@ -1022,6 +1066,8 @@ export const Constants = {
         "ketamine_monitoring",
       ],
       booking_status: ["pending", "confirmed", "completed", "cancelled"],
+      communication_status: ["pending", "sent", "failed"],
+      communication_type: ["email", "whatsapp", "sms"],
       contact_status: ["new", "in_progress", "resolved", "archived"],
       document_type: [
         "prescription",
