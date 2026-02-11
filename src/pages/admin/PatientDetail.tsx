@@ -1,12 +1,12 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import SendInviteDialog from "@/components/admin/SendInviteDialog";
 import { usePatient, useUpdatePatient, useDeletePatient } from "@/hooks/usePatients";
 import { usePatientMedicalHistory, useUpsertPatientMedicalHistory } from "@/hooks/usePatientMedicalHistory";
 import { usePatientDocuments, useUploadPatientDocument, useDeletePatientDocument, useGetDocumentUrl } from "@/hooks/usePatientDocuments";
 import { useOnboardingChecklist, useGenerateChecklist, useUpdateChecklistItem } from "@/hooks/useOnboardingChecklist";
-import { useFormTemplate } from "@/hooks/useFormTemplates";
-import { useCreateFormSubmission } from "@/hooks/useFormSubmissions";
+import { useFormTemplate, useFormTemplates } from "@/hooks/useFormTemplates";
+import { useFormSubmissions, useCreateFormSubmission } from "@/hooks/useFormSubmissions";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import FullScreenFormDialog from "@/components/forms/FullScreenFormDialog";
+import FormRenderer from "@/components/forms/FormRenderer";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -59,6 +60,12 @@ import {
   Ban,
   Eye,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { PatientStatus, DocumentType } from "@/types/patient";
 import type { FormField } from "@/components/forms/FormRenderer";
 
@@ -88,6 +95,8 @@ export default function PatientDetail() {
   const { data: documents } = usePatientDocuments(id);
   const { data: checklist } = useOnboardingChecklist(id);
   const { data: activeFormTemplate } = useFormTemplate(activeFormTemplateId);
+  const { data: submissions } = useFormSubmissions(id);
+  const { data: allTemplates } = useFormTemplates();
   const { user } = useAuth();
   
   const updatePatient = useUpdatePatient();
@@ -99,6 +108,34 @@ export default function PatientDetail() {
   const generateChecklist = useGenerateChecklist();
   const updateChecklistItem = useUpdateChecklistItem();
   const createSubmission = useCreateFormSubmission();
+
+  // Completed form submissions for dynamic tabs
+  const completedSubmissions = useMemo(() => {
+    if (!submissions) return [];
+    return submissions.filter(
+      (s: any) => s.status === 'submitted' || s.status === 'reviewed' || s.status === 'approved'
+    );
+  }, [submissions]);
+
+  // Build a map of template_id -> schema for rendering
+  const templateSchemaMap = useMemo(() => {
+    if (!allTemplates) return {};
+    const map: Record<string, FormField[]> = {};
+    for (const t of allTemplates) {
+      map[t.id] = t.form_schema as FormField[];
+    }
+    return map;
+  }, [allTemplates]);
+
+  // Build submission-to-template lookup for the View button fix
+  const submissionById = useMemo(() => {
+    if (!submissions) return {};
+    const map: Record<string, any> = {};
+    for (const s of submissions) {
+      map[s.id] = s;
+    }
+    return map;
+  }, [submissions]);
 
   const handleEdit = () => {
     setEditedData({ ...patient });
@@ -216,6 +253,12 @@ export default function PatientDetail() {
 
   const displayData = isEditing ? editedData : patient;
 
+  // Check if multiple submissions exist for same template (for date suffixes)
+  const templateSubmissionCounts: Record<string, number> = {};
+  completedSubmissions.forEach((s: any) => {
+    templateSubmissionCounts[s.form_template_id] = (templateSubmissionCounts[s.form_template_id] || 0) + 1;
+  });
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -302,7 +345,7 @@ export default function PatientDetail() {
 
       {/* Tabs */}
       <Tabs defaultValue="profile">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="profile">
             <User className="mr-2 h-4 w-4" />
             Profile
@@ -324,6 +367,33 @@ export default function PatientDetail() {
               </Badge>
             )}
           </TabsTrigger>
+          {/* Dynamic tabs for completed form submissions */}
+          {completedSubmissions.map((sub: any, idx: number) => {
+            const templateName = sub.form_templates?.name || "Form";
+            const hasMultiple = templateSubmissionCounts[sub.form_template_id] > 1;
+            const tabLabel = hasMultiple
+              ? `${templateName} (${new Date(sub.created_at).toLocaleDateString('en-ZA')})`
+              : templateName;
+            
+            return (
+              <TooltipProvider key={sub.id}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <TabsTrigger value={`form-${sub.id}`} className="max-w-[180px]">
+                      <FileText className="mr-2 h-4 w-4 flex-shrink-0" />
+                      <span className="truncate">{tabLabel}</span>
+                    </TabsTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{templateName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Submitted {new Date(sub.created_at).toLocaleDateString('en-ZA')}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            );
+          })}
         </TabsList>
 
         {/* Profile Tab */}
@@ -951,9 +1021,13 @@ export default function PatientDetail() {
                           size="sm"
                           variant="ghost"
                           onClick={() => {
+                            // Load actual submission data for the View button
+                            const submission = item.form_submission_id
+                              ? submissionById[item.form_submission_id]
+                              : null;
                             setActiveFormTemplateId(item.form_template_id);
                             setActiveChecklistItemId(undefined);
-                            setFormValues({});
+                            setFormValues(submission?.data && typeof submission.data === 'object' ? submission.data as Record<string, any> : {});
                             setFormDialogOpen(true);
                           }}
                         >
@@ -967,6 +1041,45 @@ export default function PatientDetail() {
             </div>
           )}
         </TabsContent>
+
+        {/* Dynamic Form Submission Tabs */}
+        {completedSubmissions.map((sub: any) => {
+          const schema = templateSchemaMap[sub.form_template_id] || [];
+          const submissionData = (sub.data && typeof sub.data === 'object' ? sub.data : {}) as Record<string, any>;
+          
+          return (
+            <TabsContent key={sub.id} value={`form-${sub.id}`} className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-5 w-5" />
+                      {sub.form_templates?.name || "Submitted Form"}
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground font-normal">
+                      <Badge variant="secondary">
+                        {sub.status}
+                      </Badge>
+                      <span>Submitted {new Date(sub.created_at).toLocaleDateString('en-ZA')}</span>
+                    </div>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {schema.length > 0 ? (
+                    <FormRenderer
+                      schema={schema}
+                      values={submissionData}
+                      onChange={() => {}}
+                      readOnly={true}
+                    />
+                  ) : (
+                    <p className="text-muted-foreground">Form template schema not available.</p>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          );
+        })}
       </Tabs>
 
       {/* Full-screen Form Dialog */}
