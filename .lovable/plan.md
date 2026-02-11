@@ -1,52 +1,30 @@
 
-# Fix: End-to-End Clinical Workflow Linkage
+# Add Completed Forms as Tabs on Patient Detail
 
-## Issues Identified
+## Overview
 
-After tracing the entire patient journey from appointment creation through to discharge, here are the problems found:
+When a patient completes an onboarding form, the filled-in form data should appear as its own tab on the patient detail page. This gives nurses and admins instant access to the patient's submitted information (consent forms, medical questionnaires, etc.) without having to navigate through the onboarding checklist.
 
-### 1. Screen doesn't refresh after status changes (Admin Appointment Detail)
-When you click "Confirm", "Check In", or "Start Treatment" on the admin appointment detail page, the toast says success but the UI badge and available action buttons don't visually update. This is because `useUpdateAppointment` invalidates the `["appointments"]` query key, but the single appointment view uses `["appointment", id]` -- a different query key. The mutation's `onSuccess` never triggers a refetch of the individual appointment data.
+## Current Problem
 
-### 2. Treatment never transitions to "in_progress"
-In `NurseJobCard.tsx`, `handleStartTreatment` creates a treatment record (which defaults to `status: "pending"`, `started_at: null`), records pre-vitals and assessment, and updates the appointment to `in_progress`. But it never updates the treatment itself to `status: "in_progress"` or sets `started_at`. This means the treatment timer never starts, the stepper stays on the wrong step, and the "End Treatment" button never appears.
+1. Completed forms are buried inside the Onboarding tab -- you have to scroll through the checklist to find them.
+2. The existing "View" button on completed items is actually broken -- it opens the form template with empty values instead of loading the saved submission data.
 
-### 3. No nurse assignment on appointments
-The appointment creation form (`AppointmentNew.tsx`) has no field to assign a nurse. The `assigned_nurse_id` is always set to `null`. There's no way for admin to assign a nurse, and the appointment detail page doesn't show or allow editing the nurse assignment either.
+## What Gets Built
 
-### 4. Discharge "Back" button links to wrong route
-`NurseDischarge.tsx` has a "Back to treatment" link pointing to `/nurse/treatment/{treatmentId}` (the old `NurseActiveTreatment` page), not back to the Job Card which is now the primary workflow.
+### Dynamic form tabs
 
-### 5. Duplicate/parallel screens with no clear primary
-`NurseCheckIn.tsx` and `NurseActiveTreatment.tsx` exist as standalone pages alongside the Job Card, which duplicates functionality and creates confusion. The Job Card should be the single source of truth.
+The tab bar currently shows: **Profile | Medical History | Documents | Onboarding**
 
-### 6. Admin appointment detail has no link to the nurse Job Card
-When viewing an appointment in the admin panel, there's no way to open the Job Card or see it from the admin side. Admin should be able to start a treatment or link through to the nurse view.
+After this change, any completed form submissions will appear as additional tabs after Onboarding:
 
----
+**Profile | Medical History | Documents | Onboarding | Consent Form | Medical Questionnaire | ...**
 
-## What Gets Fixed
+Each form tab renders the submitted form in read-only mode using the existing `FormRenderer` component, showing exactly what the patient filled in (including signatures, medication tables, etc.).
 
-### A. Query invalidation fix (screen refresh issue)
-Update `useUpdateAppointment` and `useDeleteAppointment` in `useAppointments.ts` to also invalidate the single `["appointment"]` query key, so the detail view refreshes after status changes.
+### Fix the "View" button
 
-Similarly, update `useUpdateTreatment` to invalidate both `["treatments"]` and the specific `["treatment"]` keys properly.
-
-### B. Treatment status transition fix
-In `NurseJobCard.tsx`, after creating the treatment, immediately update it to `status: "in_progress"` and `started_at: new Date().toISOString()`. This makes the timer start, the stepper advance, and the "End Treatment" button appear.
-
-### C. Nurse assignment
-Add a nurse selector to:
-- `AppointmentNew.tsx` -- select a nurse when creating an appointment
-- `AppointmentDetail.tsx` -- view and edit the assigned nurse
-
-This requires fetching staff with the "nurse" role. A new hook `useNurseStaff` will query `user_roles` + `profiles` to get available nurses.
-
-### D. Fix discharge navigation
-Update `NurseDischarge.tsx` to navigate back to the Job Card (`/nurse/job-card/{appointmentId}`) instead of the old treatment page. This requires the discharge page to know the appointment ID (available from the treatment record).
-
-### E. Admin-to-Job-Card link
-Add a "Open Job Card" button on the admin `AppointmentDetail.tsx` that links to `/nurse/job-card/{appointmentId}`, visible when the appointment is checked_in or in_progress.
+The existing "View" button on completed onboarding items will also be fixed to load the actual submission data instead of showing an empty form.
 
 ---
 
@@ -56,23 +34,32 @@ Add a "Open Job Card" button on the admin `AppointmentDetail.tsx` that links to 
 
 | File | Changes |
 |---|---|
-| `src/hooks/useAppointments.ts` | Fix `onSuccess` in mutations to invalidate `["appointment"]` query key too |
-| `src/hooks/useTreatments.ts` | Fix `onSuccess` in `useUpdateTreatment` to invalidate specific treatment keys |
-| `src/pages/nurse/NurseJobCard.tsx` | After `createTreatment`, call `updateTreatment` to set `status: "in_progress"` and `started_at` |
-| `src/pages/admin/AppointmentNew.tsx` | Add nurse selector field |
-| `src/pages/admin/AppointmentDetail.tsx` | Add nurse display/edit + "Open Job Card" button |
-| `src/pages/nurse/NurseDischarge.tsx` | Fix back navigation to Job Card |
+| `src/pages/admin/PatientDetail.tsx` | Import `useFormSubmissions`, fetch submissions, render dynamic tabs for each completed submission, fix "View" button to load submission data |
+| `src/hooks/useFormSubmissions.ts` | No changes needed -- already fetches submissions with template name/category |
 
-### Files to create
+### How it works
 
-| File | Purpose |
-|---|---|
-| `src/hooks/useNurseStaff.ts` | Hook to fetch users with the "nurse" role and their profile names |
+1. Fetch all form submissions for the patient using the existing `useFormSubmissions(id)` hook (already joins `form_templates(name, category)`).
+2. Filter to only `submitted` or `completed` status submissions.
+3. For each submission, fetch or cache its form template schema (needed to render the form).
+4. Add a `TabsTrigger` for each submission, labelled with the form template name (e.g., "Consent Form").
+5. Each `TabsContent` renders `FormRenderer` with `readOnly={true}`, passing the submission's `data` as values and the template's `form_schema` as the schema.
+6. If signatures were captured, they display inline (the `SignatureCanvas` component already supports read-only rendering).
+
+### Fix for the "View" button
+
+The onboarding checklist items with `status === 'completed'` have a `form_submission_id` linking to the actual submission. When "View" is clicked, load the submission data from the fetched submissions list and pass it as `formValues` to the `FullScreenFormDialog`.
+
+### Edge cases
+
+- If a patient has no completed forms, no extra tabs appear -- the UI looks identical to today.
+- If multiple submissions exist for the same form template (e.g., re-submitted), each gets its own tab with a date suffix to distinguish them.
+- Tab labels are truncated if the form name is long, with a tooltip showing the full name.
 
 ### Implementation order
-1. Fix query invalidation (immediate screen refresh fix)
-2. Fix treatment status transition in Job Card
-3. Create nurse staff hook
-4. Add nurse assignment to appointment creation and detail views
-5. Fix discharge navigation
-6. Add admin-to-Job-Card link
+
+1. Add `useFormSubmissions` import and fetch call
+2. Add `useFormTemplates` fetch (needed for schemas of all submitted forms)
+3. Generate dynamic tabs from completed submissions
+4. Render each form tab with `FormRenderer` in read-only mode
+5. Fix the "View" button on completed onboarding items to load submission data
