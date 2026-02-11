@@ -274,8 +274,9 @@ const Contact = () => {
                     <div>
                       <h3 className="font-semibold text-foreground mb-1">Address</h3>
                       <p className="text-muted-foreground">
-                        Northcliff, Johannesburg<br />
-                        South Africa
+                        353 Beyers Naudé Drive<br />
+                        Northcliff (Urban Dive Centre)<br />
+                        Johannesburg
                       </p>
                     </div>
                   </div>
@@ -285,7 +286,7 @@ const Contact = () => {
               {/* Google Maps Embed */}
               <div className="h-[300px] lg:h-[350px] w-full">
                 <iframe
-                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d14325.440982565897!2d27.961539!3d-26.139799!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x1e950c08a5d5d3e1%3A0x7c3c5f8d2b8f9e0a!2sNorthcliff%2C%20Johannesburg%2C%20South%20Africa!5e0!3m2!1sen!2s!4v1704067200000!5m2!1sen!2s"
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3584.5!2d27.9615!3d-26.1398!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x1e950cf8b91c6c1d%3A0x2e0b0e7c5a1b3f0a!2s353%20Beyers%20Naud%C3%A9%20Dr%2C%20Northcliff%2C%20Johannesburg!5e0!3m2!1sen!2sza!4v1707000000000!5m2!1sen!2sza"
                   width="100%"
                   height="100%"
                   style={{ border: 0 }}
