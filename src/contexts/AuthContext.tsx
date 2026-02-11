@@ -43,6 +43,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null);
 
         if (session?.user) {
+          // Set loading true while we fetch role/profile
+          setLoading(true);
           // Defer data fetching to avoid blocking auth state
           setTimeout(() => {
             fetchUserData(session.user.id);
