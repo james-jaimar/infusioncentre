@@ -444,6 +444,48 @@ export type Database = {
         }
         Relationships: []
       }
+      email_templates: {
+        Row: {
+          created_at: string
+          description: string | null
+          html_body: string
+          id: string
+          is_active: boolean
+          name: string
+          slug: string
+          subject: string
+          text_body: string | null
+          updated_at: string
+          variables: string[] | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          html_body: string
+          id?: string
+          is_active?: boolean
+          name: string
+          slug: string
+          subject: string
+          text_body?: string | null
+          updated_at?: string
+          variables?: string[] | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          html_body?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          slug?: string
+          subject?: string
+          text_body?: string | null
+          updated_at?: string
+          variables?: string[] | null
+        }
+        Relationships: []
+      }
       form_submissions: {
         Row: {
           created_at: string
