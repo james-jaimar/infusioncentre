@@ -6,10 +6,15 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Search, Eye, Trash2, FileText } from "lucide-react";
+import { Plus, Search, Eye, Trash2, Pencil, Upload } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import FullScreenFormDialog from "@/components/forms/FullScreenFormDialog";
+import FormTemplateEditor from "@/components/forms/FormTemplateEditor";
+import AIImportDialog from "@/components/forms/AIImportDialog";
 import type { FormField } from "@/components/forms/FormRenderer";
+import type { Database } from "@/integrations/supabase/types";
+
+type FormCategory = Database["public"]["Enums"]["form_category"];
 
 const categoryLabels: Record<string, string> = {
   administrative: "Administrative",
@@ -30,8 +35,21 @@ export default function AdminFormTemplates() {
   const deleteTemplate = useDeleteFormTemplate();
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+
+  // Preview dialog state
   const [previewTemplate, setPreviewTemplate] = useState<FormTemplate | null>(null);
   const [previewValues, setPreviewValues] = useState<Record<string, any>>({});
+
+  // Editor state
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<FormTemplate | null>(null);
+  const [importedSchema, setImportedSchema] = useState<FormField[] | undefined>();
+  const [importedName, setImportedName] = useState<string | undefined>();
+  const [importedDescription, setImportedDescription] = useState<string | undefined>();
+  const [importedCategory, setImportedCategory] = useState<FormCategory | undefined>();
+
+  // AI import state
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   const filtered = templates?.filter((t) => {
     const matchesSearch = t.name.toLowerCase().includes(search.toLowerCase());
@@ -49,12 +67,38 @@ export default function AdminFormTemplates() {
     }
   };
 
+  const openEditor = (template?: FormTemplate) => {
+    setEditingTemplate(template || null);
+    setImportedSchema(undefined);
+    setImportedName(undefined);
+    setImportedDescription(undefined);
+    setImportedCategory(undefined);
+    setEditorOpen(true);
+  };
+
+  const handleAIImport = (data: { schema: FormField[]; name: string; description: string; category: FormCategory }) => {
+    setEditingTemplate(null);
+    setImportedSchema(data.schema);
+    setImportedName(data.name);
+    setImportedDescription(data.description);
+    setImportedCategory(data.category);
+    setEditorOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Form Templates</h1>
           <p className="text-muted-foreground">Manage clinical forms and consent documents.</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+            <Upload className="h-4 w-4 mr-2" /> Import from Document
+          </Button>
+          <Button onClick={() => openEditor()}>
+            <Plus className="h-4 w-4 mr-2" /> New Template
+          </Button>
         </div>
       </div>
 
@@ -135,6 +179,9 @@ export default function AdminFormTemplates() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => openEditor(t)} title="Edit">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -142,14 +189,11 @@ export default function AdminFormTemplates() {
                               setPreviewTemplate(t);
                               setPreviewValues({});
                             }}
+                            title="Preview"
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(t.id, t.name)}
-                          >
+                          <Button variant="ghost" size="sm" onClick={() => handleDelete(t.id, t.name)} title="Delete">
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -162,18 +206,6 @@ export default function AdminFormTemplates() {
           </Table>
         </CardContent>
       </Card>
-
-      {/* Full-screen Preview */}
-      <FullScreenFormDialog
-        open={!!previewTemplate}
-        onClose={() => setPreviewTemplate(null)}
-        title={previewTemplate?.name || ""}
-        description={previewTemplate?.description || undefined}
-        schema={(previewTemplate?.form_schema as FormField[]) || []}
-        values={previewValues}
-        onChange={setPreviewValues}
-        readOnly={false}
-      />
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -207,6 +239,36 @@ export default function AdminFormTemplates() {
           </ul>
         </CardContent>
       </Card>
+
+      {/* Full-screen Preview */}
+      <FullScreenFormDialog
+        open={!!previewTemplate}
+        onClose={() => setPreviewTemplate(null)}
+        title={previewTemplate?.name || ""}
+        description={previewTemplate?.description || undefined}
+        schema={(previewTemplate?.form_schema as FormField[]) || []}
+        values={previewValues}
+        onChange={setPreviewValues}
+        readOnly={false}
+      />
+
+      {/* Editor */}
+      <FormTemplateEditor
+        open={editorOpen}
+        onClose={() => setEditorOpen(false)}
+        template={editingTemplate}
+        initialSchema={importedSchema}
+        initialName={importedName}
+        initialDescription={importedDescription}
+        initialCategory={importedCategory}
+      />
+
+      {/* AI Import Dialog */}
+      <AIImportDialog
+        open={importDialogOpen}
+        onClose={() => setImportDialogOpen(false)}
+        onImported={handleAIImport}
+      />
     </div>
   );
 }
