@@ -15,6 +15,7 @@ import {
   FileText,
   ClipboardList,
   Package,
+  Mail,
 } from "lucide-react";
 import { useState } from "react";
 import logo from "@/assets/logo.png";
@@ -29,6 +30,7 @@ const navigation = [
   { name: "Staff", href: "/admin/staff", icon: Users },
   { name: "Training Bookings", href: "/admin/training", icon: GraduationCap },
   { name: "Billable Items", href: "/admin/billable-items", icon: Package },
+  { name: "Communications", href: "/admin/communications", icon: Mail },
   { name: "Reports", href: "/admin/reports", icon: BarChart3 },
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
