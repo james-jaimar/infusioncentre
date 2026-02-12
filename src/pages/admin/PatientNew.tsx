@@ -168,7 +168,7 @@ export default function PatientNew() {
       }
 
       toast.success("Patient created successfully");
-      navigate(`/admin/patients/${patient.id}`);
+      navigate(`/admin/patients/${patient.id}?showNextSteps=true`);
     } catch (error) {
       console.error("Error creating patient:", error);
       toast.error("Failed to create patient. Please try again.");
