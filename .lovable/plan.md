@@ -1,65 +1,97 @@
 
-# Add Completed Forms as Tabs on Patient Detail
+
+# AI-Powered Form Template Editor for Gayle
 
 ## Overview
 
-When a patient completes an onboarding form, the filled-in form data should appear as its own tab on the patient detail page. This gives nurses and admins instant access to the patient's submitted information (consent forms, medical questionnaires, etc.) without having to navigate through the onboarding checklist.
+Build two capabilities into the admin Form Templates page so Gayle can maintain forms herself:
 
-## Current Problem
+1. **AI Document Import** -- Upload a PDF/Word document or scan, and AI extracts the content into a structured form template automatically
+2. **Visual Form Editor** -- A drag-and-drop interface to manually add, edit, reorder, and delete fields and text blocks
 
-1. Completed forms are buried inside the Onboarding tab -- you have to scroll through the checklist to find them.
-2. The existing "View" button on completed items is actually broken -- it opens the form template with empty values instead of loading the saved submission data.
+Together, Gayle can import a new form from a document, then fine-tune it visually before publishing.
 
 ## What Gets Built
 
-### Dynamic form tabs
+### 1. AI Form Importer
 
-The tab bar currently shows: **Profile | Medical History | Documents | Onboarding**
+A button on the Form Templates page: **"Import from Document"**
 
-After this change, any completed form submissions will appear as additional tabs after Onboarding:
+- Opens a dialog where Gayle uploads a PDF, Word doc, or image/scan
+- The file is sent to an edge function that uses Lovable AI (Gemini) to extract and structure the form
+- AI identifies: section headers, info/terms text blocks, input fields (text, date, checkbox, signature, etc.), and their types
+- Returns a preview of the generated form template
+- Gayle reviews the preview, makes any tweaks in the visual editor, then saves
 
-**Profile | Medical History | Documents | Onboarding | Consent Form | Medical Questionnaire | ...**
+### 2. Visual Form Editor
 
-Each form tab renders the submitted form in read-only mode using the existing `FormRenderer` component, showing exactly what the patient filled in (including signatures, medication tables, etc.).
+A full-screen editor (similar to the existing form preview dialog) with:
 
-### Fix the "View" button
+- **Field palette** on the side: drag or click to add section headers, info text, text fields, checkboxes, signatures, etc.
+- **Inline editing**: click any field to edit its label, placeholder, options, or content text
+- **Drag to reorder**: grab handle on each field to reposition
+- **Delete**: remove any field
+- **Rich text for info_text blocks**: a textarea where Gayle can write/paste the terms, side effects, contraindications etc.
+- **Save and Version**: saves update the form_schema in the database, incrementing the version number
 
-The existing "View" button on completed onboarding items will also be fixed to load the actual submission data instead of showing an empty form.
+### 3. Edit existing templates
+
+An "Edit" button alongside the existing "Preview" and "Delete" buttons on each template row, opening the visual editor pre-loaded with that template's schema.
 
 ---
 
 ## Technical Details
 
+### New files to create
+
+| File | Purpose |
+|---|---|
+| `src/components/forms/FormTemplateEditor.tsx` | Visual drag-and-drop form builder component |
+| `src/components/forms/FieldPalette.tsx` | Sidebar with available field types to add |
+| `src/components/forms/FieldEditor.tsx` | Inline editor panel for a selected field's properties |
+| `src/components/forms/AIImportDialog.tsx` | Upload dialog that sends document to AI for extraction |
+| `supabase/functions/extract-form-template/index.ts` | Edge function that receives the uploaded file, uses Lovable AI to parse it into a form_schema JSON structure |
+
 ### Files to modify
 
 | File | Changes |
 |---|---|
-| `src/pages/admin/PatientDetail.tsx` | Import `useFormSubmissions`, fetch submissions, render dynamic tabs for each completed submission, fix "View" button to load submission data |
-| `src/hooks/useFormSubmissions.ts` | No changes needed -- already fetches submissions with template name/category |
+| `src/pages/admin/AdminFormTemplates.tsx` | Add "Import from Document" button, "Edit" button per row, wire up editor and import dialogs |
+| `src/hooks/useFormTemplates.ts` | No changes needed -- already has create/update/delete mutations |
 
-### How it works
+### AI extraction approach
 
-1. Fetch all form submissions for the patient using the existing `useFormSubmissions(id)` hook (already joins `form_templates(name, category)`).
-2. Filter to only `submitted` or `completed` status submissions.
-3. For each submission, fetch or cache its form template schema (needed to render the form).
-4. Add a `TabsTrigger` for each submission, labelled with the form template name (e.g., "Consent Form").
-5. Each `TabsContent` renders `FormRenderer` with `readOnly={true}`, passing the submission's `data` as values and the template's `form_schema` as the schema.
-6. If signatures were captured, they display inline (the `SignatureCanvas` component already supports read-only rendering).
+The edge function will:
+1. Receive the uploaded document (as base64 or form data)
+2. If it's a PDF/image, extract text (using the document content directly -- Gemini handles multimodal input)
+3. Send the text to Lovable AI with a structured prompt asking it to return a `form_schema` array matching the existing FormField interface
+4. Use tool calling to extract structured JSON output (not freeform JSON)
+5. Return the structured schema to the frontend
 
-### Fix for the "View" button
+The prompt will include examples of the existing field types (section_header, info_text, text, textarea, checkbox, signature, medication_table, etc.) so the AI maps document content accurately.
 
-The onboarding checklist items with `status === 'completed'` have a `form_submission_id` linking to the actual submission. When "View" is clicked, load the submission data from the fetched submissions list and pass it as `formValues` to the `FullScreenFormDialog`.
+### Visual editor approach
+
+- Uses React state to manage an array of FormField objects
+- Each field rendered as an editable card with drag handle
+- For reordering: simple move-up/move-down buttons (simpler and more reliable than full drag-and-drop library)
+- Selected field opens a property panel on the right side
+- "Preview" button renders the form using the existing FormRenderer in read-only mode
+- "Save" calls `useUpdateFormTemplate` or `useCreateFormTemplate` depending on context
 
 ### Edge cases
 
-- If a patient has no completed forms, no extra tabs appear -- the UI looks identical to today.
-- If multiple submissions exist for the same form template (e.g., re-submitted), each gets its own tab with a date suffix to distinguish them.
-- Tab labels are truncated if the form name is long, with a tooltip showing the full name.
+- If AI extraction produces poor results, Gayle can fix everything in the visual editor
+- Version number auto-increments on save so there's an audit trail
+- Existing form submissions are not affected by template edits (they store their own data snapshot)
+- Large documents: the edge function limits to reasonable text size for AI processing
 
 ### Implementation order
 
-1. Add `useFormSubmissions` import and fetch call
-2. Add `useFormTemplates` fetch (needed for schemas of all submitted forms)
-3. Generate dynamic tabs from completed submissions
-4. Render each form tab with `FormRenderer` in read-only mode
-5. Fix the "View" button on completed onboarding items to load submission data
+1. Create the edge function for AI document extraction
+2. Build the AI Import Dialog component
+3. Build the Field Palette and Field Editor components
+4. Build the main Form Template Editor (full-screen)
+5. Wire everything into AdminFormTemplates page
+6. Test end-to-end: upload a document, review AI output, edit, save, preview
+
