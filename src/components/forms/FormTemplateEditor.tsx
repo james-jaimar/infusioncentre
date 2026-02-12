@@ -5,11 +5,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Save, Eye, ChevronUp, ChevronDown, Trash2, GripVertical, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, Eye, ChevronUp, ChevronDown, Trash2, GripVertical, Loader2, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import FieldPalette from "./FieldPalette";
 import FieldEditor from "./FieldEditor";
 import FormRenderer, { type FormField } from "./FormRenderer";
+import AIImportDialog from "./AIImportDialog";
 import { useCreateFormTemplate, useUpdateFormTemplate, type FormTemplate } from "@/hooks/useFormTemplates";
 import { toast } from "@/hooks/use-toast";
 import type { Database } from "@/integrations/supabase/types";
@@ -93,10 +94,20 @@ export default function FormTemplateEditor({
   const updateTemplate = useUpdateFormTemplate();
   const isSaving = createTemplate.isPending || updateTemplate.isPending;
 
+  // Re-import dialog state (inside editor)
+  const [reimportOpen, setReimportOpen] = useState(false);
+
   // Initialize from template or AI import
   useEffect(() => {
     if (!open) return;
-    if (template) {
+    if (template && initialSchema) {
+      // Re-import scenario: template metadata + new AI schema
+      setFields(initialSchema);
+      setName(template.name);
+      setDescription(template.description || "");
+      setCategory(template.category as FormCategory);
+      setIsActive(template.is_active);
+    } else if (template) {
       setFields((template.form_schema as FormField[]) || []);
       setName(template.name);
       setDescription(template.description || "");
@@ -219,6 +230,11 @@ export default function FormTemplateEditor({
           </h2>
         </div>
         <div className="flex items-center gap-2">
+          {template && (
+            <Button variant="outline" size="sm" onClick={() => setReimportOpen(true)} className="h-8">
+              <Upload className="h-3.5 w-3.5 mr-1.5" /> Re-import
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={() => setShowPreview(true)} className="h-8">
             <Eye className="h-3.5 w-3.5 mr-1.5" /> Preview
           </Button>
@@ -338,6 +354,17 @@ export default function FormTemplateEditor({
           )}
         </aside>
       </div>
+
+      {/* Re-import dialog (inside editor) */}
+      <AIImportDialog
+        open={reimportOpen}
+        onClose={() => setReimportOpen(false)}
+        onImported={(data) => {
+          setFields(data.schema);
+          setReimportOpen(false);
+          toast({ title: `Replaced fields with ${data.schema.length} extracted fields` });
+        }}
+      />
     </div>
   );
 }
