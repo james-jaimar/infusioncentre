@@ -50,6 +50,7 @@ export default function AdminFormTemplates() {
 
   // AI import state
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [reimportTemplate, setReimportTemplate] = useState<FormTemplate | null>(null);
 
   const filtered = templates?.filter((t) => {
     const matchesSearch = t.name.toLowerCase().includes(search.toLowerCase());
@@ -77,11 +78,22 @@ export default function AdminFormTemplates() {
   };
 
   const handleAIImport = (data: { schema: FormField[]; name: string; description: string; category: FormCategory }) => {
-    setEditingTemplate(null);
-    setImportedSchema(data.schema);
-    setImportedName(data.name);
-    setImportedDescription(data.description);
-    setImportedCategory(data.category);
+    if (reimportTemplate) {
+      // Re-import: keep existing template metadata, replace schema
+      setEditingTemplate(reimportTemplate);
+      setImportedSchema(data.schema);
+      setImportedName(undefined);
+      setImportedDescription(undefined);
+      setImportedCategory(undefined);
+      setReimportTemplate(null);
+    } else {
+      // New import
+      setEditingTemplate(null);
+      setImportedSchema(data.schema);
+      setImportedName(data.name);
+      setImportedDescription(data.description);
+      setImportedCategory(data.category);
+    }
     setEditorOpen(true);
   };
 
@@ -186,6 +198,17 @@ export default function AdminFormTemplates() {
                             variant="ghost"
                             size="sm"
                             onClick={() => {
+                              setReimportTemplate(t);
+                              setImportDialogOpen(true);
+                            }}
+                            title="Re-import from document"
+                          >
+                            <Upload className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
                               setPreviewTemplate(t);
                               setPreviewValues({});
                             }}
@@ -266,7 +289,10 @@ export default function AdminFormTemplates() {
       {/* AI Import Dialog */}
       <AIImportDialog
         open={importDialogOpen}
-        onClose={() => setImportDialogOpen(false)}
+        onClose={() => {
+          setImportDialogOpen(false);
+          setReimportTemplate(null);
+        }}
         onImported={handleAIImport}
       />
     </div>
