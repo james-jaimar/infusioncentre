@@ -51,9 +51,15 @@ export default function SendInviteDialog({
       });
       const inviteUrl = `${window.location.origin}/invite/${result.invite.token}`;
       await navigator.clipboard.writeText(inviteUrl);
-      toast.success("Invite created! Link copied to clipboard.", {
-        description: "Share this link with the patient.",
-      });
+      if (result.email_sent) {
+        toast.success("Invite email sent & link copied!", {
+          description: `A branded invitation was emailed to ${email}.`,
+        });
+      } else {
+        toast.success("Invite created! Link copied to clipboard.", {
+          description: "Email delivery failed — share the link manually.",
+        });
+      }
     } catch (err: any) {
       toast.error(err.message || "Failed to send invite");
     }
