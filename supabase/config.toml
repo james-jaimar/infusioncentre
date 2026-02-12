@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.send-patient-invite]
 verify_jwt = false
+
+[functions.extract-form-template]
+verify_jwt = false
