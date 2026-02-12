@@ -1,97 +1,70 @@
 
 
-# AI-Powered Form Template Editor for Gayle
+# Add "Re-import from Document" to Existing Templates
 
-## Overview
+## The Problem
 
-Build two capabilities into the admin Form Templates page so Gayle can maintain forms herself:
+The AI import flow currently always creates a new template. If Gayle has an updated version of a consent form (e.g., updated terms), she has no way to upload the new document and have it replace the existing template's fields. She'd have to create a new template and delete the old one, losing the link to existing submissions.
 
-1. **AI Document Import** -- Upload a PDF/Word document or scan, and AI extracts the content into a structured form template automatically
-2. **Visual Form Editor** -- A drag-and-drop interface to manually add, edit, reorder, and delete fields and text blocks
+## What Changes
 
-Together, Gayle can import a new form from a document, then fine-tune it visually before publishing.
+### 1. "Re-import" button inside the Form Template Editor
 
-## What Gets Built
+When editing an **existing** template, add an **"Upload / Re-import"** button in the editor's top bar (next to Preview and Save). Clicking it opens the same AI Import Dialog, but instead of creating a new template, the extracted schema replaces the current editor fields. Gayle can then review, tweak, and save — updating the existing template in place with an incremented version number.
 
-### 1. AI Form Importer
+### 2. "Re-import" action on the templates table
 
-A button on the Form Templates page: **"Import from Document"**
+Add a small upload icon button alongside Edit / Preview / Delete on each template row. This opens the AI Import Dialog, and when extraction completes, it opens the editor for that template pre-loaded with the new AI-extracted schema (but keeping the existing template's name, category, and ID so it saves as an update).
 
-- Opens a dialog where Gayle uploads a PDF, Word doc, or image/scan
-- The file is sent to an edge function that uses Lovable AI (Gemini) to extract and structure the form
-- AI identifies: section headers, info/terms text blocks, input fields (text, date, checkbox, signature, etc.), and their types
-- Returns a preview of the generated form template
-- Gayle reviews the preview, makes any tweaks in the visual editor, then saves
+## How It Works (for Gayle)
 
-### 2. Visual Form Editor
-
-A full-screen editor (similar to the existing form preview dialog) with:
-
-- **Field palette** on the side: drag or click to add section headers, info text, text fields, checkboxes, signatures, etc.
-- **Inline editing**: click any field to edit its label, placeholder, options, or content text
-- **Drag to reorder**: grab handle on each field to reposition
-- **Delete**: remove any field
-- **Rich text for info_text blocks**: a textarea where Gayle can write/paste the terms, side effects, contraindications etc.
-- **Save and Version**: saves update the form_schema in the database, incrementing the version number
-
-### 3. Edit existing templates
-
-An "Edit" button alongside the existing "Preview" and "Delete" buttons on each template row, opening the visual editor pre-loaded with that template's schema.
+1. Find the form she wants to update in the templates list
+2. Click the upload icon (or open the editor and click "Re-import")
+3. Upload the updated PDF/scan
+4. AI extracts the new fields and content
+5. The editor opens showing the new fields, with the existing template name/category pre-filled
+6. She reviews, tweaks if needed, and clicks Save
+7. The template updates in place (version increments), existing submissions are unaffected
 
 ---
 
 ## Technical Details
 
-### New files to create
-
-| File | Purpose |
-|---|---|
-| `src/components/forms/FormTemplateEditor.tsx` | Visual drag-and-drop form builder component |
-| `src/components/forms/FieldPalette.tsx` | Sidebar with available field types to add |
-| `src/components/forms/FieldEditor.tsx` | Inline editor panel for a selected field's properties |
-| `src/components/forms/AIImportDialog.tsx` | Upload dialog that sends document to AI for extraction |
-| `supabase/functions/extract-form-template/index.ts` | Edge function that receives the uploaded file, uses Lovable AI to parse it into a form_schema JSON structure |
-
 ### Files to modify
 
 | File | Changes |
 |---|---|
-| `src/pages/admin/AdminFormTemplates.tsx` | Add "Import from Document" button, "Edit" button per row, wire up editor and import dialogs |
-| `src/hooks/useFormTemplates.ts` | No changes needed -- already has create/update/delete mutations |
+| `src/pages/admin/AdminFormTemplates.tsx` | Add re-import button per row, add state to track which template is being re-imported, pass template to AIImportDialog |
+| `src/components/forms/AIImportDialog.tsx` | Accept optional `templateId` prop; pass it through to `onImported` callback so the parent knows this is an update |
+| `src/components/forms/FormTemplateEditor.tsx` | Add "Re-import" button in the editor header bar that opens the AI Import Dialog; when AI returns, replace the current fields array |
 
-### AI extraction approach
+### AdminFormTemplates.tsx changes
 
-The edge function will:
-1. Receive the uploaded document (as base64 or form data)
-2. If it's a PDF/image, extract text (using the document content directly -- Gemini handles multimodal input)
-3. Send the text to Lovable AI with a structured prompt asking it to return a `form_schema` array matching the existing FormField interface
-4. Use tool calling to extract structured JSON output (not freeform JSON)
-5. Return the structured schema to the frontend
+- Add state: `reimportTemplate` to track which existing template is being re-imported
+- Add an Upload icon button in each table row's actions
+- When AI import completes during a re-import: set `editingTemplate` to the existing template AND set `importedSchema` to the AI-extracted schema
+- The `FormTemplateEditor` already handles this combo: when both `template` and `initialSchema` are provided, it should use the template's metadata (name, category, ID) but the imported schema for fields
 
-The prompt will include examples of the existing field types (section_header, info_text, text, textarea, checkbox, signature, medication_table, etc.) so the AI maps document content accurately.
+### FormTemplateEditor.tsx changes
 
-### Visual editor approach
+- Update the `useEffect` initialisation logic: when `template` AND `initialSchema` are both provided, use `template` for name/description/category/isActive but `initialSchema` for the fields array
+- Add a "Re-import" button in the header bar (only shown when editing an existing template)
+- This button opens a local AIImportDialog; when extraction completes, call `setFields(newSchema)` to replace the current fields
+- The existing Save logic already handles updates (it checks `template?.id`)
 
-- Uses React state to manage an array of FormField objects
-- Each field rendered as an editable card with drag handle
-- For reordering: simple move-up/move-down buttons (simpler and more reliable than full drag-and-drop library)
-- Selected field opens a property panel on the right side
-- "Preview" button renders the form using the existing FormRenderer in read-only mode
-- "Save" calls `useUpdateFormTemplate` or `useCreateFormTemplate` depending on context
+### AIImportDialog.tsx changes
 
-### Edge cases
+- No structural changes needed; it already returns the extracted schema via `onImported`
+- The parent component controls what happens with the result
 
-- If AI extraction produces poor results, Gayle can fix everything in the visual editor
-- Version number auto-increments on save so there's an audit trail
-- Existing form submissions are not affected by template edits (they store their own data snapshot)
-- Large documents: the edge function limits to reasonable text size for AI processing
+### Current initialisation logic (line 97-115)
 
-### Implementation order
+Currently:
+- If `template` exists: use template's schema and metadata
+- Else: use `initialSchema` / `initialName` etc.
 
-1. Create the edge function for AI document extraction
-2. Build the AI Import Dialog component
-3. Build the Field Palette and Field Editor components
-4. Build the main Form Template Editor (full-screen)
-5. Wire everything into AdminFormTemplates page
-6. Test end-to-end: upload a document, review AI output, edit, save, preview
+Updated logic:
+- If `template` exists AND `initialSchema` exists: use template's metadata + `initialSchema` for fields (re-import scenario)
+- If `template` exists (no initialSchema): use template's schema and metadata (normal edit)
+- Else: use initialSchema / initialName etc. (new from AI import)
 
