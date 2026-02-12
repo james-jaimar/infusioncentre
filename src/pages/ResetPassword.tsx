@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,31 +12,32 @@ export default function ResetPassword() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [isValidSession, setIsValidSession] = useState(false);
+  const [isValidating, setIsValidating] = useState(true);
+  const [isValidToken, setIsValidToken] = useState(false);
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get("token");
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check if user has a valid recovery session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setIsValidSession(true);
-      }
-    });
+    if (!token) {
+      setIsValidating(false);
+      return;
+    }
 
-    // Listen for auth state changes (when user clicks reset link)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
-        setIsValidSession(true);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+    supabase.functions
+      .invoke("password-reset", { body: { action: "validate", token } })
+      .then(({ data, error }) => {
+        if (!error && data?.valid) {
+          setIsValidToken(true);
+        }
+        setIsValidating(false);
+      });
+  }, [token]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    
+
     if (password !== confirmPassword) {
       toast({
         variant: "destructive",
@@ -57,13 +58,15 @@ export default function ResetPassword() {
 
     setIsLoading(true);
 
-    const { error } = await supabase.auth.updateUser({ password });
+    const { data, error } = await supabase.functions.invoke("password-reset", {
+      body: { action: "reset", token, password },
+    });
 
-    if (error) {
+    if (error || data?.error) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message,
+        description: data?.error || "Failed to reset password. The link may have expired.",
       });
       setIsLoading(false);
       return;
@@ -77,7 +80,15 @@ export default function ResetPassword() {
     navigate("/login");
   }
 
-  if (!isValidSession) {
+  if (isValidating) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-secondary px-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!isValidToken) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-secondary px-4">
         <div className="w-full max-w-md text-center">

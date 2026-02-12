@@ -18,15 +18,15 @@ export default function ForgotPassword() {
     e.preventDefault();
     setIsLoading(true);
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+    const { error } = await supabase.functions.invoke("password-reset", {
+      body: { action: "request", email },
     });
 
     if (error) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message,
+        description: "Something went wrong. Please try again.",
       });
       setIsLoading(false);
       return;
@@ -50,7 +50,7 @@ export default function ForgotPassword() {
             <CheckCircle className="mx-auto h-12 w-12 text-primary mb-4" />
             <h1 className="text-xl font-semibold text-foreground mb-2">Check your email</h1>
             <p className="text-muted-foreground mb-6">
-              We've sent a password reset link to <strong>{email}</strong>. 
+              If an account exists for <strong>{email}</strong>, we've sent a password reset link.
               Click the link in the email to reset your password.
             </p>
             <Link to="/login">
