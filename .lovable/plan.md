@@ -1,137 +1,82 @@
 
 
-# Connect the End-to-End Clinical Workflow
+# SMTP Email Edge Function Setup
 
-## The Problem
+## Overview
 
-All the individual pieces exist (patients, onboarding forms, appointments, job cards, treatments) but they operate as separate islands. An admin has to manually navigate between unrelated pages and mentally track what's been done. Nothing guides you from "new patient" to "patient in the chair."
+Build a reusable `send-email` Edge Function using `denomailer` for ALL outgoing emails, including password resets. No Supabase Dashboard SMTP config -- everything goes through the Edge Function.
 
-## The Connected Flow (After Changes)
+## Secrets Needed (5)
 
-```text
-CREATE PATIENT ──> GENERATE ONBOARDING ──> PATIENT COMPLETES FORMS
-       |                                           |
-       v                                           v
-  BOOK APPOINTMENT <── readiness check ──── FORMS COMPLETE?
-       |                                    (warns if not)
-       v
-  NURSE OPENS JOB CARD
-       |
-       v
-  CHECKLIST AUTO-VERIFIED ──> START TREATMENT ──> DISCHARGE
-  (consent on file = YES/NO)
-```
-
-## What Changes
-
-### 1. Post-Patient-Creation Flow
-
-After saving a new patient, instead of just landing on the patient detail page, show a "Next Steps" prompt:
-
-- "Generate Onboarding Checklist" button (pre-selects treatment types if known)
-- "Book First Appointment" button (links to appointment booking with patient pre-selected)
-- "Done for Now" to just view the patient record
-
-This turns the patient detail page from a dead-end into a launchpad.
-
-### 2. "Book Appointment" Button on Patient Detail
-
-Add a prominent "Book Appointment" button to the patient detail header (next to Edit / Delete / Send Invite). Clicking it navigates to `/admin/appointments/new?patient_id={id}`, and the appointment form auto-selects that patient.
-
-### 3. Onboarding Readiness Check on Appointment Booking
-
-When an appointment type is selected during booking, check whether the patient has completed the required onboarding forms for that treatment type:
-
-- Green badge: "All onboarding forms complete" -- good to go
-- Amber warning: "2 of 3 required forms incomplete" with a link to the patient's onboarding tab
-- This is advisory (doesn't block booking) but makes the gap visible
-
-### 4. Onboarding Status on Appointment Detail
-
-On the appointment detail page, show a small "Onboarding Status" card:
-
-- Lists required forms for this appointment type
-- Shows completed/pending status for each
-- Links to patient's onboarding tab if forms are missing
-
-### 5. Smart Pre-Treatment Checklist on Nurse Job Card
-
-Currently the Job Card has a manual checkbox: "Consent form signed and on file." Replace this with an auto-verified check:
-
-- Query the patient's onboarding checklist for this appointment type
-- Show each required form with a real status (completed with date, or missing)
-- "Consent form signed and on file" becomes green/red automatically
-- Nurse can still manually override if paper consent was obtained
-
-### 6. Auto-Generate Checklist When Booking
-
-When an appointment is booked, automatically generate onboarding checklist items for any forms required by that appointment type that the patient hasn't completed yet. This means the onboarding tab is always up-to-date.
-
----
-
-## Technical Details
-
-### Files to modify
-
-| File | Changes |
+| Secret | Example |
 |---|---|
-| `src/pages/admin/PatientNew.tsx` | After successful creation, navigate to patient detail with `?showNextSteps=true` query param |
-| `src/pages/admin/PatientDetail.tsx` | Show "Next Steps" card when `showNextSteps` param is present; add "Book Appointment" button to header |
-| `src/pages/admin/AppointmentNew.tsx` | Accept `patient_id` query param to pre-select patient; add onboarding readiness check when type is selected |
-| `src/pages/admin/AppointmentDetail.tsx` | Add onboarding status card showing form completion for the appointment type |
-| `src/pages/nurse/NurseJobCard.tsx` | Replace manual consent checkbox with auto-verified onboarding status; keep manual override option |
-| `src/hooks/useAppointments.ts` | Update `useCreateAppointment` to trigger onboarding checklist generation after booking |
-| `src/hooks/useOnboardingChecklist.ts` | Add `useOnboardingReadiness` hook that checks form completion for a patient + appointment type combo |
+| SMTP_HOST | mail.yourdomain.com |
+| SMTP_PORT | 587 |
+| SMTP_USERNAME | noreply@yourdomain.com |
+| SMTP_PASSWORD | your password |
+| SMTP_FROM_EMAIL | noreply@infusioncentre.co.za |
 
-### New hook: useOnboardingReadiness
+## What Gets Built
+
+### 1. New Edge Function: `send-email`
+
+General-purpose SMTP sender using `denomailer`. Accepts `to`, `subject`, `html`, `text`. Logs all attempts to `communication_log` table.
+
+### 2. Update `send-patient-invite`
+
+After creating the invite record, sends a branded email with the invite link via `send-email` logic.
+
+### 3. Custom Password Reset Flow
+
+Replace `supabase.auth.resetPasswordForEmail()` in `ForgotPassword.tsx` with a custom flow:
+
+- New Edge Function action or endpoint: generates a secure reset token, stores it in a new `password_reset_tokens` table, and sends a branded reset email via SMTP
+- Update `ResetPassword.tsx` to validate the token and call `supabase.auth.admin.updateUserById()` via an edge function to set the new password
+
+### Database Changes
+
+**New table: `password_reset_tokens`**
+
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID | Primary key |
+| user_id | UUID | References profiles.user_id |
+| token | TEXT | Unique, secure token |
+| email | TEXT | User's email |
+| created_at | TIMESTAMPTZ | Default now() |
+| expires_at | TIMESTAMPTZ | Default now() + 1 hour |
+| used | BOOLEAN | Default false |
+
+RLS: No public access. Service role only.
+
+### Files
+
+| File | Change |
+|---|---|
+| supabase/functions/send-email/index.ts | NEW -- reusable SMTP sender with denomailer |
+| supabase/functions/send-patient-invite/index.ts | UPDATE -- send invite email after creation |
+| supabase/functions/password-reset/index.ts | NEW -- generate token + send reset email, and handle reset completion |
+| supabase/config.toml | Add send-email and password-reset functions |
+| src/pages/ForgotPassword.tsx | UPDATE -- call password-reset edge function instead of supabase.auth.resetPasswordForEmail() |
+| src/pages/ResetPassword.tsx | UPDATE -- validate custom token, call edge function to set new password |
+
+### Email Templates (built into the edge functions as HTML strings)
+
+- **Patient Invite**: Branded email with patient name, invite link, expiry info, clinic contact
+- **Password Reset**: Branded email with reset link, expiry (1 hour), clinic contact
+
+### Flow
 
 ```text
-useOnboardingReadiness(patientId, appointmentTypeId)
-  -> returns {
-       required: FormTemplate[],
-       completed: FormSubmission[],
-       pending: FormTemplate[],
-       isReady: boolean,
-       completionPercent: number
-     }
+Password Reset:
+User enters email -> password-reset edge function generates token
+-> sends branded email via send-email -> user clicks link
+-> ResetPassword page validates token -> user sets new password
+-> edge function calls admin.updateUserById() to update password
+
+Patient Invite:
+Admin/nurse creates invite -> send-patient-invite generates token
+-> sends branded email via SMTP -> patient clicks link
+-> InviteLanding page handles registration
 ```
-
-This queries `form_templates` where `required_for_treatment_types` includes the appointment type, then cross-references with `form_submissions` for the patient.
-
-### AppointmentNew.tsx changes
-
-- Read `patient_id` from URL search params
-- If present, auto-select that patient in the list
-- When both patient and appointment type are selected, call `useOnboardingReadiness` and display the result as a status badge below the appointment type selector
-
-### PatientDetail.tsx changes
-
-- Add "Book Appointment" button in the header actions
-- Detect `?showNextSteps=true` query param
-- When detected, show a prominent card at the top with three action buttons:
-  1. Generate Onboarding Checklist (already has this in the onboarding tab, but surface it prominently)
-  2. Book First Appointment (navigates to `/admin/appointments/new?patient_id={id}`)
-  3. Send Invite Link (already exists, just surface it)
-
-### NurseJobCard.tsx changes
-
-- Fetch onboarding checklist for the patient
-- Filter by forms required for this appointment type
-- Replace the static "Consent form signed and on file" checkbox with a dynamic list showing actual form status
-- Keep remaining manual checklist items (identity verified, allergies reviewed, etc.)
-- Add a manual override toggle: "Paper consent obtained" for edge cases
-
-### Auto-generate checklist on booking
-
-In the `useCreateAppointment` hook's `onSuccess`, call `useGenerateChecklist` with the patient ID and the selected appointment type ID. This ensures that when Gayle books a ketamine therapy, the ketamine consent form automatically appears on the patient's onboarding checklist.
-
-### No database changes required
-
-All the linking data already exists:
-- `form_templates.required_for_treatment_types` links forms to appointment types
-- `onboarding_checklists` tracks which forms a patient needs to complete
-- `form_submissions` records completed forms
-- `appointments.appointment_type_id` tells us what treatment is planned
-
-The pieces are all there -- this plan wires them together in the UI.
 
