@@ -1,30 +1,71 @@
 
 
-# Add "Re-import from Document" to Existing Templates
+# Connect the End-to-End Clinical Workflow
 
 ## The Problem
 
-The AI import flow currently always creates a new template. If Gayle has an updated version of a consent form (e.g., updated terms), she has no way to upload the new document and have it replace the existing template's fields. She'd have to create a new template and delete the old one, losing the link to existing submissions.
+All the individual pieces exist (patients, onboarding forms, appointments, job cards, treatments) but they operate as separate islands. An admin has to manually navigate between unrelated pages and mentally track what's been done. Nothing guides you from "new patient" to "patient in the chair."
+
+## The Connected Flow (After Changes)
+
+```text
+CREATE PATIENT ──> GENERATE ONBOARDING ──> PATIENT COMPLETES FORMS
+       |                                           |
+       v                                           v
+  BOOK APPOINTMENT <── readiness check ──── FORMS COMPLETE?
+       |                                    (warns if not)
+       v
+  NURSE OPENS JOB CARD
+       |
+       v
+  CHECKLIST AUTO-VERIFIED ──> START TREATMENT ──> DISCHARGE
+  (consent on file = YES/NO)
+```
 
 ## What Changes
 
-### 1. "Re-import" button inside the Form Template Editor
+### 1. Post-Patient-Creation Flow
 
-When editing an **existing** template, add an **"Upload / Re-import"** button in the editor's top bar (next to Preview and Save). Clicking it opens the same AI Import Dialog, but instead of creating a new template, the extracted schema replaces the current editor fields. Gayle can then review, tweak, and save — updating the existing template in place with an incremented version number.
+After saving a new patient, instead of just landing on the patient detail page, show a "Next Steps" prompt:
 
-### 2. "Re-import" action on the templates table
+- "Generate Onboarding Checklist" button (pre-selects treatment types if known)
+- "Book First Appointment" button (links to appointment booking with patient pre-selected)
+- "Done for Now" to just view the patient record
 
-Add a small upload icon button alongside Edit / Preview / Delete on each template row. This opens the AI Import Dialog, and when extraction completes, it opens the editor for that template pre-loaded with the new AI-extracted schema (but keeping the existing template's name, category, and ID so it saves as an update).
+This turns the patient detail page from a dead-end into a launchpad.
 
-## How It Works (for Gayle)
+### 2. "Book Appointment" Button on Patient Detail
 
-1. Find the form she wants to update in the templates list
-2. Click the upload icon (or open the editor and click "Re-import")
-3. Upload the updated PDF/scan
-4. AI extracts the new fields and content
-5. The editor opens showing the new fields, with the existing template name/category pre-filled
-6. She reviews, tweaks if needed, and clicks Save
-7. The template updates in place (version increments), existing submissions are unaffected
+Add a prominent "Book Appointment" button to the patient detail header (next to Edit / Delete / Send Invite). Clicking it navigates to `/admin/appointments/new?patient_id={id}`, and the appointment form auto-selects that patient.
+
+### 3. Onboarding Readiness Check on Appointment Booking
+
+When an appointment type is selected during booking, check whether the patient has completed the required onboarding forms for that treatment type:
+
+- Green badge: "All onboarding forms complete" -- good to go
+- Amber warning: "2 of 3 required forms incomplete" with a link to the patient's onboarding tab
+- This is advisory (doesn't block booking) but makes the gap visible
+
+### 4. Onboarding Status on Appointment Detail
+
+On the appointment detail page, show a small "Onboarding Status" card:
+
+- Lists required forms for this appointment type
+- Shows completed/pending status for each
+- Links to patient's onboarding tab if forms are missing
+
+### 5. Smart Pre-Treatment Checklist on Nurse Job Card
+
+Currently the Job Card has a manual checkbox: "Consent form signed and on file." Replace this with an auto-verified check:
+
+- Query the patient's onboarding checklist for this appointment type
+- Show each required form with a real status (completed with date, or missing)
+- "Consent form signed and on file" becomes green/red automatically
+- Nurse can still manually override if paper consent was obtained
+
+### 6. Auto-Generate Checklist When Booking
+
+When an appointment is booked, automatically generate onboarding checklist items for any forms required by that appointment type that the patient hasn't completed yet. This means the onboarding tab is always up-to-date.
 
 ---
 
@@ -34,37 +75,63 @@ Add a small upload icon button alongside Edit / Preview / Delete on each templat
 
 | File | Changes |
 |---|---|
-| `src/pages/admin/AdminFormTemplates.tsx` | Add re-import button per row, add state to track which template is being re-imported, pass template to AIImportDialog |
-| `src/components/forms/AIImportDialog.tsx` | Accept optional `templateId` prop; pass it through to `onImported` callback so the parent knows this is an update |
-| `src/components/forms/FormTemplateEditor.tsx` | Add "Re-import" button in the editor header bar that opens the AI Import Dialog; when AI returns, replace the current fields array |
+| `src/pages/admin/PatientNew.tsx` | After successful creation, navigate to patient detail with `?showNextSteps=true` query param |
+| `src/pages/admin/PatientDetail.tsx` | Show "Next Steps" card when `showNextSteps` param is present; add "Book Appointment" button to header |
+| `src/pages/admin/AppointmentNew.tsx` | Accept `patient_id` query param to pre-select patient; add onboarding readiness check when type is selected |
+| `src/pages/admin/AppointmentDetail.tsx` | Add onboarding status card showing form completion for the appointment type |
+| `src/pages/nurse/NurseJobCard.tsx` | Replace manual consent checkbox with auto-verified onboarding status; keep manual override option |
+| `src/hooks/useAppointments.ts` | Update `useCreateAppointment` to trigger onboarding checklist generation after booking |
+| `src/hooks/useOnboardingChecklist.ts` | Add `useOnboardingReadiness` hook that checks form completion for a patient + appointment type combo |
 
-### AdminFormTemplates.tsx changes
+### New hook: useOnboardingReadiness
 
-- Add state: `reimportTemplate` to track which existing template is being re-imported
-- Add an Upload icon button in each table row's actions
-- When AI import completes during a re-import: set `editingTemplate` to the existing template AND set `importedSchema` to the AI-extracted schema
-- The `FormTemplateEditor` already handles this combo: when both `template` and `initialSchema` are provided, it should use the template's metadata (name, category, ID) but the imported schema for fields
+```text
+useOnboardingReadiness(patientId, appointmentTypeId)
+  -> returns {
+       required: FormTemplate[],
+       completed: FormSubmission[],
+       pending: FormTemplate[],
+       isReady: boolean,
+       completionPercent: number
+     }
+```
 
-### FormTemplateEditor.tsx changes
+This queries `form_templates` where `required_for_treatment_types` includes the appointment type, then cross-references with `form_submissions` for the patient.
 
-- Update the `useEffect` initialisation logic: when `template` AND `initialSchema` are both provided, use `template` for name/description/category/isActive but `initialSchema` for the fields array
-- Add a "Re-import" button in the header bar (only shown when editing an existing template)
-- This button opens a local AIImportDialog; when extraction completes, call `setFields(newSchema)` to replace the current fields
-- The existing Save logic already handles updates (it checks `template?.id`)
+### AppointmentNew.tsx changes
 
-### AIImportDialog.tsx changes
+- Read `patient_id` from URL search params
+- If present, auto-select that patient in the list
+- When both patient and appointment type are selected, call `useOnboardingReadiness` and display the result as a status badge below the appointment type selector
 
-- No structural changes needed; it already returns the extracted schema via `onImported`
-- The parent component controls what happens with the result
+### PatientDetail.tsx changes
 
-### Current initialisation logic (line 97-115)
+- Add "Book Appointment" button in the header actions
+- Detect `?showNextSteps=true` query param
+- When detected, show a prominent card at the top with three action buttons:
+  1. Generate Onboarding Checklist (already has this in the onboarding tab, but surface it prominently)
+  2. Book First Appointment (navigates to `/admin/appointments/new?patient_id={id}`)
+  3. Send Invite Link (already exists, just surface it)
 
-Currently:
-- If `template` exists: use template's schema and metadata
-- Else: use `initialSchema` / `initialName` etc.
+### NurseJobCard.tsx changes
 
-Updated logic:
-- If `template` exists AND `initialSchema` exists: use template's metadata + `initialSchema` for fields (re-import scenario)
-- If `template` exists (no initialSchema): use template's schema and metadata (normal edit)
-- Else: use initialSchema / initialName etc. (new from AI import)
+- Fetch onboarding checklist for the patient
+- Filter by forms required for this appointment type
+- Replace the static "Consent form signed and on file" checkbox with a dynamic list showing actual form status
+- Keep remaining manual checklist items (identity verified, allergies reviewed, etc.)
+- Add a manual override toggle: "Paper consent obtained" for edge cases
+
+### Auto-generate checklist on booking
+
+In the `useCreateAppointment` hook's `onSuccess`, call `useGenerateChecklist` with the patient ID and the selected appointment type ID. This ensures that when Gayle books a ketamine therapy, the ketamine consent form automatically appears on the patient's onboarding checklist.
+
+### No database changes required
+
+All the linking data already exists:
+- `form_templates.required_for_treatment_types` links forms to appointment types
+- `onboarding_checklists` tracks which forms a patient needs to complete
+- `form_submissions` records completed forms
+- `appointments.appointment_type_id` tells us what treatment is planned
+
+The pieces are all there -- this plan wires them together in the UI.
 
