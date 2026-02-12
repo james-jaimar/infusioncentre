@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { useAppointment, useUpdateAppointment } from "@/hooks/useAppointments";
 import {
   useTreatmentByAppointment,
@@ -14,10 +15,11 @@ import {
   useAddVitals,
   useAddAssessment,
 } from "@/hooks/useTreatments";
+import { useOnboardingReadiness } from "@/hooks/useOnboardingChecklist";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, AlertTriangle } from "lucide-react";
+import { ArrowLeft, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 
 import JobCardHeader from "@/components/nurse/JobCardHeader";
 import JobCardStepper from "@/components/nurse/JobCardStepper";
@@ -29,10 +31,9 @@ import JobCardBilling from "@/components/nurse/JobCardBilling";
 import JobCardIVAccess from "@/components/nurse/JobCardIVAccess";
 import JobCardReactions from "@/components/nurse/JobCardReactions";
 
-// ── Pre-treatment checklist items ──
-const preChecklist = [
+// ── Manual pre-treatment checklist items (non-form items) ──
+const manualChecklist = [
   "Patient identity verified (name + DOB)",
-  "Consent form signed and on file",
   "Allergies reviewed with patient",
   "Current medications confirmed",
   "Fasting requirements met (if applicable)",
@@ -80,12 +81,19 @@ export default function NurseJobCard() {
   const addVitals = useAddVitals();
   const addAssessment = useAddAssessment();
 
+  // Onboarding readiness for auto-verified consent checks
+  const readiness = useOnboardingReadiness(
+    appointment?.patient?.id,
+    appointment?.appointment_type?.id
+  );
+
   // Full patient record for sidebar
   const [fullPatient, setFullPatient] = useState<any>(null);
   const [allergies, setAllergies] = useState<string[] | null>(null);
+  const [paperConsentOverride, setPaperConsentOverride] = useState(false);
 
   // Check-in / pre-assessment state
-  const [checkedItems, setCheckedItems] = useState<boolean[]>(new Array(preChecklist.length).fill(false));
+  const [checkedItems, setCheckedItems] = useState<boolean[]>(new Array(manualChecklist.length).fill(false));
   const [preVitals, setPreVitals] = useState({
     blood_pressure_systolic: "",
     blood_pressure_diastolic: "",
@@ -111,7 +119,8 @@ export default function NurseJobCard() {
     fetchPatient();
   }, [appointment?.patient?.id]);
 
-  const allChecked = checkedItems.every(Boolean);
+  const consentReady = readiness.required.length === 0 || readiness.isReady || paperConsentOverride;
+  const allChecked = checkedItems.every(Boolean) && consentReady;
   const hasPreVitals = !!(preVitals.blood_pressure_systolic && preVitals.heart_rate);
   const treatmentStatus = treatment?.status || "";
   const isCompleted = treatmentStatus === "completed" || treatmentStatus === "cancelled";
@@ -170,7 +179,12 @@ export default function NurseJobCard() {
         treatment_id: t.id,
         assessment_type: "pre_treatment" as const,
         data: {
-          checklist: preChecklist.map((item, i) => ({ item, checked: checkedItems[i] })),
+          checklist: manualChecklist.map((item, i) => ({ item, checked: checkedItems[i] })),
+          consentForms: readiness.required.map((f) => ({
+            name: f.name,
+            completed: readiness.completed.some((c) => c.id === f.id),
+          })),
+          paperConsentOverride,
           notes: preNotes,
         },
         recorded_by: user.id,
@@ -257,7 +271,50 @@ export default function NurseJobCard() {
                   <CardTitle className="text-base">Pre-Treatment Checklist</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {preChecklist.map((item, index) => (
+                  {/* Auto-verified consent forms */}
+                  {readiness.required.length > 0 && (
+                    <div className="space-y-2 pb-3 border-b">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Consent & Onboarding Forms</p>
+                      {readiness.required.map((form) => {
+                        const done = readiness.completed.find((c) => c.id === form.id);
+                        return (
+                          <div key={form.id} className="flex items-center gap-3">
+                            {done ? (
+                              <CheckCircle2 className="h-6 w-6 text-green-600 flex-shrink-0" />
+                            ) : (
+                              <XCircle className="h-6 w-6 text-destructive flex-shrink-0" />
+                            )}
+                            <div className="text-sm leading-relaxed">
+                              <span className={done ? "text-muted-foreground" : "font-medium"}>
+                                {form.name}
+                              </span>
+                              {done && (
+                                <span className="text-xs text-muted-foreground ml-2">
+                                  ✓ {new Date(done.completedAt).toLocaleDateString("en-ZA")}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {/* Paper consent override */}
+                      {!readiness.isReady && (
+                        <div className="flex items-center gap-3 pt-2">
+                          <Switch
+                            id="paper-consent"
+                            checked={paperConsentOverride}
+                            onCheckedChange={setPaperConsentOverride}
+                          />
+                          <Label htmlFor="paper-consent" className="text-sm cursor-pointer">
+                            Paper consent obtained (manual override)
+                          </Label>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Manual checklist items */}
+                  {manualChecklist.map((item, index) => (
                     <div key={index} className="flex items-start gap-3">
                       <Checkbox
                         id={`pre-${index}`}

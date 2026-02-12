@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -28,13 +28,15 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, CalendarIcon, AlertTriangle, Check } from "lucide-react";
+import { ArrowLeft, CalendarIcon, AlertTriangle, Check, ClipboardList, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePatients } from "@/hooks/usePatients";
 import { useAppointmentTypes } from "@/hooks/useAppointmentTypes";
 import { useTreatmentChairs } from "@/hooks/useTreatmentChairs";
 import { useCreateAppointment, useCheckConflicts } from "@/hooks/useAppointments";
 import { useNurseStaff } from "@/hooks/useNurseStaff";
+import { useOnboardingReadiness } from "@/hooks/useOnboardingChecklist";
+import { useGenerateChecklist } from "@/hooks/useOnboardingChecklist";
 
 const formSchema = z.object({
   patient_id: z.string().min(1, "Please select a patient"),
@@ -57,6 +59,8 @@ const TIME_SLOTS = Array.from({ length: 22 }, (_, i) => {
 
 export default function AppointmentNew() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const preselectedPatientId = searchParams.get("patient_id") || "";
   const [patientSearch, setPatientSearch] = useState("");
   const [hasConflict, setHasConflict] = useState(false);
 
@@ -66,11 +70,12 @@ export default function AppointmentNew() {
   const { data: nurses = [] } = useNurseStaff();
   const createAppointment = useCreateAppointment();
   const checkConflicts = useCheckConflicts();
+  const generateChecklist = useGenerateChecklist();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      patient_id: "",
+      patient_id: preselectedPatientId,
       appointment_type_id: "",
       chair_id: "",
       assigned_nurse_id: "",
@@ -79,6 +84,17 @@ export default function AppointmentNew() {
       notes: "",
     },
   });
+
+  const watchedPatientId = form.watch("patient_id");
+  const watchedTypeId = form.watch("appointment_type_id");
+  const readiness = useOnboardingReadiness(watchedPatientId || undefined, watchedTypeId || undefined);
+
+  // Auto-select patient from URL param
+  useEffect(() => {
+    if (preselectedPatientId) {
+      form.setValue("patient_id", preselectedPatientId);
+    }
+  }, [preselectedPatientId, form]);
 
   const filteredPatients = patients.filter((p) => {
     const searchLower = patientSearch.toLowerCase();
@@ -137,6 +153,12 @@ export default function AppointmentNew() {
         scheduled_start: scheduledStart,
         duration_minutes: data.duration_minutes,
         notes: data.notes || "",
+      });
+
+      // Auto-generate onboarding checklist for this appointment type
+      generateChecklist.mutate({
+        patientId: data.patient_id,
+        treatmentTypeIds: [data.appointment_type_id],
       });
 
       toast.success("Appointment created successfully");
@@ -265,6 +287,36 @@ export default function AppointmentNew() {
                     <AlertTriangle className="mr-1 h-3 w-3" />
                     Requires consent form
                   </Badge>
+                )}
+
+                {/* Onboarding Readiness Badge */}
+                {watchedPatientId && watchedTypeId && !readiness.isLoading && readiness.required.length > 0 && (
+                  <div className={cn(
+                    "flex items-center gap-2 p-3 rounded-md text-sm",
+                    readiness.isReady
+                      ? "bg-green-50 text-green-800 border border-green-200"
+                      : "bg-amber-50 text-amber-800 border border-amber-200"
+                  )}>
+                    {readiness.isReady ? (
+                      <>
+                        <Check className="h-4 w-4" />
+                        All {readiness.required.length} onboarding forms complete
+                      </>
+                    ) : (
+                      <>
+                        <ClipboardList className="h-4 w-4" />
+                        {readiness.pending.length} of {readiness.required.length} required forms incomplete
+                        <a
+                          href={`/admin/patients/${watchedPatientId}#onboarding`}
+                          className="underline ml-1"
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          View
+                        </a>
+                      </>
+                    )}
+                  </div>
                 )}
 
                 {selectedType?.preparation_instructions && (

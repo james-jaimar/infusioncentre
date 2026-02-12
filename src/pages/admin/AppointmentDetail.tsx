@@ -39,12 +39,14 @@ import {
   XCircle,
   Save,
   X,
+  ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppointment, useUpdateAppointment, useDeleteAppointment } from "@/hooks/useAppointments";
 import { useAppointmentTypes } from "@/hooks/useAppointmentTypes";
 import { useTreatmentChairs } from "@/hooks/useTreatmentChairs";
 import { useNurseStaff } from "@/hooks/useNurseStaff";
+import { useOnboardingReadiness } from "@/hooks/useOnboardingChecklist";
 import { AppointmentStatus } from "@/types/appointment";
 
 const statusColors: Record<AppointmentStatus, string> = {
@@ -80,6 +82,7 @@ export default function AppointmentDetail() {
   const { data: nurses = [] } = useNurseStaff();
   const updateAppointment = useUpdateAppointment();
   const deleteAppointment = useDeleteAppointment();
+  const readiness = useOnboardingReadiness(appointment?.patient_id, appointment?.appointment_type_id);
 
   const startEditing = () => {
     if (!appointment) return;
@@ -329,25 +332,63 @@ export default function AppointmentDetail() {
         </Card>
 
         {/* Patient Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><User className="h-5 w-5" /> Patient</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <p className="font-medium text-lg">{appointment.patient.first_name} {appointment.patient.last_name}</p>
-            </div>
-            {appointment.patient.phone && (
-              <div className="flex items-center gap-2 text-sm">
-                <Phone className="h-4 w-4 text-muted-foreground" />
-                <a href={`tel:${appointment.patient.phone}`} className="hover:underline">{appointment.patient.phone}</a>
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><User className="h-5 w-5" /> Patient</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <p className="font-medium text-lg">{appointment.patient.first_name} {appointment.patient.last_name}</p>
               </div>
-            )}
-            <Button variant="outline" className="w-full" asChild>
-              <Link to={`/admin/patients/${appointment.patient.id}`}>View Patient Profile</Link>
-            </Button>
-          </CardContent>
-        </Card>
+              {appointment.patient.phone && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Phone className="h-4 w-4 text-muted-foreground" />
+                  <a href={`tel:${appointment.patient.phone}`} className="hover:underline">{appointment.patient.phone}</a>
+                </div>
+              )}
+              <Button variant="outline" className="w-full" asChild>
+                <Link to={`/admin/patients/${appointment.patient.id}`}>View Patient Profile</Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Onboarding Status Card */}
+          {readiness.required.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <ClipboardList className="h-5 w-5" />
+                  Onboarding Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {readiness.required.map((form) => {
+                  const isComplete = readiness.completed.some((c) => c.id === form.id);
+                  return (
+                    <div key={form.id} className="flex items-center gap-2 text-sm">
+                      {isComplete ? (
+                        <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                      ) : (
+                        <XCircle className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                      )}
+                      <span className={isComplete ? "text-muted-foreground" : "font-medium"}>
+                        {form.name}
+                      </span>
+                    </div>
+                  );
+                })}
+                {readiness.pending.length > 0 && (
+                  <Button variant="link" className="px-0 h-auto text-xs" asChild>
+                    <Link to={`/admin/patients/${appointment.patient.id}`}>
+                      View patient onboarding →
+                    </Link>
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
 
       {/* Actions */}

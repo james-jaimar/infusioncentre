@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import SendInviteDialog from "@/components/admin/SendInviteDialog";
 import { usePatient, useUpdatePatient, useDeletePatient } from "@/hooks/usePatients";
 import { usePatientMedicalHistory, useUpsertPatientMedicalHistory } from "@/hooks/usePatientMedicalHistory";
@@ -59,6 +59,9 @@ import {
   Circle,
   Ban,
   Eye,
+  CalendarPlus,
+  Send,
+  Sparkles,
 } from "lucide-react";
 import {
   Tooltip,
@@ -81,6 +84,8 @@ const documentTypeLabels: Record<DocumentType, string> = {
 export default function PatientDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const showNextSteps = searchParams.get("showNextSteps") === "true";
   const [isEditing, setIsEditing] = useState(false);
   const [editedData, setEditedData] = useState<any>(null);
   const [uploadingDoc, setUploadingDoc] = useState(false);
@@ -334,6 +339,10 @@ export default function PatientDetail() {
                 patientPhone={patient.phone}
                 patientName={`${patient.first_name} ${patient.last_name}`}
               />
+              <Button variant="outline" onClick={() => navigate(`/admin/appointments/new?patient_id=${id}`)}>
+                <CalendarPlus className="mr-2 h-4 w-4" />
+                Book Appointment
+              </Button>
               <Button onClick={handleEdit}>
                 <Edit2 className="mr-2 h-4 w-4" />
                 Edit
@@ -342,6 +351,47 @@ export default function PatientDetail() {
           )}
         </div>
       </div>
+
+      {/* Next Steps Card (shown after patient creation) */}
+      {showNextSteps && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Patient Created — What's Next?
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  generateChecklist.mutate({ patientId: id! });
+                  setSearchParams({});
+                  toast.success("Onboarding checklist generated");
+                }}
+                disabled={generateChecklist.isPending}
+              >
+                <ClipboardList className="mr-2 h-4 w-4" />
+                Generate Onboarding Checklist
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => navigate(`/admin/appointments/new?patient_id=${id}`)}
+              >
+                <CalendarPlus className="mr-2 h-4 w-4" />
+                Book First Appointment
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => setSearchParams({})}
+              >
+                Done for Now
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Tabs */}
       <Tabs defaultValue="profile">
