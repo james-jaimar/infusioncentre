@@ -59,7 +59,7 @@ export default function NurseCommandCentre() {
       {/* ── 12-column grid: Primary (8) + Monitoring (4) ── */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
         {/* Primary Operations Zone */}
-        <div className="lg:col-span-8">
+        <div className="md:col-span-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {chairs.map((chair) => (
               <ChairPanel key={chair.id} chair={chair} />
@@ -68,7 +68,7 @@ export default function NurseCommandCentre() {
         </div>
 
         {/* Monitoring & Alerts Zone */}
-        <div className="lg:col-span-4">
+        <div className="md:col-span-4">
           <MonitoringSidebar
             chairs={chairs}
             unassigned={unassigned}
