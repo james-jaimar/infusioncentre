@@ -51,11 +51,11 @@ export default function AdminLayout() {
     : "Admin";
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-background">
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-foreground/50 lg:hidden"
+          className="fixed inset-0 z-40 bg-foreground/40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -68,12 +68,12 @@ export default function AdminLayout() {
       >
         <div className="flex h-full flex-col">
           {/* Logo */}
-          <div className="flex items-center justify-between px-4 py-6">
+          <div className="flex items-center justify-between px-5 py-6 border-b border-primary-foreground/10">
             <Link to="/" className="flex items-center gap-2">
               <img src={logo} alt="Infusion Centre" className="h-10 w-auto" />
             </Link>
             <button
-              className="lg:hidden text-primary-foreground"
+              className="lg:hidden text-primary-foreground h-12 w-12 flex items-center justify-center"
               onClick={() => setSidebarOpen(false)}
             >
               <X className="h-6 w-6" />
@@ -81,21 +81,21 @@ export default function AdminLayout() {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 space-y-1 px-3 py-4">
+          <nav className="flex-1 space-y-0.5 px-3 py-4 overflow-y-auto">
             {navigation.map((item) => {
               const isActive = location.pathname === item.href;
               return (
                 <Link
                   key={item.name}
                   to={item.href}
-                  className={`flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors ${
+                  className={`flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all rounded-md ${
                     isActive
-                      ? "bg-primary-foreground/20 text-primary-foreground"
-                      : "text-primary-foreground/70 hover:bg-primary-foreground/10 hover:text-primary-foreground"
+                      ? "bg-primary-foreground/15 text-primary-foreground border-l-4 border-primary-foreground ml-0 pl-2"
+                      : "text-primary-foreground/70 hover:bg-primary-foreground/8 hover:text-primary-foreground"
                   }`}
                   onClick={() => setSidebarOpen(false)}
                 >
-                  <item.icon className="h-5 w-5" />
+                  <item.icon className="h-4 w-4" />
                   {item.name}
                 </Link>
               );
@@ -103,14 +103,14 @@ export default function AdminLayout() {
           </nav>
 
           {/* User section */}
-          <div className="border-t border-primary-foreground/20 p-4">
-            <div className="mb-3 text-sm">
-              <p className="font-medium text-primary-foreground">{displayName}</p>
-              <p className="text-primary-foreground/60 text-xs">Administrator</p>
+          <div className="border-t border-primary-foreground/10 p-5">
+            <div className="mb-3">
+              <p className="font-medium text-sm text-primary-foreground">{displayName}</p>
+              <p className="text-primary-foreground/50 text-xs mt-0.5">Administrator</p>
             </div>
             <Button
               variant="ghost"
-              className="w-full justify-start text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10"
+              className="w-full justify-start text-primary-foreground/60 hover:text-primary-foreground hover:bg-primary-foreground/8 h-10"
               onClick={handleSignOut}
             >
               <LogOut className="mr-2 h-4 w-4" />
@@ -121,17 +121,17 @@ export default function AdminLayout() {
       </aside>
 
       {/* Main content */}
-      <div className="flex flex-1 flex-col">
+      <div className="flex flex-1 flex-col min-w-0">
         {/* Mobile header */}
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-4 lg:hidden">
-          <button onClick={() => setSidebarOpen(true)}>
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-card/95 backdrop-blur px-4 lg:hidden shadow-clinical-sm">
+          <button onClick={() => setSidebarOpen(true)} className="h-12 w-12 flex items-center justify-center">
             <Menu className="h-6 w-6" />
           </button>
-          <span className="font-semibold">Admin Dashboard</span>
+          <span className="font-semibold text-foreground">Administration</span>
         </header>
 
         {/* Page content */}
-        <main className="flex-1 p-6 lg:p-8">
+        <main className="flex-1 p-4 lg:p-8">
           <Outlet />
         </main>
       </div>

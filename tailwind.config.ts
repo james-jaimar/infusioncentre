@@ -57,7 +57,20 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        // Custom Infusion Centre colours - matching #3E5B84
+        // Clinical state tokens
+        clinical: {
+          success: "hsl(var(--state-success))",
+          "success-soft": "hsl(var(--state-success-soft))",
+          warning: "hsl(var(--state-warning))",
+          "warning-soft": "hsl(var(--state-warning-soft))",
+          danger: "hsl(var(--state-danger))",
+          "danger-soft": "hsl(var(--state-danger-soft))",
+          info: "hsl(var(--state-info))",
+          "info-soft": "hsl(var(--state-info-soft))",
+          neutral: "hsl(var(--state-neutral))",
+          "neutral-soft": "hsl(var(--state-neutral-soft))",
+        },
+        // Legacy compat
         slate: {
           blue: "hsl(var(--slate-blue))",
           "blue-light": "hsl(var(--slate-blue-light))",
@@ -73,15 +86,13 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        heading: ["Exo", "system-ui", "sans-serif"],
-        body: ["Poppins", "system-ui", "sans-serif"],
-        sans: ["Poppins", "system-ui", "sans-serif"],
-      },
-      fontSize: {
-        "h1": ["57.6px", { lineHeight: "1.1" }],
-        "h2": ["48px", { lineHeight: "1.2" }],
-        "h3": ["32px", { lineHeight: "1.3" }],
-        "body": ["17.6px", { lineHeight: "1.6" }],
+        heading: ["Inter", "system-ui", "sans-serif"],
+        body: ["Inter", "system-ui", "sans-serif"],
+        sans: ["Inter", "system-ui", "sans-serif"],
+        mono: ["'SF Mono'", "'Cascadia Code'", "'Fira Code'", "monospace"],
+        // Public pages
+        "public-heading": ["Exo", "system-ui", "sans-serif"],
+        "public-body": ["Poppins", "system-ui", "sans-serif"],
       },
       keyframes: {
         "accordion-down": {

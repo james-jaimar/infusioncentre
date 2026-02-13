@@ -6,11 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { useAddVitals, useTreatmentVitals } from "@/hooks/useTreatments";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,7 +15,7 @@ import { format } from "date-fns";
 import { Heart, Activity, Thermometer, Plus, Clock } from "lucide-react";
 import type { VitalsPhase } from "@/types/treatment";
 
-const VITALS_CADENCE_MS = 15 * 60 * 1000; // 15 minutes
+const VITALS_CADENCE_MS = 15 * 60 * 1000;
 
 interface JobCardVitalsProps {
   treatmentId: string;
@@ -28,37 +24,20 @@ interface JobCardVitalsProps {
   treatmentStartedAt?: string | null;
 }
 
-function useVitalsCountdown(
-  vitals: any[] | undefined,
-  treatmentStartedAt?: string | null,
-  isCompleted?: boolean
-) {
+function useVitalsCountdown(vitals: any[] | undefined, treatmentStartedAt?: string | null, isCompleted?: boolean) {
   const [remainingMs, setRemainingMs] = useState<number | null>(null);
-
   useEffect(() => {
-    if (isCompleted) {
-      setRemainingMs(null);
-      return;
-    }
-
+    if (isCompleted) { setRemainingMs(null); return; }
     const anchor = vitals?.length
       ? new Date(vitals[vitals.length - 1].recorded_at).getTime()
-      : treatmentStartedAt
-        ? new Date(treatmentStartedAt).getTime()
-        : null;
-
-    if (!anchor) {
-      setRemainingMs(null);
-      return;
-    }
-
+      : treatmentStartedAt ? new Date(treatmentStartedAt).getTime() : null;
+    if (!anchor) { setRemainingMs(null); return; }
     const nextDue = anchor + VITALS_CADENCE_MS;
     const update = () => setRemainingMs(nextDue - Date.now());
     update();
     const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
   }, [vitals, treatmentStartedAt, isCompleted]);
-
   return remainingMs;
 }
 
@@ -71,14 +50,10 @@ function CountdownBadge({ remainingMs }: { remainingMs: number }) {
     ? `Overdue ${mins}:${String(secs).padStart(2, "0")}`
     : `${mins}:${String(secs).padStart(2, "0")}`;
 
-  const color = overdue
-    ? "bg-destructive text-destructive-foreground animate-pulse"
-    : remainingMs <= 5 * 60 * 1000
-      ? "bg-amber-500 text-white"
-      : "bg-green-600 text-white";
+  const variant = overdue ? "danger" : remainingMs <= 5 * 60 * 1000 ? "warning" : "success";
 
   return (
-    <Badge className={`${color} gap-1 font-mono text-sm`}>
+    <Badge variant={variant} className={`gap-1 font-mono text-xs ${overdue ? "animate-pulse" : ""}`}>
       <Clock className="h-3.5 w-3.5" />
       {display}
     </Badge>
@@ -91,14 +66,8 @@ export default function JobCardVitals({ treatmentId, phase = "during", isComplet
   const addVitals = useAddVitals();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
-    blood_pressure_systolic: "",
-    blood_pressure_diastolic: "",
-    heart_rate: "",
-    o2_saturation: "",
-    temperature: "",
-    respiratory_rate: "",
-    pain_score: "",
-    notes: "",
+    blood_pressure_systolic: "", blood_pressure_diastolic: "", heart_rate: "",
+    o2_saturation: "", temperature: "", respiratory_rate: "", pain_score: "", notes: "",
   });
 
   const remainingMs = useVitalsCountdown(vitals, treatmentStartedAt, isCompleted);
@@ -108,8 +77,7 @@ export default function JobCardVitals({ treatmentId, phase = "during", isComplet
     if (!user?.id) return;
     try {
       await addVitals.mutateAsync({
-        treatment_id: treatmentId,
-        phase,
+        treatment_id: treatmentId, phase,
         blood_pressure_systolic: form.blood_pressure_systolic ? Number(form.blood_pressure_systolic) : null,
         blood_pressure_diastolic: form.blood_pressure_diastolic ? Number(form.blood_pressure_diastolic) : null,
         heart_rate: form.heart_rate ? Number(form.heart_rate) : null,
@@ -118,8 +86,7 @@ export default function JobCardVitals({ treatmentId, phase = "during", isComplet
         weight_kg: null,
         respiratory_rate: form.respiratory_rate ? Number(form.respiratory_rate) : null,
         pain_score: form.pain_score ? Number(form.pain_score) : null,
-        notes: form.notes || null,
-        recorded_by: user.id,
+        notes: form.notes || null, recorded_by: user.id,
       });
       setOpen(false);
       setForm({ blood_pressure_systolic: "", blood_pressure_diastolic: "", heart_rate: "", o2_saturation: "", temperature: "", respiratory_rate: "", pain_score: "", notes: "" });
@@ -132,118 +99,124 @@ export default function JobCardVitals({ treatmentId, phase = "during", isComplet
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-3">
-        <div className="flex items-center gap-2">
-          <CardTitle className="text-base">Vitals</CardTitle>
+        <div className="flex items-center gap-3">
+          <CardTitle className="text-base font-semibold">Vitals Monitoring</CardTitle>
           {remainingMs !== null && <CountdownBadge remainingMs={remainingMs} />}
         </div>
         {!isCompleted && (
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" className="gap-1 h-12 min-w-[48px]">
+              <Button size="sm" className="gap-1.5 h-12 min-w-[48px]">
                 <Plus className="h-4 w-4" /> Record
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Record Vitals</DialogTitle>
-              </DialogHeader>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-sm">BP Systolic</Label>
+              <DialogHeader><DialogTitle>Record Vitals</DialogTitle></DialogHeader>
+              <div className="grid grid-cols-2 gap-4 mt-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">BP Systolic</Label>
                   <Input type="number" className="h-12 text-lg" value={form.blood_pressure_systolic}
                     onChange={(e) => setForm((v) => ({ ...v, blood_pressure_systolic: e.target.value }))} />
                 </div>
-                <div>
-                  <Label className="text-sm">BP Diastolic</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">BP Diastolic</Label>
                   <Input type="number" className="h-12 text-lg" value={form.blood_pressure_diastolic}
                     onChange={(e) => setForm((v) => ({ ...v, blood_pressure_diastolic: e.target.value }))} />
                 </div>
-                <div>
-                  <Label className="text-sm">Heart Rate</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Heart Rate</Label>
                   <Input type="number" className="h-12 text-lg" value={form.heart_rate}
                     onChange={(e) => setForm((v) => ({ ...v, heart_rate: e.target.value }))} />
                 </div>
-                <div>
-                  <Label className="text-sm">O₂ Sat (%)</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">O₂ Sat (%)</Label>
                   <Input type="number" className="h-12 text-lg" value={form.o2_saturation}
                     onChange={(e) => setForm((v) => ({ ...v, o2_saturation: e.target.value }))} />
                 </div>
-                <div>
-                  <Label className="text-sm">Temp (°C)</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Temp (°C)</Label>
                   <Input type="number" step="0.1" className="h-12 text-lg" value={form.temperature}
                     onChange={(e) => setForm((v) => ({ ...v, temperature: e.target.value }))} />
                 </div>
-                <div>
-                  <Label className="text-sm">Resp Rate</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Resp Rate</Label>
                   <Input type="number" className="h-12 text-lg" value={form.respiratory_rate}
                     onChange={(e) => setForm((v) => ({ ...v, respiratory_rate: e.target.value }))} placeholder="16" />
                 </div>
-                <div className="col-span-2">
-                  <Label className="text-sm">Pain Score (0-10)</Label>
+                <div className="col-span-2 space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Pain Score (0-10)</Label>
                   <Input type="number" min="0" max="10" className="h-12 text-lg" value={form.pain_score}
                     onChange={(e) => setForm((v) => ({ ...v, pain_score: e.target.value }))} placeholder="0" />
                 </div>
-                <div className="col-span-2">
-                  <Label className="text-sm">Notes</Label>
+                <div className="col-span-2 space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Notes</Label>
                   <Textarea value={form.notes} onChange={(e) => setForm((v) => ({ ...v, notes: e.target.value }))} />
                 </div>
               </div>
-              <Button onClick={handleSave} className="w-full h-12 mt-2" disabled={addVitals.isPending}>Save Vitals</Button>
+              <Button onClick={handleSave} className="w-full h-12 mt-3" disabled={addVitals.isPending}>Save Vitals</Button>
             </DialogContent>
           </Dialog>
         )}
       </CardHeader>
       <CardContent>
         {latestVitals ? (
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-            <div className="flex items-center gap-2">
-              <Heart className="h-5 w-5 text-destructive" />
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-md bg-clinical-danger-soft flex items-center justify-center">
+                <Heart className="h-4 w-4 text-clinical-danger" />
+              </div>
               <div>
-                <p className="text-sm text-muted-foreground">BP</p>
-                <p className="font-semibold text-base">{latestVitals.blood_pressure_systolic}/{latestVitals.blood_pressure_diastolic}</p>
+                <p className="text-xs text-muted-foreground">BP</p>
+                <p className="font-semibold text-base tabular-nums">{latestVitals.blood_pressure_systolic}/{latestVitals.blood_pressure_diastolic}</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Activity className="h-5 w-5 text-primary" />
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-md bg-clinical-info-soft flex items-center justify-center">
+                <Activity className="h-4 w-4 text-clinical-info" />
+              </div>
               <div>
-                <p className="text-sm text-muted-foreground">HR</p>
-                <p className="font-semibold text-base">{latestVitals.heart_rate} bpm</p>
+                <p className="text-xs text-muted-foreground">HR</p>
+                <p className="font-semibold text-base tabular-nums">{latestVitals.heart_rate} bpm</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Activity className="h-5 w-5 text-blue-500" />
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-md bg-clinical-info-soft flex items-center justify-center">
+                <Activity className="h-4 w-4 text-clinical-info" />
+              </div>
               <div>
-                <p className="text-sm text-muted-foreground">O₂</p>
-                <p className="font-semibold text-base">{latestVitals.o2_saturation}%</p>
+                <p className="text-xs text-muted-foreground">O₂</p>
+                <p className="font-semibold text-base tabular-nums">{latestVitals.o2_saturation}%</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Thermometer className="h-5 w-5 text-amber-500" />
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-md bg-clinical-warning-soft flex items-center justify-center">
+                <Thermometer className="h-4 w-4 text-clinical-warning" />
+              </div>
               <div>
-                <p className="text-sm text-muted-foreground">Temp</p>
-                <p className="font-semibold text-base">{latestVitals.temperature}°C</p>
+                <p className="text-xs text-muted-foreground">Temp</p>
+                <p className="font-semibold text-base tabular-nums">{latestVitals.temperature}°C</p>
               </div>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Recorded</p>
-              <p className="text-base">{format(new Date(latestVitals.recorded_at), "HH:mm")}</p>
+              <p className="text-xs text-muted-foreground">Recorded</p>
+              <p className="text-sm font-medium tabular-nums">{format(new Date(latestVitals.recorded_at), "HH:mm")}</p>
             </div>
           </div>
         ) : (
-          <p className="text-muted-foreground text-center py-3 text-sm">No vitals recorded yet.</p>
+          <p className="text-muted-foreground text-center py-4 text-sm">No vitals recorded yet.</p>
         )}
 
         {vitals && vitals.length > 1 && (
-          <div className="mt-3 border-t pt-3">
-            <p className="text-sm font-medium text-muted-foreground mb-2">History ({vitals.length} readings)</p>
-            <div className="space-y-1 max-h-32 overflow-y-auto">
+          <div className="mt-4 border-t pt-4">
+            <p className="text-xs font-medium text-muted-foreground mb-2">History ({vitals.length} readings)</p>
+            <div className="space-y-1.5 max-h-32 overflow-y-auto">
               {vitals.map((v) => (
-                <div key={v.id} className="text-sm flex gap-3 text-muted-foreground">
-                  <span className="font-mono">{format(new Date(v.recorded_at), "HH:mm")}</span>
-                  <span>BP {v.blood_pressure_systolic}/{v.blood_pressure_diastolic}</span>
-                  <span>HR {v.heart_rate}</span>
-                  <span>O₂ {v.o2_saturation}%</span>
-                  <Badge variant="outline" className="text-sm h-6">{v.phase}</Badge>
+                <div key={v.id} className="text-sm flex gap-4 text-muted-foreground items-center">
+                  <span className="font-mono text-xs tabular-nums w-12">{format(new Date(v.recorded_at), "HH:mm")}</span>
+                  <span className="tabular-nums">BP {v.blood_pressure_systolic}/{v.blood_pressure_diastolic}</span>
+                  <span className="tabular-nums">HR {v.heart_rate}</span>
+                  <span className="tabular-nums">O₂ {v.o2_saturation}%</span>
+                  <Badge variant="neutral" className="text-xs">{v.phase}</Badge>
                 </div>
               ))}
             </div>
