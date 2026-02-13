@@ -1,53 +1,66 @@
 
 
-## Admin Approval for New Patient Accounts
+## Fix: Admin Tools to Recover Stuck Invited Accounts
 
-### Problem
-Currently, anyone can register a patient account via `/register` and immediately access the patient portal. This could be abused by unauthorized users.
+### The Problem
+
+When a patient registers via an invite link, the "accept" edge function call can silently fail (network issues, timing, etc.), leaving the system in a broken state:
+- Auth user exists with `is_approved = false` (stuck on "Pending Approval" screen)
+- Patient record has no `user_id` linked (admin sees "No Account")
+- No admin tool exists to fix this manually
 
 ### Solution
-Add an approval workflow where new self-registered accounts are created in a "pending" state. Only after an admin approves the account can the patient log in and access the portal.
 
----
+Add admin capabilities to the **Account tab** to detect and resolve this situation, plus make the invite acceptance more resilient.
 
-### How It Works
+### Changes
 
-1. **New column on `profiles` table**: Add `is_approved` (boolean, default `false`). When a patient self-registers, their profile is created with `is_approved = false`.
+**1. PatientAccountTab.tsx -- Add "Link & Approve" functionality**
 
-2. **Registration flow update**: After signup, show a message like "Your account has been created and is pending admin approval" instead of redirecting to login.
+When a patient shows "No Account" but has an email on file, add a button to search for an existing auth user with that email and link them:
+- Query auth users by email (via a small edge function)
+- If found, update `patients.user_id` and set `profiles.is_approved = true`
+- Show the result immediately
 
-3. **Login gate**: On login, after authentication succeeds, check `is_approved`. If `false`, show a message: "Your account is pending approval. Please contact the clinic." and sign them out.
+**2. New edge function action in `send-patient-invite`**
 
-4. **Admin approval UI**: In the Admin Patients list, show a "Pending Approval" badge/filter. Add an approve/reject action so admins can activate new accounts.
+Add a `link-account` admin action that:
+- Takes `patient_id` and `email`
+- Looks up the auth user by email using the admin API
+- Updates `patients.user_id`, sets `profiles.is_approved = true`
+- Marks any pending invites as "accepted"
+- Requires admin/nurse role
 
-5. **Invited patients bypass**: Patients created via the admin invite flow should be auto-approved (`is_approved = true`), since the admin already vetted them.
+**3. InviteLanding.tsx -- Better error handling**
 
----
+If the accept call fails after signup, retry once and show a clearer message rather than silently navigating to `/patient` where the user gets stuck.
 
 ### Technical Details
 
-**Database migration:**
-- Add `is_approved boolean default false` to `profiles` table
-- Update existing profiles to `is_approved = true` (so current users are unaffected)
-- Update the invite acceptance flow to set `is_approved = true`
+**Edge function update (`send-patient-invite`):**
+
+New `link-account` action (admin-only):
+```
+POST { action: "link-account", patient_id: "...", email: "..." }
+```
+- Uses `adminClient.auth.admin.listUsers()` to find user by email
+- Updates `patients.user_id` to the found auth user ID
+- Sets `profiles.is_approved = true`
+- Marks pending invites as accepted
+
+**PatientAccountTab.tsx changes:**
+- When `hasAccount` is false but `patientEmail` exists, show a "Link Existing Account" button
+- On click, calls the new `link-account` action
+- On success, invalidates queries so the UI refreshes to show the linked account with approval controls
+
+**InviteLanding.tsx changes:**
+- Add error handling around the accept call -- if it fails, show a message telling the user to contact the clinic rather than navigating to a portal they can't access
+- Add a retry mechanism for the edge function call
 
 **Files to modify:**
-
 | File | Change |
 |------|--------|
-| `src/pages/Register.tsx` | After successful signup, show "pending approval" message instead of navigating to `/login` |
-| `src/pages/Login.tsx` | After sign-in, query `profiles.is_approved`; if `false`, show toast, sign out, and block access |
-| `src/contexts/AuthContext.tsx` | Add `is_approved` to the Profile interface and fetch it with profile data |
-| `src/components/auth/ProtectedRoute.tsx` | Check `profile.is_approved` -- if `false`, redirect to a "pending" page or back to login |
-| `src/pages/admin/AdminPatients.tsx` | Add a "Pending" status filter/badge; show approve/reject buttons for unapproved accounts |
-| `src/pages/admin/PatientDetail.tsx` | Add approve/reject toggle in the Account tab |
-| `src/components/admin/PatientAccountTab.tsx` | Show approval status and an approve/reject button |
-| `src/pages/InviteLanding.tsx` | On invite acceptance, set `is_approved = true` on the profile |
-| `supabase/functions/send-patient-invite/index.ts` | Ensure profiles created via invite are marked `is_approved = true` |
-
-**New file:**
-- `src/pages/PendingApproval.tsx` -- Simple page shown to users whose account is not yet approved
-
-**Edge function update (`create-staff`):**
-- Staff accounts created by admin should also be auto-approved
+| `supabase/functions/send-patient-invite/index.ts` | Add `link-account` admin action |
+| `src/components/admin/PatientAccountTab.tsx` | Add "Link Existing Account" button for orphaned accounts |
+| `src/pages/InviteLanding.tsx` | Better error handling when accept fails |
 
