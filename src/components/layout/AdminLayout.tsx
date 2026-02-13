@@ -16,12 +16,14 @@ import {
   ClipboardList,
   Package,
   Mail,
+  Monitor,
 } from "lucide-react";
 import { useState } from "react";
 import logo from "@/assets/logo.png";
 
 const navigation = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
+  { name: "Command Centre", href: "/admin/command-centre", icon: Monitor },
   { name: "Contact Submissions", href: "/admin/contacts", icon: MessageSquare },
   { name: "Patients", href: "/admin/patients", icon: Users },
   { name: "Appointments", href: "/admin/appointments", icon: Calendar },

@@ -119,6 +119,7 @@ const App = () => (
               <Route path="reports" element={<AdminReports />} />
               <Route path="billable-items" element={<AdminBillableItems />} />
               <Route path="communications" element={<AdminCommunications />} />
+              <Route path="command-centre" element={<NurseCommandCentre />} />
               <Route path="settings" element={<AdminSettings />} />
             </Route>
 
