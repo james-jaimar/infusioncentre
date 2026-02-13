@@ -27,6 +27,7 @@ export default function PatientAccountTab({
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [approving, setApproving] = useState(false);
+  const [linking, setLinking] = useState(false);
   const queryClient = useQueryClient();
 
   const hasAccount = !!patientUserId;
@@ -129,6 +130,27 @@ export default function PatientAccountTab({
     }
   }
 
+  async function handleLinkAccount() {
+    if (!patientEmail) return;
+    setLinking(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-patient-invite", {
+        body: { action: "link-account", patient_id: patientId, email: patientEmail },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success("Account linked and approved successfully");
+      queryClient.invalidateQueries({ queryKey: ['patient-approval'] });
+      // Force a full page reload to refresh patient data with new user_id
+      window.location.reload();
+    } catch (err: any) {
+      console.error("Link account error:", err);
+      toast.error(err.message || "Failed to link account");
+    } finally {
+      setLinking(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       {/* Account Status */}
@@ -178,11 +200,33 @@ export default function PatientAccountTab({
             <span className="text-sm text-muted-foreground">{patientEmail || "Not set"}</span>
           </div>
           {!hasAccount && (
-            <div className="flex items-center gap-2 rounded-md bg-muted p-3">
-              <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">
-                This patient hasn't created a portal account yet. Send them an invite from the header above.
-              </p>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 rounded-md bg-muted p-3">
+                <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  This patient hasn't created a portal account yet. Send them an invite from the header above.
+                </p>
+              </div>
+              {patientEmail && (
+                <div className="flex items-center gap-2 rounded-md border border-dashed p-3">
+                  <Key className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Account stuck?</p>
+                    <p className="text-xs text-muted-foreground">
+                      If this patient registered but their account wasn't linked, click below to find and link their auth account.
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleLinkAccount}
+                    disabled={linking}
+                  >
+                    {linking && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+                    Link Existing Account
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

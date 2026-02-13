@@ -179,6 +179,51 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Handle link-account action — admin recovery tool for stuck accounts
+    if (action === "link-account") {
+      const { patient_id, email } = body;
+      if (!patient_id || !email) {
+        return new Response(
+          JSON.stringify({ error: "patient_id and email are required" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const adminClient = createClient(supabaseUrl, serviceRoleKey);
+
+      // Look up auth user by email
+      const { data: { users }, error: listErr } = await adminClient.auth.admin.listUsers();
+      if (listErr) {
+        return new Response(
+          JSON.stringify({ error: "Failed to search users" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const matchedUser = users.find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
+      if (!matchedUser) {
+        return new Response(
+          JSON.stringify({ error: "No auth account found with this email. The patient needs to register first." }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Link patient record, approve profile, and mark invites as accepted
+      await Promise.all([
+        adminClient.from("patients").update({ user_id: matchedUser.id }).eq("id", patient_id),
+        adminClient.from("profiles").update({ is_approved: true }).eq("user_id", matchedUser.id),
+        adminClient.from("patient_invites")
+          .update({ status: "accepted", accepted_at: new Date().toISOString() })
+          .eq("patient_id", patient_id)
+          .eq("status", "pending"),
+      ]);
+
+      return new Response(
+        JSON.stringify({ success: true, user_id: matchedUser.id }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { patient_id, email, phone, treatment_type_ids } = body;
 
     if (!patient_id || !email) {
