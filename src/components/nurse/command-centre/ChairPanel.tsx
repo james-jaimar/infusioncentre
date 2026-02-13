@@ -41,19 +41,19 @@ export function ChairPanel({ chair }: { chair: ChairData }) {
   // Available chair
   if (!occ) {
     return (
-      <Card className="flex flex-col justify-center items-center p-8 min-h-[200px] bg-muted/30 border-border/50">
-        <Armchair className="h-10 w-10 text-muted-foreground/20 mb-3" />
+      <Card className="flex flex-col justify-center items-center p-6 bg-muted/30 border-border/50">
+        <Armchair className="h-8 w-8 text-muted-foreground/20 mb-2" />
         <span className="text-sm font-medium text-muted-foreground">{chair.name}</span>
-        <span className="text-xs text-muted-foreground/60 mt-1">Available</span>
+        <span className="text-xs text-muted-foreground/60 mt-0.5">Available</span>
       </Card>
     );
   }
 
   // Occupied chair
   return (
-    <Card className={`flex flex-col justify-between p-0 min-h-[320px] overflow-hidden ${cfg?.borderClass || ""} ${cfg?.bgClass || ""}`}>
+    <Card className={`flex flex-col justify-between p-0 overflow-hidden ${cfg?.borderClass || ""} ${cfg?.bgClass || ""}`}>
       {/* Header */}
-      <div className="flex items-center justify-between px-6 pt-5 pb-2">
+      <div className="flex items-center justify-between px-4 pt-4 pb-1.5">
         <div className="flex items-center gap-2">
           <Armchair className="h-4 w-4 text-muted-foreground/60" />
           <span className="text-sm text-muted-foreground">{chair.name}</span>
@@ -62,7 +62,7 @@ export function ChairPanel({ chair }: { chair: ChairData }) {
       </div>
 
       {/* Body */}
-      <div className="flex-1 px-6 space-y-4">
+      <div className="flex-1 px-4 space-y-3">
         <div>
           <p className="text-lg font-semibold text-foreground truncate">{occ.patientName}</p>
           <p className="text-sm text-muted-foreground mt-0.5">{occ.treatmentType}</p>
@@ -89,7 +89,7 @@ export function ChairPanel({ chair }: { chair: ChairData }) {
       </div>
 
       {/* Action */}
-      <div className="px-6 pb-5 pt-4">
+      <div className="px-4 pb-4 pt-3">
         <Button
           className="w-full h-14 text-base font-medium"
           onClick={() => navigate(`/nurse/job-card/${occ.appointmentId}`)}

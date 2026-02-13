@@ -12,8 +12,8 @@ export function UpcomingSessions({ sessions }: UpcomingSessionsProps) {
   if (sessions.length === 0) return null;
 
   return (
-    <Card className="p-5">
-      <div className="flex items-center gap-2 mb-4">
+    <Card className="p-4">
+      <div className="flex items-center gap-2 mb-3">
         <CalendarClock className="h-4 w-4 text-muted-foreground" />
         <h3 className="text-sm font-semibold text-foreground">Upcoming Sessions</h3>
         <Badge variant="neutral">{sessions.length}</Badge>

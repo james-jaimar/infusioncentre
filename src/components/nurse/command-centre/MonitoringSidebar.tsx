@@ -75,10 +75,10 @@ export function MonitoringSidebar({ chairs, unassigned, availableChairs, onAssig
   const avgDuration = computeAvgDuration(chairs);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Live Alerts */}
-      <Card className="p-5">
-        <div className="flex items-center gap-2 mb-3">
+      <Card className="p-4">
+        <div className="flex items-center gap-2 mb-2">
           <AlertTriangle className="h-4 w-4 text-clinical-warning" />
           <h3 className="text-sm font-semibold text-foreground">Live Alerts</h3>
           {alerts.length > 0 && <Badge variant="danger">{alerts.length}</Badge>}
@@ -105,8 +105,8 @@ export function MonitoringSidebar({ chairs, unassigned, availableChairs, onAssig
 
       {/* Unassigned Treatments */}
       {unassigned.length > 0 && (
-        <Card className="p-5 border-l-4 border-l-clinical-warning">
-          <div className="flex items-center gap-2 mb-3">
+        <Card className="p-4 border-l-4 border-l-clinical-warning">
+          <div className="flex items-center gap-2 mb-2">
             <Clock className="h-4 w-4 text-clinical-warning" />
             <h3 className="text-sm font-semibold text-foreground">Unassigned</h3>
             <Badge variant="warning">{unassigned.length}</Badge>
@@ -135,8 +135,8 @@ export function MonitoringSidebar({ chairs, unassigned, availableChairs, onAssig
       )}
 
       {/* Quick Stats */}
-      <Card className="p-5">
-        <h3 className="text-sm font-semibold text-foreground mb-3">Quick Stats</h3>
+      <Card className="p-4">
+        <h3 className="text-sm font-semibold text-foreground mb-2">Quick Stats</h3>
         <div className="space-y-2.5 text-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-muted-foreground">
