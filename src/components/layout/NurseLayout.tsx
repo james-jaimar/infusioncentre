@@ -72,7 +72,7 @@ export default function NurseLayout() {
                 <Link
                   key={item.name}
                   to={item.href}
-                  className={`flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors ${
+                  className={`flex items-center gap-3 px-3 py-3.5 text-sm font-medium transition-colors ${
                     isActive
                       ? "bg-primary-foreground/20 text-primary-foreground"
                       : "text-primary-foreground/70 hover:bg-primary-foreground/10 hover:text-primary-foreground"
@@ -120,7 +120,7 @@ export default function NurseLayout() {
       <div className="flex flex-1 flex-col">
         {/* Mobile header */}
         <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-4 lg:hidden">
-          <button onClick={() => setSidebarOpen(true)}>
+          <button onClick={() => setSidebarOpen(true)} className="h-12 w-12 flex items-center justify-center">
             <Menu className="h-6 w-6" />
           </button>
           <span className="font-semibold">Nurse Dashboard</span>

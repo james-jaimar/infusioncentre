@@ -35,7 +35,7 @@ export default function JobCardActions({
   const isCompleted = treatmentStatus === "completed" || treatmentStatus === "cancelled";
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 border-t bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 px-4 py-3 lg:left-[var(--sidebar-width,0px)]">
+    <div className="fixed bottom-0 left-0 right-0 z-40 border-t bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 px-4 py-3 lg:left-64">
       <div className="flex items-center gap-3 max-w-7xl mx-auto">
         {showCheckIn && (
           <Button onClick={onCheckIn} disabled={isSubmitting} size="lg" className="flex-1 h-14 text-base">

@@ -80,7 +80,7 @@ export default function JobCardMedications({ treatmentId, isCompleted }: JobCard
                 <Plus className="h-4 w-4" /> Add
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Administer Medication</DialogTitle>
               </DialogHeader>

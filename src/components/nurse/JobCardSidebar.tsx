@@ -53,7 +53,7 @@ export default function JobCardSidebar({ patientId, patient }: JobCardSidebarPro
               <p className="text-xs text-muted-foreground">Emergency Contact</p>
               <p className="font-medium">{patient.emergency_contact_name} ({patient.emergency_contact_relationship})</p>
               {patient.emergency_contact_phone && (
-                <a href={`tel:${patient.emergency_contact_phone}`} className="flex items-center gap-1 text-primary text-xs">
+                <a href={`tel:${patient.emergency_contact_phone}`} className="flex items-center gap-1 text-primary text-sm py-1 min-h-[44px]">
                   <Phone className="h-3 w-3" /> {patient.emergency_contact_phone}
                 </a>
               )}
@@ -79,7 +79,7 @@ export default function JobCardSidebar({ patientId, patient }: JobCardSidebarPro
       <Collapsible open={medOpen} onOpenChange={setMedOpen}>
         <Card>
           <CollapsibleTrigger asChild>
-            <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
+            <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors min-h-[48px]">
               <CardTitle className="text-sm flex items-center justify-between">
                 <span className="flex items-center gap-2">
                   <Stethoscope className="h-4 w-4" /> Medical Flags
