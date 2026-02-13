@@ -27,6 +27,7 @@ export interface FormField {
   fields?: string[];
   max_rows?: number;
   max_length?: number;
+  prefill_key?: string;
 }
 
 interface FormRendererProps {

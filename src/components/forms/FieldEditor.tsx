@@ -3,8 +3,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { X, Plus } from "lucide-react";
 import type { FormField } from "./FormRenderer";
+import { PREFILL_KEY_OPTIONS } from "@/lib/prefillFormData";
 
 interface FieldEditorProps {
   field: FormField;
@@ -277,6 +279,32 @@ export default function FieldEditor({ field, onChange }: FieldEditorProps) {
             onChange={(e) => update({ max_rows: e.target.value ? Number(e.target.value) : undefined })}
             className="h-8 text-xs"
           />
+        </div>
+      )}
+
+      {/* Prefill Key */}
+      {hasRequired(field.field_type) && (
+        <div className="space-y-1">
+          <Label className="text-xs">Auto-fill from Patient Data</Label>
+          <Select
+            value={field.prefill_key || "__none__"}
+            onValueChange={(v) => update({ prefill_key: v === "__none__" ? undefined : v })}
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue placeholder="None" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">None</SelectItem>
+              {PREFILL_KEY_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-[10px] text-muted-foreground">
+            When set, this field will auto-populate from the patient's record.
+          </p>
         </div>
       )}
     </div>
