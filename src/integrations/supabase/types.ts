@@ -1617,6 +1617,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      validate_invite_token: { Args: { invite_token: string }; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "nurse" | "patient" | "doctor"
