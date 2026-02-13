@@ -14,7 +14,7 @@ import { useState } from "react";
 import logo from "@/assets/logo.png";
 
 const navigation = [
-  { name: "Dashboard", href: "/nurse", icon: LayoutDashboard },
+  { name: "Command Centre", href: "/nurse", icon: LayoutDashboard },
   { name: "Today's Patients", href: "/nurse/patients", icon: Users },
   { name: "Active Treatments", href: "/nurse/treatments", icon: ClipboardCheck },
 ];
