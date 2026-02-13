@@ -30,6 +30,7 @@ import JobCardActions from "@/components/nurse/JobCardActions";
 import JobCardBilling from "@/components/nurse/JobCardBilling";
 import JobCardIVAccess from "@/components/nurse/JobCardIVAccess";
 import JobCardReactions from "@/components/nurse/JobCardReactions";
+import JobCardKetaminePanel from "@/components/nurse/JobCardKetaminePanel";
 
 // ── Manual pre-treatment checklist items (non-form items) ──
 const manualChecklist = [
@@ -394,27 +395,18 @@ export default function NurseJobCard() {
                 treatmentId={treatment.id}
                 phase={treatment.status === "in_progress" ? "during" : "post"}
                 isCompleted={isCompleted}
+                treatmentStartedAt={treatment.started_at}
               />
               <JobCardIVAccess treatmentId={treatment.id} isCompleted={isCompleted} />
               <JobCardMedications treatmentId={treatment.id} isCompleted={isCompleted} />
               <JobCardReactions treatmentId={treatment.id} treatmentStartedAt={treatment.started_at} isCompleted={isCompleted} />
 
-              {/* Ketamine protocol link */}
+              {/* Inline Ketamine Monitoring */}
               {isKetamine && !isCompleted && (
-                <Card className="border-amber-300 bg-amber-50">
-                  <CardContent className="py-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <AlertTriangle className="h-5 w-5 text-amber-600" />
-                      <div>
-                        <p className="font-medium text-foreground text-sm">Ketamine Protocol Active</p>
-                        <p className="text-xs text-muted-foreground">Monitor every 15 minutes</p>
-                      </div>
-                    </div>
-                    <Button variant="outline" className="border-amber-500 h-11 min-w-[44px]" onClick={() => navigate(`/nurse/ketamine/${treatment.id}`)}>
-                      Open Monitoring
-                    </Button>
-                  </CardContent>
-                </Card>
+                <JobCardKetaminePanel
+                  treatmentId={treatment.id}
+                  treatmentStartedAt={treatment.started_at}
+                />
               )}
 
               <JobCardBilling

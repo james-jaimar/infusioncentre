@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,16 +16,76 @@ import { useAddVitals, useTreatmentVitals } from "@/hooks/useTreatments";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { Heart, Activity, Thermometer, Plus } from "lucide-react";
+import { Heart, Activity, Thermometer, Plus, Clock } from "lucide-react";
 import type { VitalsPhase } from "@/types/treatment";
+
+const VITALS_CADENCE_MS = 15 * 60 * 1000; // 15 minutes
 
 interface JobCardVitalsProps {
   treatmentId: string;
   phase?: VitalsPhase;
   isCompleted?: boolean;
+  treatmentStartedAt?: string | null;
 }
 
-export default function JobCardVitals({ treatmentId, phase = "during", isCompleted }: JobCardVitalsProps) {
+function useVitalsCountdown(
+  vitals: any[] | undefined,
+  treatmentStartedAt?: string | null,
+  isCompleted?: boolean
+) {
+  const [remainingMs, setRemainingMs] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (isCompleted) {
+      setRemainingMs(null);
+      return;
+    }
+
+    const anchor = vitals?.length
+      ? new Date(vitals[vitals.length - 1].recorded_at).getTime()
+      : treatmentStartedAt
+        ? new Date(treatmentStartedAt).getTime()
+        : null;
+
+    if (!anchor) {
+      setRemainingMs(null);
+      return;
+    }
+
+    const nextDue = anchor + VITALS_CADENCE_MS;
+    const update = () => setRemainingMs(nextDue - Date.now());
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [vitals, treatmentStartedAt, isCompleted]);
+
+  return remainingMs;
+}
+
+function CountdownBadge({ remainingMs }: { remainingMs: number }) {
+  const overdue = remainingMs <= 0;
+  const absMs = Math.abs(remainingMs);
+  const mins = Math.floor(absMs / 60000);
+  const secs = Math.floor((absMs % 60000) / 1000);
+  const display = overdue
+    ? `Overdue ${mins}:${String(secs).padStart(2, "0")}`
+    : `${mins}:${String(secs).padStart(2, "0")}`;
+
+  const color = overdue
+    ? "bg-destructive text-destructive-foreground animate-pulse"
+    : remainingMs <= 5 * 60 * 1000
+      ? "bg-amber-500 text-white"
+      : "bg-green-600 text-white";
+
+  return (
+    <Badge className={`${color} gap-1 font-mono text-xs`}>
+      <Clock className="h-3 w-3" />
+      {display}
+    </Badge>
+  );
+}
+
+export default function JobCardVitals({ treatmentId, phase = "during", isCompleted, treatmentStartedAt }: JobCardVitalsProps) {
   const { user } = useAuth();
   const { data: vitals } = useTreatmentVitals(treatmentId);
   const addVitals = useAddVitals();
@@ -41,6 +101,7 @@ export default function JobCardVitals({ treatmentId, phase = "during", isComplet
     notes: "",
   });
 
+  const remainingMs = useVitalsCountdown(vitals, treatmentStartedAt, isCompleted);
   const latestVitals = vitals?.length ? vitals[vitals.length - 1] : null;
 
   const handleSave = async () => {
@@ -71,7 +132,10 @@ export default function JobCardVitals({ treatmentId, phase = "during", isComplet
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-3">
-        <CardTitle className="text-base">Vitals</CardTitle>
+        <div className="flex items-center gap-2">
+          <CardTitle className="text-base">Vitals</CardTitle>
+          {remainingMs !== null && <CountdownBadge remainingMs={remainingMs} />}
+        </div>
         {!isCompleted && (
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
