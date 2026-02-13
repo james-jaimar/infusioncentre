@@ -44,6 +44,7 @@ import AdminCommunications from "./pages/admin/AdminCommunications";
 // Nurse pages
 import NurseLayout from "./components/layout/NurseLayout";
 import NurseDashboard from "./pages/nurse/NurseDashboard";
+import NurseCommandCentre from "./pages/nurse/NurseCommandCentre";
 import NurseTodaysPatients from "./pages/nurse/NurseTodaysPatients";
 import NurseCheckIn from "./pages/nurse/NurseCheckIn";
 import NurseActiveTreatment from "./pages/nurse/NurseActiveTreatment";
@@ -145,7 +146,8 @@ const App = () => (
                 </ProtectedRoute>
               }
             >
-              <Route index element={<NurseDashboard />} />
+              <Route index element={<NurseCommandCentre />} />
+              <Route path="command-centre" element={<NurseCommandCentre />} />
               <Route path="patients" element={<NurseTodaysPatients />} />
               <Route path="checkin/:appointmentId" element={<NurseCheckIn />} />
               <Route path="treatment/:treatmentId" element={<NurseActiveTreatment />} />
