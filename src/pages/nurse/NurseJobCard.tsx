@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAppointment, useUpdateAppointment } from "@/hooks/useAppointments";
 import {
   useTreatmentByAppointment,
@@ -17,9 +18,10 @@ import {
 } from "@/hooks/useTreatments";
 import { useOnboardingReadiness } from "@/hooks/useOnboardingChecklist";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowLeft, AlertTriangle, CheckCircle2, XCircle, PanelLeftOpen } from "lucide-react";
 
 import JobCardHeader from "@/components/nurse/JobCardHeader";
 import JobCardStepper from "@/components/nurse/JobCardStepper";
@@ -61,7 +63,7 @@ function TreatmentTimer({ startedAt }: { startedAt: string | null }) {
 
   return (
     <div className="text-center">
-      <p className="text-xs text-muted-foreground mb-1">Elapsed Time</p>
+      <p className="text-sm text-muted-foreground mb-1">Elapsed Time</p>
       <p className="text-4xl font-mono font-bold text-foreground tabular-nums">
         {String(hours).padStart(2, "0")}:{String(minutes).padStart(2, "0")}:{String(seconds).padStart(2, "0")}
       </p>
@@ -73,6 +75,7 @@ export default function NurseJobCard() {
   const { appointmentId } = useParams<{ appointmentId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
 
   const { data: appointment, isLoading: loadingApt } = useAppointment(appointmentId);
   const { data: treatment, isLoading: loadingTreatment } = useTreatmentByAppointment(appointmentId);
@@ -223,12 +226,33 @@ export default function NurseJobCard() {
   const patient = fullPatient || appointment.patient;
   const showPreAssessment = appointment.status === "checked_in" && !treatment;
 
+  // Use <=1024 as "tablet or smaller" — sidebar becomes a sheet
+  const useSheetSidebar = isMobile || typeof window !== "undefined" && window.innerWidth < 1024;
+
+  const sidebarContent = (
+    <JobCardSidebar patientId={appointment.patient.id} patient={patient} />
+  );
+
   return (
     <div className="pb-24">
-      {/* Back button */}
-      <Button variant="ghost" onClick={() => navigate("/nurse/patients")} className="gap-2 mb-3">
-        <ArrowLeft className="h-4 w-4" /> Back to patients
-      </Button>
+      {/* Back button + sidebar toggle for tablet */}
+      <div className="flex items-center gap-2 mb-3">
+        <Button variant="ghost" onClick={() => navigate("/nurse/patients")} className="gap-2 h-12 min-w-[48px]">
+          <ArrowLeft className="h-5 w-5" /> Back
+        </Button>
+        {useSheetSidebar && (
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" className="gap-2 h-12 min-w-[48px]">
+                <PanelLeftOpen className="h-5 w-5" /> Patient Info
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-[340px] overflow-y-auto p-4">
+              {sidebarContent}
+            </SheetContent>
+          </Sheet>
+        )}
+      </div>
 
       {/* Header strip */}
       <JobCardHeader
@@ -246,15 +270,17 @@ export default function NurseJobCard() {
         <JobCardStepper currentStatus={getStepperStatus()} />
       </div>
 
-      {/* Main grid: sidebar + content */}
+      {/* Main grid: sidebar (desktop only) + content */}
       <div className="mt-4 grid gap-4 lg:grid-cols-[300px_1fr]">
-        {/* Sidebar */}
-        <div className="order-2 lg:order-1">
-          <JobCardSidebar patientId={appointment.patient.id} patient={patient} />
-        </div>
+        {/* Sidebar - only visible on large screens */}
+        {!useSheetSidebar && (
+          <div className="order-1">
+            {sidebarContent}
+          </div>
+        )}
 
         {/* Main content */}
-        <div className="order-1 lg:order-2 space-y-4">
+        <div className={`${useSheetSidebar ? "order-1" : "order-2"} space-y-4`}>
           {/* Timer (when treatment active) */}
           {treatment && treatment.status !== "pending" && (
             <Card>
@@ -275,11 +301,11 @@ export default function NurseJobCard() {
                   {/* Auto-verified consent forms */}
                   {readiness.required.length > 0 && (
                     <div className="space-y-2 pb-3 border-b">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Consent & Onboarding Forms</p>
+                      <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Consent & Onboarding Forms</p>
                       {readiness.required.map((form) => {
                         const done = readiness.completed.find((c) => c.id === form.id);
                         return (
-                          <div key={form.id} className="flex items-center gap-3">
+                          <div key={form.id} className="flex items-center gap-3 min-h-[48px]">
                             {done ? (
                               <CheckCircle2 className="h-6 w-6 text-green-600 flex-shrink-0" />
                             ) : (
@@ -290,7 +316,7 @@ export default function NurseJobCard() {
                                 {form.name}
                               </span>
                               {done && (
-                                <span className="text-xs text-muted-foreground ml-2">
+                                <span className="text-sm text-muted-foreground ml-2">
                                   ✓ {new Date(done.completedAt).toLocaleDateString("en-ZA")}
                                 </span>
                               )}
@@ -300,7 +326,7 @@ export default function NurseJobCard() {
                       })}
                       {/* Paper consent override */}
                       {!readiness.isReady && (
-                        <div className="flex items-center gap-3 pt-2">
+                        <div className="flex items-center gap-3 pt-2 min-h-[48px]">
                           <Switch
                             id="paper-consent"
                             checked={paperConsentOverride}
@@ -316,7 +342,7 @@ export default function NurseJobCard() {
 
                   {/* Manual checklist items */}
                   {manualChecklist.map((item, index) => (
-                    <div key={index} className="flex items-start gap-3">
+                    <div key={index} className="flex items-start gap-3 min-h-[48px]">
                       <Checkbox
                         id={`pre-${index}`}
                         checked={checkedItems[index]}
@@ -325,7 +351,7 @@ export default function NurseJobCard() {
                           next[index] = !!checked;
                           setCheckedItems(next);
                         }}
-                        className="mt-0.5 h-6 w-6"
+                        className="mt-0.5 h-7 w-7"
                       />
                       <Label htmlFor={`pre-${index}`} className="text-sm cursor-pointer leading-relaxed">
                         {item}
@@ -342,38 +368,38 @@ export default function NurseJobCard() {
                 <CardContent>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label className="text-xs">BP Systolic</Label>
+                      <Label className="text-sm">BP Systolic</Label>
                       <Input type="number" className="h-12 text-lg" value={preVitals.blood_pressure_systolic}
                         onChange={(e) => setPreVitals((v) => ({ ...v, blood_pressure_systolic: e.target.value }))} placeholder="120" />
                     </div>
                     <div>
-                      <Label className="text-xs">BP Diastolic</Label>
+                      <Label className="text-sm">BP Diastolic</Label>
                       <Input type="number" className="h-12 text-lg" value={preVitals.blood_pressure_diastolic}
                         onChange={(e) => setPreVitals((v) => ({ ...v, blood_pressure_diastolic: e.target.value }))} placeholder="80" />
                     </div>
                     <div>
-                      <Label className="text-xs">Heart Rate</Label>
+                      <Label className="text-sm">Heart Rate</Label>
                       <Input type="number" className="h-12 text-lg" value={preVitals.heart_rate}
                         onChange={(e) => setPreVitals((v) => ({ ...v, heart_rate: e.target.value }))} placeholder="72" />
                     </div>
                     <div>
-                      <Label className="text-xs">O₂ Sat (%)</Label>
+                      <Label className="text-sm">O₂ Sat (%)</Label>
                       <Input type="number" className="h-12 text-lg" value={preVitals.o2_saturation}
                         onChange={(e) => setPreVitals((v) => ({ ...v, o2_saturation: e.target.value }))} placeholder="98" />
                     </div>
                     <div>
-                      <Label className="text-xs">Temp (°C)</Label>
+                      <Label className="text-sm">Temp (°C)</Label>
                       <Input type="number" step="0.1" className="h-12 text-lg" value={preVitals.temperature}
                         onChange={(e) => setPreVitals((v) => ({ ...v, temperature: e.target.value }))} placeholder="36.5" />
                     </div>
                     <div>
-                      <Label className="text-xs">Weight (kg)</Label>
+                      <Label className="text-sm">Weight (kg)</Label>
                       <Input type="number" step="0.1" className="h-12 text-lg" value={preVitals.weight_kg}
                         onChange={(e) => setPreVitals((v) => ({ ...v, weight_kg: e.target.value }))} placeholder="70" />
                     </div>
                   </div>
                   <div className="mt-3">
-                    <Label className="text-xs">Notes</Label>
+                    <Label className="text-sm">Notes</Label>
                     <Textarea value={preNotes} onChange={(e) => setPreNotes(e.target.value)} placeholder="Any observations..." />
                   </div>
                 </CardContent>

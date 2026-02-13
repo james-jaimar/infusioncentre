@@ -78,8 +78,8 @@ function CountdownBadge({ remainingMs }: { remainingMs: number }) {
       : "bg-green-600 text-white";
 
   return (
-    <Badge className={`${color} gap-1 font-mono text-xs`}>
-      <Clock className="h-3 w-3" />
+    <Badge className={`${color} gap-1 font-mono text-sm`}>
+      <Clock className="h-3.5 w-3.5" />
       {display}
     </Badge>
   );
@@ -139,52 +139,52 @@ export default function JobCardVitals({ treatmentId, phase = "during", isComplet
         {!isCompleted && (
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" className="gap-1 h-11 min-w-[44px]">
+              <Button size="sm" className="gap-1 h-12 min-w-[48px]">
                 <Plus className="h-4 w-4" /> Record
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Record Vitals</DialogTitle>
               </DialogHeader>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>BP Systolic</Label>
+                  <Label className="text-sm">BP Systolic</Label>
                   <Input type="number" className="h-12 text-lg" value={form.blood_pressure_systolic}
                     onChange={(e) => setForm((v) => ({ ...v, blood_pressure_systolic: e.target.value }))} />
                 </div>
                 <div>
-                  <Label>BP Diastolic</Label>
+                  <Label className="text-sm">BP Diastolic</Label>
                   <Input type="number" className="h-12 text-lg" value={form.blood_pressure_diastolic}
                     onChange={(e) => setForm((v) => ({ ...v, blood_pressure_diastolic: e.target.value }))} />
                 </div>
                 <div>
-                  <Label>Heart Rate</Label>
+                  <Label className="text-sm">Heart Rate</Label>
                   <Input type="number" className="h-12 text-lg" value={form.heart_rate}
                     onChange={(e) => setForm((v) => ({ ...v, heart_rate: e.target.value }))} />
                 </div>
                 <div>
-                  <Label>O₂ Sat (%)</Label>
+                  <Label className="text-sm">O₂ Sat (%)</Label>
                   <Input type="number" className="h-12 text-lg" value={form.o2_saturation}
                     onChange={(e) => setForm((v) => ({ ...v, o2_saturation: e.target.value }))} />
                 </div>
                 <div>
-                  <Label>Temp (°C)</Label>
+                  <Label className="text-sm">Temp (°C)</Label>
                   <Input type="number" step="0.1" className="h-12 text-lg" value={form.temperature}
                     onChange={(e) => setForm((v) => ({ ...v, temperature: e.target.value }))} />
                 </div>
                 <div>
-                  <Label>Resp Rate</Label>
+                  <Label className="text-sm">Resp Rate</Label>
                   <Input type="number" className="h-12 text-lg" value={form.respiratory_rate}
                     onChange={(e) => setForm((v) => ({ ...v, respiratory_rate: e.target.value }))} placeholder="16" />
                 </div>
                 <div className="col-span-2">
-                  <Label>Pain Score (0-10)</Label>
+                  <Label className="text-sm">Pain Score (0-10)</Label>
                   <Input type="number" min="0" max="10" className="h-12 text-lg" value={form.pain_score}
                     onChange={(e) => setForm((v) => ({ ...v, pain_score: e.target.value }))} placeholder="0" />
                 </div>
                 <div className="col-span-2">
-                  <Label>Notes</Label>
+                  <Label className="text-sm">Notes</Label>
                   <Textarea value={form.notes} onChange={(e) => setForm((v) => ({ ...v, notes: e.target.value }))} />
                 </div>
               </div>
@@ -199,34 +199,34 @@ export default function JobCardVitals({ treatmentId, phase = "during", isComplet
             <div className="flex items-center gap-2">
               <Heart className="h-5 w-5 text-destructive" />
               <div>
-                <p className="text-xs text-muted-foreground">BP</p>
-                <p className="font-semibold">{latestVitals.blood_pressure_systolic}/{latestVitals.blood_pressure_diastolic}</p>
+                <p className="text-sm text-muted-foreground">BP</p>
+                <p className="font-semibold text-base">{latestVitals.blood_pressure_systolic}/{latestVitals.blood_pressure_diastolic}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <Activity className="h-5 w-5 text-primary" />
               <div>
-                <p className="text-xs text-muted-foreground">HR</p>
-                <p className="font-semibold">{latestVitals.heart_rate} bpm</p>
+                <p className="text-sm text-muted-foreground">HR</p>
+                <p className="font-semibold text-base">{latestVitals.heart_rate} bpm</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <Activity className="h-5 w-5 text-blue-500" />
               <div>
-                <p className="text-xs text-muted-foreground">O₂</p>
-                <p className="font-semibold">{latestVitals.o2_saturation}%</p>
+                <p className="text-sm text-muted-foreground">O₂</p>
+                <p className="font-semibold text-base">{latestVitals.o2_saturation}%</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <Thermometer className="h-5 w-5 text-amber-500" />
               <div>
-                <p className="text-xs text-muted-foreground">Temp</p>
-                <p className="font-semibold">{latestVitals.temperature}°C</p>
+                <p className="text-sm text-muted-foreground">Temp</p>
+                <p className="font-semibold text-base">{latestVitals.temperature}°C</p>
               </div>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Recorded</p>
-              <p className="text-sm">{format(new Date(latestVitals.recorded_at), "HH:mm")}</p>
+              <p className="text-sm text-muted-foreground">Recorded</p>
+              <p className="text-base">{format(new Date(latestVitals.recorded_at), "HH:mm")}</p>
             </div>
           </div>
         ) : (
@@ -235,15 +235,15 @@ export default function JobCardVitals({ treatmentId, phase = "during", isComplet
 
         {vitals && vitals.length > 1 && (
           <div className="mt-3 border-t pt-3">
-            <p className="text-xs font-medium text-muted-foreground mb-2">History ({vitals.length} readings)</p>
+            <p className="text-sm font-medium text-muted-foreground mb-2">History ({vitals.length} readings)</p>
             <div className="space-y-1 max-h-32 overflow-y-auto">
               {vitals.map((v) => (
-                <div key={v.id} className="text-xs flex gap-3 text-muted-foreground">
+                <div key={v.id} className="text-sm flex gap-3 text-muted-foreground">
                   <span className="font-mono">{format(new Date(v.recorded_at), "HH:mm")}</span>
                   <span>BP {v.blood_pressure_systolic}/{v.blood_pressure_diastolic}</span>
                   <span>HR {v.heart_rate}</span>
                   <span>O₂ {v.o2_saturation}%</span>
-                  <Badge variant="outline" className="text-xs h-5">{v.phase}</Badge>
+                  <Badge variant="outline" className="text-sm h-6">{v.phase}</Badge>
                 </div>
               ))}
             </div>

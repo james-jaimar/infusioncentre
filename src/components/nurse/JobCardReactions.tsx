@@ -230,7 +230,7 @@ export default function JobCardReactions({ treatmentId, treatmentStartedAt, isCo
                 <div className="flex items-center justify-between mt-2">
                   <Badge variant="outline" className="text-xs capitalize">{r.outcome.replace("_", " ")}</Badge>
                   {r.outcome === "ongoing" && !isCompleted && (
-                    <Button size="sm" variant="outline" className="h-9"
+                    <Button size="sm" variant="outline" className="h-12 min-w-[48px]"
                       onClick={async () => {
                         try {
                           await updateReaction.mutateAsync({

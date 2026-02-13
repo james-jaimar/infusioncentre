@@ -62,7 +62,7 @@ function ElapsedTimer({ startedAt }: { startedAt: string | null }) {
   const s = Math.floor((elapsed % 60000) / 1000);
 
   return (
-    <span className="text-xs text-muted-foreground tabular-nums">
+    <span className="text-sm text-muted-foreground tabular-nums">
       {h > 0 ? `${h}h ` : ""}{m}m {s.toString().padStart(2, "0")}s
     </span>
   );
@@ -90,7 +90,7 @@ function ChairTile({ chair }: { chair: ChairData }) {
 
   return (
     <Card
-      className={`flex flex-col justify-between p-5 min-h-[220px] border-2 ${borderColor} transition-colors`}
+      className={`flex flex-col justify-between p-5 min-h-[260px] border-2 ${borderColor} transition-colors`}
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
@@ -127,7 +127,7 @@ function ChairTile({ chair }: { chair: ChairData }) {
           </div>
 
           <Button
-            className="mt-4 w-full min-h-[44px]"
+            className="mt-4 w-full h-14 text-base"
             onClick={() => navigate(`/nurse/job-card/${occ.appointmentId}`)}
           >
             Open Session

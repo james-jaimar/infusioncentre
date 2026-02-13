@@ -27,7 +27,7 @@ export default function JobCardStepper({ currentStatus }: JobCardStepperProps) {
           <div key={step.key} className="flex items-center">
             <div
               className={cn(
-                "flex items-center gap-1.5 rounded px-3 py-2 text-sm font-medium whitespace-nowrap min-h-[44px]",
+                "flex items-center gap-1.5 rounded px-4 py-3 text-sm font-medium whitespace-nowrap min-h-[48px]",
                 isDone && "bg-primary/10 text-primary",
                 isCurrent && "bg-primary text-primary-foreground",
                 !isDone && !isCurrent && "bg-muted text-muted-foreground"

@@ -142,7 +142,7 @@ export default function JobCardIVAccess({ treatmentId, isCompleted }: JobCardIVA
                   <CheckCircle2 className="h-4 w-4" /> Site Check
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-md">
+              <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
                 <DialogHeader><DialogTitle>IV Site Check</DialogTitle></DialogHeader>
                 <div className="space-y-4">
                   <div>
@@ -216,7 +216,7 @@ export default function JobCardIVAccess({ treatmentId, isCompleted }: JobCardIVA
               <DialogTrigger asChild>
                 <Button size="sm" className="gap-1 h-11 min-w-[44px]"><Plus className="h-4 w-4" /> Add IV Access</Button>
               </DialogTrigger>
-              <DialogContent className="max-w-md">
+              <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
                 <DialogHeader><DialogTitle>Document IV Access</DialogTitle></DialogHeader>
                 <div className="space-y-4">
                   <div>

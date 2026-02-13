@@ -77,7 +77,7 @@ export default function JobCardBilling({ treatmentId, appointmentTypeId, isCompl
           <Receipt className="h-4 w-4" /> Billing Items
         </CardTitle>
         {!isCompleted && (
-          <Button variant="outline" size="sm" onClick={() => setDialogOpen(true)}>
+          <Button variant="outline" size="sm" className="h-12 min-w-[48px]" onClick={() => setDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-1" /> Add
           </Button>
         )}
@@ -88,10 +88,10 @@ export default function JobCardBilling({ treatmentId, appointmentTypeId, isCompl
             <p className="text-xs text-muted-foreground">Suggested for this treatment:</p>
             <div className="flex flex-wrap gap-1">
               {unadded.map((item) => (
-                <Badge
+                  <Badge
                   key={item.id}
                   variant="outline"
-                  className="cursor-pointer hover:bg-primary/10"
+                  className="cursor-pointer hover:bg-primary/10 px-3 py-2 text-sm"
                   onClick={async () => {
                     try {
                       await addLine.mutateAsync({
@@ -126,8 +126,8 @@ export default function JobCardBilling({ treatmentId, appointmentTypeId, isCompl
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-sm">R{(Number(line.quantity) * Number(line.unit_price)).toFixed(2)}</span>
                   {!isCompleted && (
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(line.id)}>
-                      <Trash2 className="h-3 w-3 text-destructive" />
+                    <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => handleDelete(line.id)}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   )}
                 </div>
