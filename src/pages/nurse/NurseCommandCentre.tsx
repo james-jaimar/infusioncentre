@@ -34,7 +34,7 @@ export default function NurseCommandCentre() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* ── Header: thin, institutional ── */}
       <div className="flex items-center justify-between h-[60px]">
         <div>
@@ -43,13 +43,13 @@ export default function NurseCommandCentre() {
         </div>
         <div className="flex items-center gap-4">
           <LiveClock />
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2 rounded-full bg-clinical-success-soft px-3 py-1.5">
             <span className="relative flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-clinical-success opacity-75" />
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-clinical-success" />
             </span>
-            <div className="flex items-center gap-1 text-sm font-medium text-foreground">
-              <Droplets className="h-3.5 w-3.5 text-clinical-success" />
+            <div className="flex items-center gap-1 text-sm font-medium text-clinical-success">
+              <Droplets className="h-3.5 w-3.5" />
               {activeCount} Active
             </div>
           </div>
@@ -57,7 +57,7 @@ export default function NurseCommandCentre() {
       </div>
 
       {/* ── 12-column grid: Primary (8) + Monitoring (4) ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
         {/* Primary Operations Zone */}
         <div className="lg:col-span-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

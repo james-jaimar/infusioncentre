@@ -14,7 +14,7 @@ export function ElapsedTimer({ startedAt }: { startedAt: string | null }) {
   const s = Math.floor((elapsed % 60000) / 1000);
 
   return (
-    <span className="text-[32px] font-mono font-bold text-foreground tabular-nums tracking-tight leading-none">
+    <span className="text-[28px] font-mono font-bold text-foreground tabular-nums tracking-tight leading-none">
       {h > 0 ? `${h}:` : ""}{String(m).padStart(2, "0")}:{String(s).padStart(2, "0")}
     </span>
   );
