@@ -1,5 +1,4 @@
 import { ChairData, UnassignedTreatment } from "@/hooks/useCommandCentre";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertTriangle, Clock, Droplets, Armchair } from "lucide-react";
@@ -22,33 +21,22 @@ function computeAlerts(chairs: ChairData[]): Alert[] {
     const occ = chair.occupant;
     if (!occ) continue;
 
-    // Vitals overdue
     const vitalsBase = occ.lastVitalsAt || occ.startedAt;
     if (vitalsBase) {
       const sinceVitals = now - new Date(vitalsBase).getTime();
       if (sinceVitals > VITALS_INTERVAL_MS) {
         const overdueMins = Math.floor((sinceVitals - VITALS_INTERVAL_MS) / 60000);
-        alerts.push({
-          chairName: chair.name,
-          type: "vitals_overdue",
-          detail: `Vitals overdue by ${overdueMins}m`,
-        });
+        alerts.push({ chairName: chair.name, type: "vitals_overdue", detail: `Vitals overdue by ${overdueMins}m` });
       }
     }
 
-    // Running over expected
     if (occ.startedAt) {
       const elapsed = getElapsedMs(occ.startedAt);
       if (elapsed > EXPECTED_DURATION_MS) {
-        alerts.push({
-          chairName: chair.name,
-          type: "running_over",
-          detail: `Running over by ${formatDuration(elapsed - EXPECTED_DURATION_MS)}`,
-        });
+        alerts.push({ chairName: chair.name, type: "running_over", detail: `Running over by ${formatDuration(elapsed - EXPECTED_DURATION_MS)}` });
       }
     }
   }
-
   return alerts;
 }
 
@@ -77,9 +65,8 @@ export function MonitoringSidebar({ chairs, unassigned, availableChairs, onAssig
   return (
     <div className="space-y-3">
       {/* Live Alerts */}
-      <Card className="p-4">
-        <div className="flex items-center gap-2 mb-2">
-          <AlertTriangle className="h-4 w-4 text-clinical-warning" />
+      <div className="rounded-xl border border-border/40 bg-card shadow-clinical-sm p-4">
+        <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-foreground">Live Alerts</h3>
           {alerts.length > 0 && <Badge variant="danger">{alerts.length}</Badge>}
         </div>
@@ -87,25 +74,27 @@ export function MonitoringSidebar({ chairs, unassigned, availableChairs, onAssig
           <p className="text-xs text-muted-foreground">No active alerts</p>
         ) : (
           <div className="space-y-2">
-            {alerts.map((alert, i) => (
-              <div
-                key={i}
-                className={`rounded-md px-3 py-2 text-xs ${
-                  alert.type === "vitals_overdue"
-                    ? "bg-clinical-danger-soft text-clinical-danger"
-                    : "bg-clinical-warning-soft text-clinical-warning"
-                }`}
-              >
-                <span className="font-semibold">{alert.chairName}:</span> {alert.detail}
-              </div>
-            ))}
+            {alerts.map((alert, i) => {
+              const isDanger = alert.type === "vitals_overdue";
+              return (
+                <div key={i} className="flex items-start gap-2.5 text-xs">
+                  <span className={`mt-1 h-2 w-2 rounded-full shrink-0 ${isDanger ? "bg-clinical-danger" : "bg-clinical-warning"}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className={`font-semibold ${isDanger ? "text-clinical-danger" : "text-clinical-warning"}`}>
+                      {alert.chairName}
+                    </p>
+                    <p className="text-muted-foreground">{alert.detail}</p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
-      </Card>
+      </div>
 
       {/* Unassigned Treatments */}
       {unassigned.length > 0 && (
-        <Card className="p-4 border-l-4 border-l-clinical-warning">
+        <div className="rounded-xl border border-clinical-warning/30 bg-clinical-warning-soft/30 shadow-clinical-sm p-4">
           <div className="flex items-center gap-2 mb-2">
             <Clock className="h-4 w-4 text-clinical-warning" />
             <h3 className="text-sm font-semibold text-foreground">Unassigned</h3>
@@ -131,36 +120,33 @@ export function MonitoringSidebar({ chairs, unassigned, availableChairs, onAssig
               </div>
             ))}
           </div>
-        </Card>
+        </div>
       )}
 
       {/* Quick Stats */}
-      <Card className="p-4">
-        <h3 className="text-sm font-semibold text-foreground mb-2">Quick Stats</h3>
-        <div className="space-y-2.5 text-sm">
+      <div className="rounded-xl border border-border/40 bg-card shadow-clinical-sm p-4">
+        <h3 className="text-sm font-semibold text-foreground mb-3">Quick Stats</h3>
+        <div className="space-y-3 text-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-muted-foreground">
               <Droplets className="h-3.5 w-3.5" />
-              <span>Active Infusions</span>
+              <span>Active infusions</span>
             </div>
             <span className="font-bold text-clinical-success">{activeCount}</span>
           </div>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-muted-foreground">
               <Armchair className="h-3.5 w-3.5" />
-              <span>Chairs Available</span>
+              <span>Chairs available</span>
             </div>
             <span className="font-bold text-foreground">{availableCount}</span>
           </div>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Clock className="h-3.5 w-3.5" />
-              <span>Avg Duration</span>
-            </div>
-            <span className="font-bold text-foreground">{avgDuration}</span>
+          <div className="flex items-center justify-between text-muted-foreground">
+            <span>Average session duration</span>
           </div>
+          <p className="text-2xl font-bold text-foreground">{avgDuration}</p>
         </div>
-      </Card>
+      </div>
     </div>
   );
 }
