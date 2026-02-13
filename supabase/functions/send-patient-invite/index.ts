@@ -100,49 +100,13 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    // Verify caller role
-    const callerClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
-      global: { headers: { Authorization: authHeader } },
-    });
-
-    const { data: { user: caller }, error: callerError } = await callerClient.auth.getUser();
-    if (callerError || !caller) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Check admin or nurse role
-    const { data: roleData } = await callerClient
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", caller.id)
-      .in("role", ["admin", "nurse"])
-      .maybeSingle();
-
-    if (!roleData) {
-      return new Response(JSON.stringify({ error: "Admin or nurse access required" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
     const body = await req.json();
     const { action } = body;
 
-    // Handle accept action (called by patient during registration)
+    // Handle accept action — called by newly registered patients (no role check needed)
     if (action === "accept") {
       const { token: inviteToken, user_id } = body;
       if (!inviteToken || !user_id) {
@@ -154,7 +118,6 @@ Deno.serve(async (req) => {
 
       const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-      // Get the invite
       const { data: inviteData, error: inviteErr } = await adminClient
         .from("patient_invites")
         .select("*")
@@ -169,31 +132,51 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Link patient record to the new user
-      await adminClient
-        .from("patients")
-        .update({ user_id })
-        .eq("id", inviteData.patient_id);
-
-      // Auto-approve invited patients
-      await adminClient
-        .from("profiles")
-        .update({ is_approved: true })
-        .eq("user_id", user_id);
-
-      // Mark invite as accepted
-      await adminClient
-        .from("patient_invites")
-        .update({ status: "accepted", accepted_at: new Date().toISOString() })
-        .eq("id", inviteData.id);
-
-      // Delete the default 'patient' role created by trigger (we already have it, but ensure consistency)
-      // The handle_new_user trigger already creates the patient role, so we're good.
+      await Promise.all([
+        adminClient.from("patients").update({ user_id }).eq("id", inviteData.patient_id),
+        adminClient.from("profiles").update({ is_approved: true }).eq("user_id", user_id),
+        adminClient.from("patient_invites").update({ status: "accepted", accepted_at: new Date().toISOString() }).eq("id", inviteData.id),
+      ]);
 
       return new Response(
         JSON.stringify({ success: true }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // All other actions require admin/nurse auth
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const callerClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const { data: { user: caller }, error: callerError } = await callerClient.auth.getUser();
+    if (callerError || !caller) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { data: roleData } = await callerClient
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", caller.id)
+      .in("role", ["admin", "nurse"])
+      .maybeSingle();
+
+    if (!roleData) {
+      return new Response(JSON.stringify({ error: "Admin or nurse access required" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const { patient_id, email, phone, treatment_type_ids } = body;
