@@ -1,65 +1,77 @@
 
-# Fix: Patient Form Save and Admin Patient Delete
 
-## Issues Found
+# Nurse Command Centre (4-Chair Live Board)
 
-### 1. Patient Form Save Fails
-When a patient submits a form, two database operations happen:
-- **Insert** into `form_submissions` -- this works (patient has an INSERT policy)
-- **Update** on `onboarding_checklists` to mark the item as completed -- **this fails** because there is no UPDATE policy for patients on the `onboarding_checklists` table
+## Overview
+Replace the current nurse dashboard with a clinical command centre showing all 4 treatment chairs in real-time. This becomes the primary nurse landing page at `/nurse`.
 
-Patients can only **view** their checklists, not update them. The form submission itself might succeed, but the checklist status update is rejected by Row-Level Security, causing the whole operation to appear as a failure.
+## What Gets Built
 
-### 2. Admin Patient Delete Fails
-The database error log confirms:
-> `update or delete on table "patients" violates foreign key constraint "form_submissions_patient_id_fkey" on table "form_submissions"`
+### 1. New Page: `src/pages/nurse/NurseCommandCentre.tsx`
+A full-screen, tablet-optimized board displaying 4 large chair tiles in a 2x2 grid (desktop) or stacked on mobile.
 
-Several tables reference `patients` but lack `ON DELETE CASCADE`:
-- `form_submissions` -- **NO CASCADE** (blocks delete)
-- `onboarding_checklists` -- **NO CASCADE** (blocks delete)
-- `treatments` -- **NO CASCADE** (blocks delete)
-- `referrals` -- **NO CASCADE** (blocks delete)
+**Each chair tile shows:**
+- Chair name (Chair 1-4)
+- If occupied: patient name, treatment type badge, session status badge
+- Elapsed time counter (reusing the existing `ElapsedTimer` pattern from `ActiveTreatmentTimer`)
+- "Next vitals due" countdown with color coding:
+  - Green: more than 5 minutes remaining
+  - Amber: within 5 minutes
+  - Red/pulsing: overdue
+- Primary action button:
+  - Occupied: "Open Session" linking to `/nurse/job-card/{appointmentId}`
+  - Empty: "Available" (greyed out, no action needed since assignments happen during scheduling)
 
-Other tables like `patient_documents`, `patient_medical_history`, `appointments`, and `patient_invites` already have `ON DELETE CASCADE` and are fine.
+**Below the grid:** an "Unassigned Treatments" section showing any active treatments that lack a `chair_id` on their appointment, with a dropdown to assign them to an available chair.
 
----
+### 2. New Hook: `src/hooks/useCommandCentre.ts`
+A single query that fetches:
+- All 4 chairs from `treatment_chairs`
+- Today's active/in-progress appointments with their treatments, patients, and appointment types
+- The most recent vitals timestamp per treatment
 
-## Fix Plan
+This maps each chair to its current occupant (if any) and calculates the next vitals due time.
 
-### Step 1: Database Migration
-Add the missing RLS policy and fix the foreign key constraints:
+### 3. Route Changes in `src/App.tsx`
+- Add route: `<Route path="command-centre" element={<NurseCommandCentre />} />`
+- Change the nurse index route from `NurseDashboard` to `NurseCommandCentre`
 
-**RLS fix:**
-- Add an UPDATE policy on `onboarding_checklists` allowing patients to update their own checklist items (status, form_submission_id, completed_at) when the item belongs to them
+### 4. Sidebar Update in `NurseLayout.tsx`
+- Rename "Dashboard" nav item to "Command Centre" with href `/nurse`
+- Keep "Today's Patients" and "Active Treatments" links as-is
 
-**Foreign key fixes** -- alter all four constraints to add `ON DELETE CASCADE`:
-- `form_submissions_patient_id_fkey`
-- `onboarding_checklists_patient_id_fkey`
-- `treatments_patient_id_fkey`
-- `referrals_patient_id_fkey`
+### 5. Assign-to-Chair Mutation
+A small mutation in the command centre hook that updates `appointments.chair_id` for unassigned treatments, allowing nurses to drag a treatment into a chair slot.
 
-This ensures that when an admin deletes a patient, all related records are automatically cleaned up.
-
-### Step 2: No Code Changes Required
-The existing frontend code in `PatientDashboard.tsx` and `PatientDetail.tsx` already handles these operations correctly. Once the database constraints and policies are fixed, both features will work as expected.
-
----
-
-## Technical Details
-
+## Vitals Due Logic
 ```text
-Migration SQL (single migration):
-
-1. DROP + RE-ADD foreign keys with ON DELETE CASCADE
-   for form_submissions, onboarding_checklists, treatments, referrals
-
-2. CREATE POLICY "Patients can update own checklists"
-   ON onboarding_checklists FOR UPDATE
-   USING (EXISTS (
-     SELECT 1 FROM patients
-     WHERE patients.id = onboarding_checklists.patient_id
-       AND patients.user_id = auth.uid()
-   ))
+For each active treatment:
+  1. Query most recent vitals entry (MAX recorded_at)
+  2. next_due = last_vitals_at + 15 minutes
+  3. If no vitals exist: next_due = treatment.started_at + 15 minutes
+  4. Display countdown timer with color:
+     - Green:  > 5 min remaining
+     - Amber:  0-5 min remaining  
+     - Red:    overdue (pulsing)
 ```
 
-Both fixes are database-only changes -- no application code needs to be modified.
+## Visual Design
+- Large touch-friendly tiles (min 44x44px targets per clinical requirements)
+- Status colours: green (in progress), blue (pre-assessment), amber (observing/post), grey (empty)
+- Minimal text, high contrast, landscape-friendly
+- Auto-refresh every 15 seconds (matching existing `useActiveTreatments` interval)
+
+## Files Changed
+| File | Change |
+|------|--------|
+| `src/pages/nurse/NurseCommandCentre.tsx` | New file -- the main board UI |
+| `src/hooks/useCommandCentre.ts` | New file -- data fetching and chair mapping |
+| `src/App.tsx` | Add command-centre route, change nurse index |
+| `src/components/layout/NurseLayout.tsx` | Rename "Dashboard" to "Command Centre" |
+
+## No Database Changes Required
+- Chairs already exist (Chair 1-4 confirmed in DB)
+- `appointments.chair_id` already links appointments to chairs
+- `treatment_vitals.recorded_at` provides the vitals timestamp
+- All needed RLS policies for nurses are already in place
+
