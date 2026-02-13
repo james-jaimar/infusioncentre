@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import SendInviteDialog from "@/components/admin/SendInviteDialog";
 import PatientAccountTab from "@/components/admin/PatientAccountTab";
+import PatientCommunicationsTab from "@/components/admin/PatientCommunicationsTab";
 import { usePatient, useUpdatePatient, useDeletePatient } from "@/hooks/usePatients";
 import { usePatientMedicalHistory, useUpsertPatientMedicalHistory } from "@/hooks/usePatientMedicalHistory";
 import { usePatientDocuments, useUploadPatientDocument, useDeletePatientDocument, useGetDocumentUrl } from "@/hooks/usePatientDocuments";
@@ -418,6 +419,10 @@ export default function PatientDetail() {
                 {checklist.filter(c => c.status === 'completed').length}/{checklist.length}
               </Badge>
             )}
+          </TabsTrigger>
+          <TabsTrigger value="communications">
+            <Mail className="mr-2 h-4 w-4" />
+            Communications
           </TabsTrigger>
           <TabsTrigger value="account">
             <KeyRound className="mr-2 h-4 w-4" />
@@ -1096,6 +1101,14 @@ export default function PatientDetail() {
               ))}
             </div>
           )}
+        </TabsContent>
+
+        {/* Communications Tab */}
+        <TabsContent value="communications" className="space-y-4">
+          <PatientCommunicationsTab
+            patientEmail={patient.email}
+            patientName={`${patient.first_name} ${patient.last_name}`}
+          />
         </TabsContent>
 
         {/* Account Tab */}
