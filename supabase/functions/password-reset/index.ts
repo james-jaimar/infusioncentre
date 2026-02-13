@@ -76,6 +76,30 @@ function buildResetEmailHtml(resetLink: string): string {
 </body></html>`;
 }
 
+async function verifyAdmin(req: Request, adminClient: any): Promise<{ isAdmin: boolean; error?: string }> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader) return { isAdmin: false, error: "Unauthorized" };
+
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const callerClient = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: authHeader } },
+  });
+
+  const { data: { user: caller }, error: callerError } = await callerClient.auth.getUser();
+  if (callerError || !caller) return { isAdmin: false, error: "Unauthorized" };
+
+  const { data: roleData } = await callerClient
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", caller.id)
+    .eq("role", "admin")
+    .maybeSingle();
+
+  if (!roleData) return { isAdmin: false, error: "Admin access required" };
+  return { isAdmin: true };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -190,6 +214,95 @@ Deno.serve(async (req) => {
       }
 
       await adminClient.from("password_reset_tokens").update({ used: true }).eq("id", tokenData.id);
+
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Admin: send password reset email for a specific user
+    if (action === "admin-reset-email") {
+      const { isAdmin, error: authError } = await verifyAdmin(req, adminClient);
+      if (!isAdmin) {
+        return new Response(JSON.stringify({ error: authError }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { user_id } = body;
+      if (!user_id) {
+        return new Response(JSON.stringify({ error: "user_id is required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: userData, error: userError } = await adminClient.auth.admin.getUserById(user_id);
+      if (userError || !userData?.user?.email) {
+        return new Response(JSON.stringify({ error: "User not found" }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const email = userData.user.email;
+
+      // Invalidate existing tokens
+      await adminClient.from("password_reset_tokens").update({ used: true }).eq("user_id", user_id).eq("used", false);
+
+      const token = crypto.randomUUID() + "-" + crypto.randomUUID();
+      await adminClient.from("password_reset_tokens").insert({
+        user_id, token, email: email.toLowerCase(),
+      });
+
+      const resetLink = `${SITE_URL}/reset-password?token=${token}`;
+      const result = await sendEmailViaSMTP({
+        to: email,
+        subject: "Reset your password — The Johannesburg Infusion Centre",
+        html: buildResetEmailHtml(resetLink),
+        text: `Reset your password by visiting: ${resetLink}\n\nThis link expires in 1 hour.`,
+        related_entity_type: "password_reset",
+      });
+
+      if (!result.success) {
+        return new Response(JSON.stringify({ error: "Failed to send email" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Admin: set password directly
+    if (action === "admin-set-password") {
+      const { isAdmin, error: authError } = await verifyAdmin(req, adminClient);
+      if (!isAdmin) {
+        return new Response(JSON.stringify({ error: authError }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { user_id, password } = body;
+      if (!user_id || !password) {
+        return new Response(JSON.stringify({ error: "user_id and password are required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (password.length < 6) {
+        return new Response(JSON.stringify({ error: "Password must be at least 6 characters" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { error: updateError } = await adminClient.auth.admin.updateUserById(user_id, { password });
+
+      if (updateError) {
+        console.error("Admin set password error:", updateError);
+        return new Response(JSON.stringify({ error: "Failed to update password" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
       return new Response(JSON.stringify({ success: true }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import SendInviteDialog from "@/components/admin/SendInviteDialog";
+import PatientAccountTab from "@/components/admin/PatientAccountTab";
 import { usePatient, useUpdatePatient, useDeletePatient } from "@/hooks/usePatients";
 import { usePatientMedicalHistory, useUpsertPatientMedicalHistory } from "@/hooks/usePatientMedicalHistory";
 import { usePatientDocuments, useUploadPatientDocument, useDeletePatientDocument, useGetDocumentUrl } from "@/hooks/usePatientDocuments";
@@ -62,6 +63,7 @@ import {
   CalendarPlus,
   Send,
   Sparkles,
+  KeyRound,
 } from "lucide-react";
 import {
   Tooltip,
@@ -416,6 +418,10 @@ export default function PatientDetail() {
                 {checklist.filter(c => c.status === 'completed').length}/{checklist.length}
               </Badge>
             )}
+          </TabsTrigger>
+          <TabsTrigger value="account">
+            <KeyRound className="mr-2 h-4 w-4" />
+            Account
           </TabsTrigger>
           {/* Dynamic tabs for completed form submissions */}
           {completedSubmissions.map((sub: any, idx: number) => {
@@ -1090,6 +1096,16 @@ export default function PatientDetail() {
               ))}
             </div>
           )}
+        </TabsContent>
+
+        {/* Account Tab */}
+        <TabsContent value="account" className="space-y-4">
+          <PatientAccountTab
+            patientId={id!}
+            patientEmail={patient.email}
+            patientUserId={patient.user_id}
+            patientName={`${patient.first_name} ${patient.last_name}`}
+          />
         </TabsContent>
 
         {/* Dynamic Form Submission Tabs */}
