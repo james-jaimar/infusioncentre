@@ -12,7 +12,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Send, Copy, Loader2, CheckCircle2, Clock, XCircle, RotateCw } from "lucide-react";
+import { Send, Loader2, CheckCircle2, Clock, XCircle, RotateCw } from "lucide-react";
 import { usePatientInvites, useSendInvite, useRevokeInvite, type PatientInvite } from "@/hooks/usePatientInvites";
 
 interface SendInviteDialogProps {
@@ -49,15 +49,13 @@ export default function SendInviteDialog({
         email,
         phone: phone || undefined,
       });
-      const inviteUrl = `${window.location.origin}/invite/${result.invite.token}`;
-      await navigator.clipboard.writeText(inviteUrl);
       if (result.email_sent) {
-        toast.success("Invite email sent & link copied!", {
+        toast.success("Invite email sent!", {
           description: `A branded invitation was emailed to ${email}.`,
         });
       } else {
-        toast.success("Invite created! Link copied to clipboard.", {
-          description: "Email delivery failed — share the link manually.",
+        toast.warning("Invite created but email delivery failed", {
+          description: "Please try again or contact the patient directly.",
         });
       }
     } catch (err: any) {
@@ -65,10 +63,8 @@ export default function SendInviteDialog({
     }
   };
 
-  const handleCopyLink = async (token: string) => {
-    const url = `${window.location.origin}/invite/${token}`;
-    await navigator.clipboard.writeText(url);
-    toast.success("Invite link copied to clipboard");
+  const handleResend = async () => {
+    await handleSendInvite();
   };
 
   const handleRevoke = async (inviteId: string) => {
@@ -137,9 +133,9 @@ export default function SendInviteDialog({
             {sendInvite.isPending ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
-              <Copy className="mr-2 h-4 w-4" />
+              <Send className="mr-2 h-4 w-4" />
             )}
-            Generate & Copy Invite Link
+            Send Invite Email
           </Button>
 
           {/* Invite History */}
@@ -162,31 +158,21 @@ export default function SendInviteDialog({
                   </div>
                   <div className="flex gap-1">
                     {invite.status === "pending" && !isExpired(invite) && (
-                      <>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2"
-                          onClick={() => handleCopyLink(invite.token)}
-                        >
-                          <Copy className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-destructive"
-                          onClick={() => handleRevoke(invite.id)}
-                        >
-                          <XCircle className="h-3 w-3" />
-                        </Button>
-                      </>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-destructive"
+                        onClick={() => handleRevoke(invite.id)}
+                      >
+                        <XCircle className="h-3 w-3" />
+                      </Button>
                     )}
                     {(invite.status === "expired" || invite.status === "revoked" || isExpired(invite)) && (
                       <Button
                         variant="ghost"
                         size="sm"
                         className="h-7 px-2"
-                        onClick={handleSendInvite}
+                        onClick={handleResend}
                         disabled={sendInvite.isPending}
                       >
                         <RotateCw className="h-3 w-3" />
