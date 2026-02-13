@@ -1,85 +1,177 @@
 
 
-# Tablet & Gloved-Hand Responsiveness Audit
+# Master Redesign: Private Medical Centre Clinical Platform
 
-## The Problem
-Nurses use tablets with rubber gloves, which means:
-- Reduced touch precision (gloves make fingers "fatter")
-- No fine-motor actions like hovering or precise small-target taps
-- Scrolling is harder with gloves -- fewer, bigger sections are better
-- Sliders are particularly difficult with gloves (imprecise drag)
+## What Changes
 
-## Issues Found Across Nurse Screens
+This redesign transforms every visual layer of the platform — from foundational design tokens through to the key clinical screens. The goal is to shift from a "startup SaaS admin panel" feel to a **premium private medical centre operating system**.
 
-### 1. Touch Target Sizes (Multiple Files)
-Several interactive elements fall below the 48x48px "gloved touch" minimum (44px is bare minimum, but with gloves we should aim for 48px+):
+## Phase 1: Design Foundation (Tokens, Fonts, Primitives)
 
-| Component | Issue |
-|-----------|-------|
-| `JobCardStepper` | Steps have `min-h-[44px]` but are narrow horizontally -- fine, but the connector lines between steps are not tappable targets so this is OK |
-| `JobCardBilling` | "Add" button uses default `size="sm"` without explicit height -- needs `h-12 min-w-[48px]` |
-| `JobCardBilling` | Delete (trash) icon buttons are `h-7 w-7` -- far too small for gloves |
-| `JobCardBilling` | Suggested item badges are small tap targets with no padding |
-| `JobCardReactions` | "Mark Resolved" button is `h-9` -- too small |
-| `JobCardKetaminePanel` | Collapse toggle is `h-9 w-9` -- borderline, bump to `h-12 w-12` |
-| `NurseLayout` sidebar | Nav links use `py-2.5` -- should be `py-3.5` for gloved tapping |
-| `NurseLayout` mobile header | Hamburger menu button has no explicit size -- needs `h-12 w-12` |
-| `JobCardSidebar` | Phone links and collapsible triggers are small text -- need larger hit areas |
-| `NurseCommandCentre` | Elapsed timer text is `text-xs` -- hard to read at arm's length |
+### 1A. Font System
+- **Replace** Exo + Poppins with **Inter** (Google Fonts) — a clean, institutional sans-serif with excellent numeric rendering and medical-grade legibility
+- Update `index.html` font imports and `index.css` / `tailwind.config.ts` font-family references
+- Establish clear hierarchy: Page titles 28px semibold, section headers 18px medium, primary metrics 36px bold, supporting text 14px regular muted
 
-### 2. Slider Controls Are Glove-Hostile (JobCardKetaminePanel)
-The 5 sliders (alertness, mood, pain, dissociation, anxiety) are very difficult to use with rubber gloves. Sliders require precise horizontal dragging which is nearly impossible with thick gloves.
+### 1B. Color System Overhaul (`index.css`)
+- **Background**: Shift from pure white `#FFFFFF` to soft institutional grey `#F4F6F8`
+- **Primary**: Shift from `#3E5B84` (slate blue) to deeper navy `#1F3A5F` — more authoritative
+- **Card surfaces**: Stay white `#FFFFFF` for contrast against grey background
+- **Border**: Softer `#D8E0E6` instead of current `#E5E5E5`
+- **Add clinical state CSS custom properties**:
+  - `--state-success` / `--state-success-soft` for Running/Stable (muted green)
+  - `--state-warning` / `--state-warning-soft` for Monitor/Due (warm amber)
+  - `--state-danger` / `--state-danger-soft` for Critical (deep red)
+  - `--state-info` / `--state-info-soft` for Pre-assessment (muted blue)
+  - `--state-neutral` / `--state-neutral-soft` for Completed (grey)
 
-**Fix**: Replace sliders with large **tap-to-select button grids**. For example, Pain (0-10) becomes a row of 11 large buttons (0 through 10), each 48px+ tall. The selected value gets a filled/highlighted state. This is a single-tap action instead of a drag.
+### 1C. Radius + Shadow System
+- **Radius**: Change `--radius` from `0rem` (square) to `6px` — institutional, not bubbly
+- **Shadows**: Add utility classes for `shadow-clinical-sm`, `shadow-clinical-md`, `shadow-clinical-lg` with very subtle depth
 
-### 3. Dialog Overflow on Tablet (Multiple Dialogs)
-Several dialogs use `max-w-md` or `max-w-lg` which work fine, but:
-- `JobCardReactions` dialog has many fields and uses `max-h-[90vh] overflow-y-auto` -- good
-- `JobCardIVAccess` dialogs do not have max-height/scroll -- could overflow on landscape tablet
-- `JobCardMedications` dialog has many fields without scroll protection
+### 1D. Component Primitives
+- **Card** (`card.tsx`): Add `shadow-clinical-md` default, use `rounded-md` (6px)
+- **Badge** (`badge.tsx`): Keep pill shape but add clinical state variants (`success`, `warning`, `danger`, `info`, `neutral`)
+- **Button** (`button.tsx`): Slightly increase default height, use 6px radius
+- **Progress** (`progress.tsx`): Reduce height to 8px with rounded ends for infusion bars
 
-**Fix**: Add `max-h-[85vh] overflow-y-auto` to all dialog content areas.
+### Files changed:
+- `index.html` — font import
+- `src/index.css` — full token overhaul + clinical state utilities
+- `tailwind.config.ts` — colors, radius, shadows, fonts
+- `src/components/ui/card.tsx` — shadow + radius
+- `src/components/ui/badge.tsx` — clinical state variants
+- `src/components/ui/button.tsx` — radius + sizing
+- `src/components/ui/progress.tsx` — slimmer clinical bar
 
-### 4. Layout Responsiveness (NurseJobCard.tsx)
-The main job card uses `lg:grid-cols-[300px_1fr]` which means on a typical 1024px tablet in landscape, the sidebar shows beside the content. On portrait (768px), it stacks. This is correct but:
-- The sidebar is `order-2 lg:order-1` meaning on tablet portrait, the sidebar renders BELOW the main content -- the nurse has to scroll past all treatment panels to see patient info
-- **Fix**: On tablet, move sidebar into a collapsible drawer/sheet that can be toggled, keeping the main treatment flow front and center
+## Phase 2: Layout Shell
 
-### 5. Sticky Action Bar (JobCardActions.tsx)
-The sticky bottom bar uses `lg:left-[var(--sidebar-width,0px)]` but `--sidebar-width` is never set as a CSS variable. On desktop with sidebar visible, the action bar extends under the sidebar.
+### 2A. Nurse Layout (`NurseLayout.tsx`)
+- Sidebar: Deep navy `#1F3A5F` background (using new primary)
+- Main content area: Soft grey `#F4F6F8` background
+- Navigation links: Slightly more spacing, subtle left-border accent on active item instead of background highlight
+- User section: Cleaner typography hierarchy
 
-**Fix**: Set `--sidebar-width: 16rem` on the layout root when sidebar is visible, or use `lg:left-64` directly.
+### 2B. Admin Layout (`AdminLayout.tsx`)
+- Same sidebar treatment as nurse layout for consistency
+- Main area uses institutional grey background
 
-### 6. Command Centre Grid (NurseCommandCentre.tsx)
-- Grid is `grid-cols-1 md:grid-cols-2` -- good for tablet
-- Chair tiles have `min-h-[220px]` -- could be taller for better glove tapping
-- The "Open Session" button is `min-h-[44px]` -- bump to `h-14` for gloves
+### 2C. Login Page (`Login.tsx`)
+- Full institutional grey background
+- Card with subtle shadow and 6px radius
+- Logo prominent, restrained typography
+- Remove "Sign in to your account" heading bloat — keep it clean
 
-### 7. Font Sizes for Clinical Readability
-Several components use `text-xs` for clinical data (vitals history, site checks, medication details). Nurses reading at arm's length on a tablet need larger text.
+### Files changed:
+- `src/components/layout/NurseLayout.tsx`
+- `src/components/layout/AdminLayout.tsx`
+- `src/pages/Login.tsx`
 
-**Fix**: Bump clinical data text from `text-xs` to `text-sm`, and labels from `text-sm` to `text-base`.
+## Phase 3: Command Centre Redesign
 
-## Implementation Plan
+The Command Centre transforms from a basic card grid into a **Clinical Operations Board**.
 
-### File Changes
+### Chair Cards — Complete Visual Overhaul
+Each occupied chair card gets:
+- **4px left border** colour-coded by state (green=running, amber=monitor, blue=pre-assessment)
+- **Soft tinted background** matching state (e.g. `bg-[#E6F3EE]` for running)
+- **Patient name** large and prominent (18px semibold)
+- **Treatment type** as a subtle text label, not a coloured badge
+- **Elapsed time** displayed large and dominant (monospace, 28px+)
+- **Infusion progress bar** — subtle 8px bar showing time elapsed vs expected duration
+- **Vitals indicator strip** — compact row showing last BP/HR/O2 inline
+- **Status chip** in upper-right corner using clinical state colours
+- **"Open Session" button** — strong, full-width, institutional
 
-| File | Changes |
-|------|---------|
-| `src/components/nurse/JobCardKetaminePanel.tsx` | Replace all Slider components with tap-to-select button grids; increase collapse toggle size; bump font sizes |
-| `src/components/nurse/JobCardVitals.tsx` | Bump vitals display font sizes; ensure dialog has scroll protection |
-| `src/components/nurse/JobCardMedications.tsx` | Add dialog scroll protection; bump button sizes |
-| `src/components/nurse/JobCardIVAccess.tsx` | Add dialog scroll protection; bump button and checkbox sizes |
-| `src/components/nurse/JobCardReactions.tsx` | Bump "Mark Resolved" button to h-12; increase severity selection button padding |
-| `src/components/nurse/JobCardBilling.tsx` | Increase "Add" button to h-12; increase trash icon to h-10 w-10; add padding to suggested badges |
-| `src/components/nurse/JobCardActions.tsx` | Fix sidebar offset with `lg:left-64` |
-| `src/components/nurse/JobCardSidebar.tsx` | Increase phone link tap area; bump collapsible trigger sizes |
-| `src/components/nurse/JobCardHeader.tsx` | Bump badge and info text sizes slightly |
-| `src/pages/nurse/NurseJobCard.tsx` | Convert sidebar to a toggleable sheet on smaller screens instead of stacking below |
-| `src/pages/nurse/NurseCommandCentre.tsx` | Increase chair tile min-height; bump "Open Session" to h-14; increase timer font sizes |
-| `src/components/layout/NurseLayout.tsx` | Increase nav link padding to py-3.5; bump hamburger button size; set --sidebar-width CSS variable |
-| `src/components/nurse/JobCardStepper.tsx` | Increase step padding slightly for better touch |
+Empty chairs:
+- Neutral grey background, muted border
+- Minimal visual weight — clearly "available"
 
-### Key UX Principle Applied
-Every tappable element will be minimum 48x48px. Sliders replaced with tap grids. Dialogs scroll-safe. Clinical text readable at arm's length. Sidebar becomes a toggleable panel on tablet to keep the treatment cockpit unobstructed.
+### Summary Stats Row
+- Add a top-level stats strip: Active Infusions count, Chairs in Use, Alerts count
+- Clean, metric-focused — large numbers with supporting labels
+
+### Unassigned Treatments Card
+- Amber left border accent
+- Cleaner row layout with better spacing
+
+### Files changed:
+- `src/pages/nurse/NurseCommandCentre.tsx` — full redesign
+
+## Phase 4: Treatment Session (Job Card) Redesign
+
+### Header Strip (`JobCardHeader.tsx`)
+- Patient name dominant (22px semibold)
+- DOB/age, diagnosis info on second line
+- Allergies banner: controlled deep red tint background, not screaming
+- Chair number, session time window, and clinical state as compact metadata
+- Subtle bottom border separation
+
+### Treatment Timer
+- Elapsed time rendered at **36px bold monospace** — the primary metric
+- Subtle label above: "Elapsed Time"
+- Sits in a slightly elevated card with institutional feel
+
+### Stepper (`JobCardStepper.tsx`)
+- Steps use subtle background tints matching clinical states
+- Active step gets a left-border accent line
+- Completed steps show muted with check icon
+- Clean horizontal layout with better spacing
+
+### Vitals Card (`JobCardVitals.tsx`)
+- Countdown badge with clinical state colours (green/amber/red)
+- Latest vitals displayed as a structured grid with icon + label + value
+- History section: cleaner table-like layout
+
+### Medications, IV Access, Reactions, Billing Cards
+- All cards get consistent 24px padding, 6px radius, subtle shadow
+- Section headers: 18px medium weight
+- Better internal spacing using 8px grid
+
+### Sticky Action Bar (`JobCardActions.tsx`)
+- Cleaner backdrop blur
+- Buttons with institutional styling
+- Emergency button: deep red, controlled
+
+### Files changed:
+- `src/pages/nurse/NurseJobCard.tsx`
+- `src/components/nurse/JobCardHeader.tsx`
+- `src/components/nurse/JobCardStepper.tsx`
+- `src/components/nurse/JobCardVitals.tsx`
+- `src/components/nurse/JobCardActions.tsx`
+- `src/components/nurse/JobCardSidebar.tsx`
+- `src/components/nurse/JobCardBilling.tsx`
+- `src/components/nurse/JobCardMedications.tsx`
+- `src/components/nurse/JobCardIVAccess.tsx`
+- `src/components/nurse/JobCardReactions.tsx`
+- `src/components/nurse/JobCardKetaminePanel.tsx`
+
+## Phase 5: Admin Dashboard Polish
+
+- Stat cards: Subtle shadow, institutional colours
+- Today's appointments: Cleaner list with left-border state indicators
+- Quick actions: More restrained, less "click me" energy
+
+### Files changed:
+- `src/pages/admin/AdminDashboard.tsx`
+
+## What Does NOT Change
+
+- **All functionality** stays identical — no database changes, no hook changes, no routing changes
+- **Tablet/gloved-hand optimisations** from previous work are preserved (48px touch targets, tap grids, sheet sidebar)
+- **Public-facing pages** (home, services, training) keep the current brand — this redesign targets the clinical operations platform only
+
+## Design Principles Enforced
+
+Every element will be checked against:
+1. Does it increase **clarity**?
+2. Does it increase **safety**?
+3. Does it increase **hierarchy**?
+4. Does it increase **confidence**?
+
+If not — it gets removed.
+
+## Total Files Changed: ~22
+
+All changes are CSS/component-level. No database migrations, no new dependencies, no breaking changes.
 
