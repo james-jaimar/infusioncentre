@@ -57,11 +57,10 @@ export default function InviteLanding() {
     }
 
     try {
-      const { data, error: fetchError } = await supabase
-        .from("patient_invites" as any)
-        .select("*, patients(first_name, last_name, user_id)")
-        .eq("token", token)
-        .maybeSingle();
+      const { data, error: fetchError } = await supabase.rpc(
+        "validate_invite_token" as any,
+        { invite_token: token }
+      );
 
       if (fetchError || !data) {
         setError("This invite link is not valid. Please contact the clinic.");
@@ -69,11 +68,7 @@ export default function InviteLanding() {
         return;
       }
 
-      const inviteData = data as unknown as InviteData & { patients: any };
-      const normalized: InviteData = {
-        ...inviteData,
-        patient: inviteData.patients,
-      };
+      const normalized = data as unknown as InviteData;
 
       // Check status
       if (normalized.status === "revoked") {
