@@ -29,6 +29,15 @@ export interface UnassignedTreatment {
   startedAt: string | null;
 }
 
+export interface UpcomingSession {
+  appointmentId: string;
+  patientName: string;
+  treatmentType: string;
+  scheduledStart: string;
+  scheduledEnd: string;
+  chairName: string | null;
+}
+
 export function useCommandCentre() {
   const queryClient = useQueryClient();
   const today = new Date();
@@ -135,6 +144,44 @@ export function useCommandCentre() {
       startedAt: t.started_at,
     }));
 
+  // Upcoming sessions: today's scheduled/confirmed appointments not yet started
+  const upcomingQuery = useQuery({
+    queryKey: ["command-centre", "upcoming", today.toDateString()],
+    queryFn: async () => {
+      const dayStart = startOfDay(today).toISOString();
+      const dayEnd = endOfDay(today).toISOString();
+
+      const { data, error } = await supabase
+        .from("appointments")
+        .select(`
+          id,
+          scheduled_start,
+          scheduled_end,
+          chair_id,
+          patient:patients!inner(first_name, last_name),
+          appointment_type:appointment_types!inner(name),
+          chair:treatment_chairs(name)
+        `)
+        .in("status", ["scheduled", "confirmed"])
+        .gte("scheduled_start", dayStart)
+        .lte("scheduled_start", dayEnd)
+        .order("scheduled_start", { ascending: true });
+
+      if (error) throw error;
+      return data as any[];
+    },
+    refetchInterval: 30000,
+  });
+
+  const upcomingSessions: UpcomingSession[] = (upcomingQuery.data || []).map((a: any) => ({
+    appointmentId: a.id,
+    patientName: `${a.patient.first_name} ${a.patient.last_name}`,
+    treatmentType: a.appointment_type.name,
+    scheduledStart: a.scheduled_start,
+    scheduledEnd: a.scheduled_end,
+    chairName: a.chair?.name || null,
+  }));
+
   const assignChair = useMutation({
     mutationFn: async ({ appointmentId, chairId }: { appointmentId: string; chairId: string }) => {
       const { error } = await supabase
@@ -150,5 +197,5 @@ export function useCommandCentre() {
 
   const isLoading = chairsQuery.isLoading || treatmentsQuery.isLoading;
 
-  return { chairs, unassigned, isLoading, assignChair };
+  return { chairs, unassigned, upcomingSessions, isLoading, assignChair };
 }
