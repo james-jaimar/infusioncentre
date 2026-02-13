@@ -73,8 +73,8 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <SessionTimeoutWarning />
         <BrowserRouter>
+          <SessionTimeoutWarning />
           <Routes>
             {/* Public routes */}
             <Route path="/" element={<Index />} />
