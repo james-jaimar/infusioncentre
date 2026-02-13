@@ -10,7 +10,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
-  const { user, role, loading } = useAuth();
+  const { user, role, profile, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -22,8 +22,11 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
   }
 
   if (!user) {
-    // Redirect to login, preserving the intended destination
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  if (profile && !profile.is_approved) {
+    return <Navigate to="/pending-approval" replace />;
   }
 
   if (allowedRoles && role && !allowedRoles.includes(role)) {

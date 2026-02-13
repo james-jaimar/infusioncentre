@@ -58,11 +58,11 @@ export default function Register() {
     }
 
     toast({
-      title: "Check your email",
-      description: "We've sent you a confirmation link. Please verify your email to continue.",
+      title: "Account created",
+      description: "Your account is pending admin approval. You'll be notified once it's been reviewed.",
     });
 
-    navigate("/login");
+    navigate("/pending-approval");
   }
 
   return (

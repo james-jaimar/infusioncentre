@@ -10,6 +10,7 @@ interface Profile {
   first_name: string | null;
   last_name: string | null;
   phone: string | null;
+  is_approved: boolean;
 }
 
 interface AuthContextType {

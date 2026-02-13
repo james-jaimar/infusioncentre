@@ -88,12 +88,13 @@ Deno.serve(async (req) => {
 
     const userId = newUser.user.id;
 
-    // Insert profile
+    // Insert profile (auto-approved for staff)
     await adminClient.from("profiles").insert({
       user_id: userId,
       first_name: first_name || null,
       last_name: last_name || null,
       phone: phone || null,
+      is_approved: true,
     });
 
     // Insert role
