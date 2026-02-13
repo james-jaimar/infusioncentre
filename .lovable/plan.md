@@ -1,77 +1,65 @@
 
 
-# Nurse Command Centre (4-Chair Live Board)
+# Upgrade Job Card into "Hero Session Cockpit"
 
 ## Overview
-Replace the current nurse dashboard with a clinical command centre showing all 4 treatment chairs in real-time. This becomes the primary nurse landing page at `/nurse`.
+The Job Card (`NurseJobCard.tsx`) is already the primary treatment screen with vitals, medications, IV access, reactions, and billing. This upgrade adds two key enhancements:
 
-## What Gets Built
+1. **Vitals "Next Due" countdown** -- a real-time indicator showing when the next vitals check is due, with green/amber/red colour coding
+2. **Inline Ketamine Monitoring** -- embed the ketamine sliders and history directly into the Job Card instead of navigating to a separate route
 
-### 1. New Page: `src/pages/nurse/NurseCommandCentre.tsx`
-A full-screen, tablet-optimized board displaying 4 large chair tiles in a 2x2 grid (desktop) or stacked on mobile.
+## Current State (what already exists)
 
-**Each chair tile shows:**
-- Chair name (Chair 1-4)
-- If occupied: patient name, treatment type badge, session status badge
-- Elapsed time counter (reusing the existing `ElapsedTimer` pattern from `ActiveTreatmentTimer`)
-- "Next vitals due" countdown with color coding:
-  - Green: more than 5 minutes remaining
-  - Amber: within 5 minutes
-  - Red/pulsing: overdue
-- Primary action button:
-  - Occupied: "Open Session" linking to `/nurse/job-card/{appointmentId}`
-  - Empty: "Available" (greyed out, no action needed since assignments happen during scheduling)
+The Job Card already has:
+- `JobCardVitals` -- records and displays vitals with history (but no "next due" indicator)
+- `JobCardMedications` -- captures medication name, dosage, route, diluent, infusion rate, and method
+- `JobCardIVAccess` -- IV line documentation
+- `JobCardReactions` -- adverse reaction logging
+- `JobCardBilling` -- billing items
+- A "Ketamine Protocol Active" banner that links to a **separate page** (`/nurse/ketamine/:treatmentId`)
 
-**Below the grid:** an "Unassigned Treatments" section showing any active treatments that lack a `chair_id` on their appointment, with a dropdown to assign them to an available chair.
+The separate `NurseKetamineMonitoring.tsx` page has the slider form (alertness, mood, pain, dissociation, anxiety, nausea) and entry history. This content needs to move inline.
 
-### 2. New Hook: `src/hooks/useCommandCentre.ts`
-A single query that fetches:
-- All 4 chairs from `treatment_chairs`
-- Today's active/in-progress appointments with their treatments, patients, and appointment types
-- The most recent vitals timestamp per treatment
+## What Changes
 
-This maps each chair to its current occupant (if any) and calculates the next vitals due time.
+### 1. Add "Next Vitals Due" indicator to `JobCardVitals`
 
-### 3. Route Changes in `src/App.tsx`
-- Add route: `<Route path="command-centre" element={<NurseCommandCentre />} />`
-- Change the nurse index route from `NurseDashboard` to `NurseCommandCentre`
+Add a countdown badge at the top of the Vitals card showing time until next vitals are due (15-minute cadence from last recorded entry, or from treatment start if none exist).
 
-### 4. Sidebar Update in `NurseLayout.tsx`
-- Rename "Dashboard" nav item to "Command Centre" with href `/nurse`
-- Keep "Today's Patients" and "Active Treatments" links as-is
+- Green: more than 5 minutes remaining
+- Amber: 0-5 minutes remaining
+- Red with pulse animation: overdue
+- Updates every second
 
-### 5. Assign-to-Chair Mutation
-A small mutation in the command centre hook that updates `appointments.chair_id` for unassigned treatments, allowing nurses to drag a treatment into a chair slot.
+**Props change**: `JobCardVitals` gains an optional `treatmentStartedAt` prop so it can calculate the fallback.
 
-## Vitals Due Logic
-```text
-For each active treatment:
-  1. Query most recent vitals entry (MAX recorded_at)
-  2. next_due = last_vitals_at + 15 minutes
-  3. If no vitals exist: next_due = treatment.started_at + 15 minutes
-  4. Display countdown timer with color:
-     - Green:  > 5 min remaining
-     - Amber:  0-5 min remaining  
-     - Red:    overdue (pulsing)
-```
+### 2. New component: `JobCardKetaminePanel`
 
-## Visual Design
-- Large touch-friendly tiles (min 44x44px targets per clinical requirements)
-- Status colours: green (in progress), blue (pre-assessment), amber (observing/post), grey (empty)
-- Minimal text, high contrast, landscape-friendly
-- Auto-refresh every 15 seconds (matching existing `useActiveTreatments` interval)
+Extract the ketamine monitoring form and history from `NurseKetamineMonitoring.tsx` into a reusable component at `src/components/nurse/JobCardKetaminePanel.tsx`.
+
+This component:
+- Accepts `treatmentId` and `treatmentStartedAt` props
+- Renders the slider form (alertness, mood, pain, dissociation, anxiety, nausea, notes) in a collapsible card
+- Shows the monitoring history below
+- Uses the existing `useKetamineMonitoring` and `useAddKetamineEntry` hooks
+
+### 3. Update `NurseJobCard.tsx`
+
+Replace the amber "Open Monitoring" link card (lines 402-418) with the inline `JobCardKetaminePanel` component. The ketamine panel renders directly in the treatment flow between Reactions and Billing.
+
+### 4. Keep the standalone route (backward compatibility)
+
+`NurseKetamineMonitoring.tsx` stays as-is for now (no breaking change). It could be removed later.
 
 ## Files Changed
+
 | File | Change |
 |------|--------|
-| `src/pages/nurse/NurseCommandCentre.tsx` | New file -- the main board UI |
-| `src/hooks/useCommandCentre.ts` | New file -- data fetching and chair mapping |
-| `src/App.tsx` | Add command-centre route, change nurse index |
-| `src/components/layout/NurseLayout.tsx` | Rename "Dashboard" to "Command Centre" |
+| `src/components/nurse/JobCardVitals.tsx` | Add "next vitals due" countdown with colour-coded badge |
+| `src/components/nurse/JobCardKetaminePanel.tsx` | New component -- inline ketamine sliders + history |
+| `src/pages/nurse/NurseJobCard.tsx` | Replace ketamine link with inline panel, pass `treatmentStartedAt` to vitals |
 
 ## No Database Changes Required
-- Chairs already exist (Chair 1-4 confirmed in DB)
-- `appointments.chair_id` already links appointments to chairs
-- `treatment_vitals.recorded_at` provides the vitals timestamp
-- All needed RLS policies for nurses are already in place
+
+All data already exists in `treatment_vitals` and `ketamine_monitoring` tables with the correct hooks.
 
