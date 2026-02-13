@@ -1,109 +1,61 @@
 
 
-# Command Centre v2: Clinical Operations Board
+# Command Centre v2 — Layout Fix
 
-## Overview
+## The Problem
 
-Complete architectural redesign of `NurseCommandCentre.tsx` from a flat card grid into a zoned clinical operations board with a 12-column layout, dedicated monitoring sidebar, and dominant chair panels.
+The current implementation breaks on tablet because:
+- The 12-column grid uses `lg:grid-cols-12` (1024px+) — most tablets in portrait are 768-834px, so the grid never activates
+- Chair panels have `min-h-[320px]` — far too tall, pushing everything off-screen
+- The monitoring sidebar renders below all 4 chairs, requiring extensive scrolling
+- Excessive padding and spacing throughout wastes precious viewport space
 
-## Layout Architecture
+In the reference image, the chair grid and monitoring sidebar sit side-by-side even on a tablet-width viewport.
 
-```text
-+------------------------------------------------------------------+
-| Header: "Clinical Operations"            11:45 AM  * 3 Active    |
-+------------------------------------------------------------------+
-| PRIMARY OPERATIONS (8 cols)       | MONITORING (4 cols)           |
-|                                   |                               |
-| +-------------+ +-------------+  | Live Alerts                   |
-| | Chair 1     | | Chair 2     |  |   Chair 3: Vitals overdue     |
-| | Thandi N.   | | Johan vdM   |  |   Chair 2: Running over       |
-| | Iron Inf.   | | Ketamine    |  |                               |
-| | 54:01       | | 1:40:23     |  | Unassigned Treatments         |
-| | [progress]  | | [progress]  |  |   Sipho D. - IV Vitamin       |
-| | [Open]      | | [Open]      |  |   [Assign Chair v]            |
-| +-------------+ +-------------+  |                               |
-| +-------------+ +-------------+  | Quick Stats                   |
-| | Chair 3     | | Chair 4     |  |   3 Active Infusions          |
-| | Fatima P.   | | Available   |  |   1 Chair Available           |
-| | Biologics   | |             |  |   Avg: 2h 03m                 |
-| | 2:16:16     | |             |  |                               |
-| | [Open]      | |             |  |                               |
-| +-------------+ +-------------+  |                               |
-+------------------------------------------------------------------+
-| SECONDARY: Upcoming Sessions                                     |
-+------------------------------------------------------------------+
-```
+## Changes
 
-On tablet portrait (below 1024px), the monitoring sidebar collapses below the primary zone as a full-width section.
+### 1. NurseCommandCentre.tsx — Grid Breakpoint + Header
 
-## What Changes
+- Change `lg:grid-cols-12` to `md:grid-cols-12` so the 8+4 column layout activates at 768px (tablet portrait)
+- Add a styled "Active Infusions" badge/chip in the header row matching the reference (green checkmark icon + count + label in a soft tinted container)
+- Reduce `space-y-6` to `space-y-4` for tighter vertical rhythm
+- Reduce gap between grid columns from `gap-6` to `gap-4`
 
-### 1. Header -- Thin, Institutional
+### 2. ChairPanel.tsx — Compact Cards
 
-Replace the current title + 3 large KPI cards with a single thin header row (60-72px):
-- Left: "Clinical Operations" title + "Real-time treatment monitoring" subtitle
-- Right: Live clock (updates every second), active infusion count with a subtle green dot indicator
+- Remove `min-h-[320px]` — let content determine height naturally
+- Reduce internal padding from `px-6 pt-5 pb-5` to `px-4 pt-4 pb-4`
+- Reduce spacing between internal sections from `space-y-4` to `space-y-3`
+- Make the elapsed timer slightly smaller (28px instead of 32px) so cards fit 2-per-row without being enormous
+- Available chair card: reduce `min-h-[200px]` to let it be compact, matching the reference's small neutral placeholder
+- Reduce "Open Session" button bottom padding
 
-The 3 large stat cards at the top are **removed entirely**.
+### 3. MonitoringSidebar.tsx — Tighter Sidebar
 
-### 2. Primary Operations Zone (8/12 columns)
+- Reduce card padding from `p-5` to `p-4`
+- Reduce spacing between sections from `space-y-4` to `space-y-3`
+- Make alert rows more compact (matching the reference's 2-line alert format with chair name + detail)
+- Reduce section header text/margins slightly
 
-A container card labeled "Primary Operations" holding all chair panels in a 2-column grid. Only occupied chairs show full panel treatment; available chairs render as compact neutral placeholders.
+### 4. UpcomingSessions.tsx — Compact
 
-Chair Panel redesign (each occupied chair):
-- **4px left border** colour-coded by state
-- **Top row**: Chair icon + name (muted) | State badge (right-aligned)
-- **Patient name**: 18px semibold, dominant
-- **Treatment type**: 14px muted text below
-- **Elapsed time**: 32px monospace bold with clock icon
-- **Duration metadata**: "Remaining 1h 05m" or "Overdue 14m" as a small inline indicator
-- **Vitals strip**: Inline countdown badge (reuse existing VitalsCountdown)
-- **Progress bar**: 8px with state-coloured fill and smooth transition
-- **Open Session button**: Full-width, h-14, institutional navy
+- Reduce padding to match sidebar density
+- Tighten row spacing
 
-Available chairs: Minimal card with ghosted chair icon, name, "Available" label -- no stripe, muted border.
+### 5. ElapsedTimer.tsx — Slightly Smaller
 
-### 3. Monitoring and Alerts Zone (4/12 columns)
-
-A new right-side column with three stacked sections:
-
-**Live Alerts**: Computed from existing hook data:
-- Vitals overdue: any chair where `lastVitalsAt` or `startedAt` is >15 minutes ago
-- Running over expected: any chair where elapsed > 2 hours (default expected)
-- Each alert shows: warning icon, "Chair X: Vitals overdue", timestamp, soft state-tinted background
-
-**Unassigned Treatments**: Compact list (moved from bottom), each row shows patient name, treatment type, and inline "Assign Chair" select dropdown.
-
-**Quick Stats**: Three minimal text lines (no decorative cards):
-- Active Infusions count (with small clinical-success number)
-- Chairs Available count
-- Average Session Duration (computed from active treatments)
-
-### 4. Secondary Zone: Upcoming Sessions
-
-A new section below the main grid showing upcoming appointments for today that haven't started yet. This requires a small addition to the `useCommandCentre` hook to fetch today's pending appointments.
-
-### 5. Responsive Behaviour
-
-- **Desktop (1024px+)**: 12-column grid -- 8 cols primary, 4 cols monitoring sidebar
-- **Tablet portrait (<1024px)**: Single column -- primary operations full width, monitoring sections stack below
-- All touch targets remain 48px+ for gloved use
+- Reduce from `text-[32px]` to `text-[28px]` to allow chair panels to be more compact while still dominant
 
 ## Files Changed
 
 | File | Change |
 |------|--------|
-| `src/pages/nurse/NurseCommandCentre.tsx` | Complete rewrite: zoned layout, new header, monitoring sidebar, alert computation, upcoming sessions |
-| `src/hooks/useCommandCentre.ts` | Add `upcomingSessions` query for today's pending/scheduled appointments not yet started |
+| `src/pages/nurse/NurseCommandCentre.tsx` | Grid breakpoint `md:`, tighter spacing, active infusions badge |
+| `src/components/nurse/command-centre/ChairPanel.tsx` | Remove min-height, compact padding, tighter internal spacing |
+| `src/components/nurse/command-centre/MonitoringSidebar.tsx` | Compact padding and spacing |
+| `src/components/nurse/command-centre/UpcomingSessions.tsx` | Compact padding |
+| `src/components/nurse/command-centre/ElapsedTimer.tsx` | Reduce timer font to 28px |
 
-## No Other Files Change
+## Result
 
-All design tokens, badge variants, progress component, and layout shell remain as-is from the previous redesign. This is purely a page-level architectural change.
-
-## Data Notes
-
-- Alerts are **derived client-side** from existing `chairs` data (vitals overdue = `lastVitalsAt` or `startedAt` older than 15 min; running over = elapsed > 2hr)
-- Upcoming sessions query filters `appointments` table for today's date with status `scheduled` or `confirmed`, ordered by `scheduled_start`
-- Average session duration computed from active treatments' `started_at` timestamps
-- Live clock uses a single `setInterval` at the page level, shared via state
-
+The entire Command Centre (header + 4 chair panels + monitoring sidebar) will be visible on a single tablet screen without scrolling, matching the zoned layout from the reference image.
