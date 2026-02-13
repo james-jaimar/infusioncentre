@@ -27,9 +27,9 @@ export default function JobCardStepper({ currentStatus }: JobCardStepperProps) {
           <div key={step.key} className="flex items-center">
             <div
               className={cn(
-                "flex items-center gap-1.5 rounded px-4 py-3 text-sm font-medium whitespace-nowrap min-h-[48px]",
-                isDone && "bg-primary/10 text-primary",
-                isCurrent && "bg-primary text-primary-foreground",
+                "flex items-center gap-2 rounded-md px-4 py-3 text-sm font-medium whitespace-nowrap min-h-[48px] transition-all",
+                isDone && "bg-clinical-success-soft text-clinical-success",
+                isCurrent && "bg-primary text-primary-foreground shadow-clinical-sm",
                 !isDone && !isCurrent && "bg-muted text-muted-foreground"
               )}
             >
@@ -44,7 +44,7 @@ export default function JobCardStepper({ currentStatus }: JobCardStepperProps) {
               <div
                 className={cn(
                   "h-0.5 w-4 shrink-0",
-                  i < currentIndex ? "bg-primary" : "bg-border"
+                  i < currentIndex ? "bg-clinical-success" : "bg-border"
                 )}
               />
             )}

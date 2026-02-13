@@ -10,16 +10,11 @@ import logo from "@/assets/logo.png";
 
 function getRoleBasedPath(role: string | null): string {
   switch (role) {
-    case "admin":
-      return "/admin";
-    case "nurse":
-      return "/nurse";
-    case "doctor":
-      return "/doctor";
-    case "patient":
-      return "/patient";
-    default:
-      return "/";
+    case "admin": return "/admin";
+    case "nurse": return "/nurse";
+    case "doctor": return "/doctor";
+    case "patient": return "/patient";
+    default: return "/";
   }
 }
 
@@ -34,15 +29,10 @@ export default function Login() {
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
 
-  // Redirect if already logged in, or block if not approved
   useEffect(() => {
     if (!loading && user && profile) {
       if (!profile.is_approved) {
-        toast({
-          variant: "destructive",
-          title: "Account pending approval",
-          description: "Your account is awaiting admin approval. Please contact the clinic.",
-        });
+        toast({ variant: "destructive", title: "Account pending approval", description: "Your account is awaiting admin approval. Please contact the clinic." });
         signOut();
         navigate("/pending-approval", { replace: true });
         return;
@@ -59,45 +49,30 @@ export default function Login() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setIsLoading(true);
-
     const { error } = await signIn(email, password);
-
     if (error) {
-      toast({
-        variant: "destructive",
-        title: "Login failed",
-        description: error.message,
-      });
+      toast({ variant: "destructive", title: "Login failed", description: error.message });
       setIsLoading(false);
       return;
     }
-
-    toast({
-      title: "Welcome back",
-      description: "You have successfully logged in.",
-    });
-
-    // Role-based routing happens in the useEffect above after auth state updates
+    toast({ title: "Welcome back", description: "You have successfully logged in." });
     setIsLoading(false);
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-secondary px-4">
-      <div className="w-full max-w-md">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
+      <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center">
           <Link to="/">
-            <img src={logo} alt="The Johannesburg Infusion Centre" className="h-20 w-auto mb-4" />
+            <img src={logo} alt="The Johannesburg Infusion Centre" className="h-16 w-auto mb-6" />
           </Link>
-          <h1 className="text-2xl font-semibold text-foreground">Sign in to your account</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Enter your email and password below
-          </p>
+          <h1 className="text-xl font-semibold text-foreground">Sign in</h1>
         </div>
 
-        <div className="bg-card p-8 shadow-sm">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="bg-card p-8 rounded-lg shadow-clinical-md border border-border">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="email">Email address</Label>
+              <Label htmlFor="email" className="text-sm text-muted-foreground">Email address</Label>
               <Input
                 id="email"
                 type="email"
@@ -107,16 +82,14 @@ export default function Login() {
                 required
                 autoComplete="email"
                 disabled={isLoading}
+                className="h-11"
               />
             </div>
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
-                <Link
-                  to="/forgot-password"
-                  className="text-sm text-primary hover:underline"
-                >
+                <Label htmlFor="password" className="text-sm text-muted-foreground">Password</Label>
+                <Link to="/forgot-password" className="text-xs text-primary hover:underline">
                   Forgot password?
                 </Link>
               </div>
@@ -129,14 +102,15 @@ export default function Login() {
                 required
                 autoComplete="current-password"
                 disabled={isLoading}
+                className="h-11"
               />
             </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full h-11" disabled={isLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing in...
+                  Signing in…
                 </>
               ) : (
                 "Sign in"
@@ -146,14 +120,14 @@ export default function Login() {
 
           <div className="mt-6 text-center text-sm text-muted-foreground">
             Don't have an account?{" "}
-            <Link to="/register" className="text-primary hover:underline">
-              Register as a patient
+            <Link to="/register" className="text-primary hover:underline font-medium">
+              Register
             </Link>
           </div>
         </div>
 
         <div className="mt-6 text-center">
-          <Link to="/" className="text-sm text-muted-foreground hover:text-primary">
+          <Link to="/" className="text-xs text-muted-foreground hover:text-primary transition-colors">
             ← Back to website
           </Link>
         </div>

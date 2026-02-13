@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, CheckCircle, Clock, Pill, Heart } from "lucide-react";
+import { AlertTriangle, CheckCircle, Clock } from "lucide-react";
 
 interface JobCardActionsProps {
   treatmentId: string | null;
@@ -35,7 +35,7 @@ export default function JobCardActions({
   const isCompleted = treatmentStatus === "completed" || treatmentStatus === "cancelled";
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 border-t bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 px-4 py-3 lg:left-64">
+    <div className="fixed bottom-0 left-0 right-0 z-40 border-t bg-card/95 backdrop-blur-sm supports-[backdrop-filter]:bg-card/85 px-4 py-3 lg:left-64 shadow-clinical-lg">
       <div className="flex items-center gap-3 max-w-7xl mx-auto">
         {showCheckIn && (
           <Button onClick={onCheckIn} disabled={isSubmitting} size="lg" className="flex-1 h-14 text-base">
@@ -70,7 +70,7 @@ export default function JobCardActions({
         <Button
           variant="destructive"
           size="lg"
-          className="h-14 min-w-[44px] shrink-0"
+          className="h-14 min-w-[48px] shrink-0"
           onClick={() => navigate("/nurse/emergency")}
         >
           <AlertTriangle className="h-5 w-5" />

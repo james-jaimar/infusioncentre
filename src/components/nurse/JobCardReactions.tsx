@@ -86,12 +86,12 @@ export default function JobCardReactions({ treatmentId, treatmentStartedAt, isCo
   const hasActiveReaction = reactions?.some((r) => r.outcome === "ongoing");
 
   return (
-    <Card className={hasActiveReaction ? "border-destructive bg-red-50" : ""}>
+    <Card className={hasActiveReaction ? "state-border-danger bg-clinical-danger-soft" : ""}>
       <CardHeader className="flex flex-row items-center justify-between pb-3">
         <div className="flex items-center gap-2">
-          <ShieldAlert className={`h-5 w-5 ${hasActiveReaction ? "text-destructive" : "text-muted-foreground"}`} />
+          <ShieldAlert className={`h-5 w-5 ${hasActiveReaction ? "text-clinical-danger" : "text-muted-foreground"}`} />
           <CardTitle className="text-base">Adverse Reactions</CardTitle>
-          {hasActiveReaction && <Badge variant="destructive">ACTIVE</Badge>}
+          {hasActiveReaction && <Badge variant="danger">ACTIVE</Badge>}
         </div>
         <div className="flex gap-2">
           {!isCompleted && (
@@ -212,7 +212,7 @@ export default function JobCardReactions({ treatmentId, treatmentStartedAt, isCo
         {reactions?.length ? (
           <div className="space-y-3">
             {reactions.map((r) => (
-              <div key={r.id} className={`p-3 rounded-lg border ${r.outcome === "ongoing" ? "border-destructive bg-red-50" : "border-border"}`}>
+              <div key={r.id} className={`p-4 rounded-lg border ${r.outcome === "ongoing" ? "border-clinical-danger bg-clinical-danger-soft" : "border-border"}`}>
                 <div className="flex items-center justify-between mb-1">
                   <Badge className={SEVERITY_LABELS[r.severity_grade]?.color || ""}>
                     {SEVERITY_LABELS[r.severity_grade]?.label || `Grade ${r.severity_grade}`}

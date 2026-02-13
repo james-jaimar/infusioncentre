@@ -27,26 +27,16 @@ const dissociationLabels = ["0 - None", "1 - Mild", "2 - Moderate", "3 - Signifi
 
 /** Large tap-to-select button grid for gloved-hand use */
 function TapGrid({
-  label,
-  subLabel,
-  min,
-  max,
-  value,
-  onChange,
+  label, subLabel, min, max, value, onChange,
 }: {
-  label: string;
-  subLabel?: string;
-  min: number;
-  max: number;
-  value: number;
-  onChange: (v: number) => void;
+  label: string; subLabel?: string; min: number; max: number; value: number; onChange: (v: number) => void;
 }) {
   const values = Array.from({ length: max - min + 1 }, (_, i) => min + i);
   return (
     <div>
-      <Label className="text-base font-medium">{label}</Label>
-      {subLabel && <p className="text-sm text-muted-foreground mb-2">{subLabel}</p>}
-      <div className="flex flex-wrap gap-2 mt-1">
+      <Label className="text-sm font-medium text-foreground">{label}</Label>
+      {subLabel && <p className="text-xs text-muted-foreground mt-0.5">{subLabel}</p>}
+      <div className="flex flex-wrap gap-2 mt-2">
         {values.map((v) => (
           <Button
             key={v}
@@ -70,13 +60,8 @@ export default function JobCardKetaminePanel({ treatmentId, treatmentStartedAt }
   const [formOpen, setFormOpen] = useState(true);
 
   const [form, setForm] = useState({
-    alertness_score: 3,
-    mood_score: 5,
-    pain_score: 5,
-    dissociation_level: 0,
-    anxiety_score: 5,
-    nausea_present: false,
-    notes: "",
+    alertness_score: 3, mood_score: 5, pain_score: 5,
+    dissociation_level: 0, anxiety_score: 5, nausea_present: false, notes: "",
   });
 
   const minutesFromStart = treatmentStartedAt
@@ -87,16 +72,11 @@ export default function JobCardKetaminePanel({ treatmentId, treatmentStartedAt }
     if (!user?.id) return;
     try {
       await addEntry.mutateAsync({
-        treatment_id: treatmentId,
-        minutes_from_start: minutesFromStart,
-        alertness_score: form.alertness_score,
-        mood_score: form.mood_score,
-        pain_score: form.pain_score,
-        dissociation_level: form.dissociation_level,
-        anxiety_score: form.anxiety_score,
-        nausea_present: form.nausea_present,
-        notes: form.notes || null,
-        recorded_by: user.id,
+        treatment_id: treatmentId, minutes_from_start: minutesFromStart,
+        alertness_score: form.alertness_score, mood_score: form.mood_score,
+        pain_score: form.pain_score, dissociation_level: form.dissociation_level,
+        anxiety_score: form.anxiety_score, nausea_present: form.nausea_present,
+        notes: form.notes || null, recorded_by: user.id,
       });
       setForm({ alertness_score: 3, mood_score: 5, pain_score: 5, dissociation_level: 0, anxiety_score: 5, nausea_present: false, notes: "" });
       toast({ title: "Monitoring entry recorded" });
@@ -106,13 +86,13 @@ export default function JobCardKetaminePanel({ treatmentId, treatmentStartedAt }
   };
 
   return (
-    <Card className="border-amber-300">
+    <Card className="state-border-warning">
       <Collapsible open={formOpen} onOpenChange={setFormOpen}>
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <div className="flex items-center gap-2">
-            <Brain className="h-5 w-5 text-amber-600" />
-            <CardTitle className="text-base">Ketamine Monitoring</CardTitle>
-            <Badge variant="outline" className="text-sm">+{minutesFromStart} min</Badge>
+            <Brain className="h-5 w-5 text-clinical-warning" />
+            <CardTitle className="text-base font-semibold">Ketamine Monitoring</CardTitle>
+            <Badge variant="warning" className="text-xs font-mono">+{minutesFromStart} min</Badge>
           </div>
           <CollapsibleTrigger asChild>
             <Button variant="ghost" size="icon" className="h-12 w-12">
@@ -123,48 +103,27 @@ export default function JobCardKetaminePanel({ treatmentId, treatmentStartedAt }
 
         <CollapsibleContent>
           <CardContent className="space-y-6 pt-0">
-            <TapGrid
-              label="Alertness (1-5)"
-              subLabel={alertnessLabels[form.alertness_score - 1]}
+            <TapGrid label="Alertness (1-5)" subLabel={alertnessLabels[form.alertness_score - 1]}
               min={1} max={5} value={form.alertness_score}
-              onChange={(v) => setForm((f) => ({ ...f, alertness_score: v }))}
-            />
-
-            <TapGrid
-              label={`Mood: ${form.mood_score}`}
-              min={1} max={10} value={form.mood_score}
-              onChange={(v) => setForm((f) => ({ ...f, mood_score: v }))}
-            />
-
-            <TapGrid
-              label={`Pain: ${form.pain_score}`}
-              min={0} max={10} value={form.pain_score}
-              onChange={(v) => setForm((f) => ({ ...f, pain_score: v }))}
-            />
-
-            <TapGrid
-              label="Dissociation Level (0-4)"
-              subLabel={dissociationLabels[form.dissociation_level]}
+              onChange={(v) => setForm((f) => ({ ...f, alertness_score: v }))} />
+            <TapGrid label={`Mood: ${form.mood_score}`} min={1} max={10} value={form.mood_score}
+              onChange={(v) => setForm((f) => ({ ...f, mood_score: v }))} />
+            <TapGrid label={`Pain: ${form.pain_score}`} min={0} max={10} value={form.pain_score}
+              onChange={(v) => setForm((f) => ({ ...f, pain_score: v }))} />
+            <TapGrid label="Dissociation Level (0-4)" subLabel={dissociationLabels[form.dissociation_level]}
               min={0} max={4} value={form.dissociation_level}
-              onChange={(v) => setForm((f) => ({ ...f, dissociation_level: v }))}
-            />
+              onChange={(v) => setForm((f) => ({ ...f, dissociation_level: v }))} />
+            <TapGrid label={`Anxiety: ${form.anxiety_score}`} min={0} max={10} value={form.anxiety_score}
+              onChange={(v) => setForm((f) => ({ ...f, anxiety_score: v }))} />
 
-            <TapGrid
-              label={`Anxiety: ${form.anxiety_score}`}
-              min={0} max={10} value={form.anxiety_score}
-              onChange={(v) => setForm((f) => ({ ...f, anxiety_score: v }))}
-            />
-
-            {/* Nausea */}
             <div className="flex items-center gap-3">
               <Checkbox id="ket-nausea" checked={form.nausea_present} onCheckedChange={(checked) => setForm((f) => ({ ...f, nausea_present: !!checked }))} className="h-7 w-7" />
-              <Label htmlFor="ket-nausea" className="text-base cursor-pointer">Nausea Present</Label>
+              <Label htmlFor="ket-nausea" className="text-sm cursor-pointer">Nausea Present</Label>
             </div>
 
-            {/* Notes */}
             <div>
-              <Label className="text-base font-medium">Notes</Label>
-              <Textarea className="mt-1 min-h-[80px] text-base" value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Any observations..." />
+              <Label className="text-sm font-medium">Notes</Label>
+              <Textarea className="mt-1.5 min-h-[80px] text-base" value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Any observations..." />
             </div>
 
             <Button onClick={handleSubmit} className="w-full h-14 text-base" disabled={addEntry.isPending}>
@@ -174,27 +133,26 @@ export default function JobCardKetaminePanel({ treatmentId, treatmentStartedAt }
         </CollapsibleContent>
       </Collapsible>
 
-      {/* History */}
       {entries && entries.length > 0 && (
         <CardContent className="pt-0">
-          <div className="border-t pt-3">
-            <p className="text-sm font-medium text-muted-foreground mb-2">History ({entries.length} entries)</p>
+          <div className="border-t pt-4">
+            <p className="text-xs font-medium text-muted-foreground mb-3">History ({entries.length} entries)</p>
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {entries.map((entry) => (
-                <div key={entry.id} className="border rounded-lg p-3 space-y-1">
+                <div key={entry.id} className="border rounded-lg p-3 space-y-2 bg-card">
                   <div className="flex items-center justify-between">
-                    <Badge variant="outline" className="text-sm">+{entry.minutes_from_start} min</Badge>
-                    <span className="text-sm text-muted-foreground">{format(new Date(entry.recorded_at), "HH:mm")}</span>
+                    <Badge variant="warning" className="text-xs font-mono">+{entry.minutes_from_start} min</Badge>
+                    <span className="text-xs text-muted-foreground font-mono">{format(new Date(entry.recorded_at), "HH:mm")}</span>
                   </div>
                   <div className="grid grid-cols-3 gap-1 text-sm">
-                    <div>Alert: {entry.alertness_score}/5</div>
-                    <div>Mood: {entry.mood_score}/10</div>
-                    <div>Pain: {entry.pain_score}/10</div>
-                    <div>Dissoc: {entry.dissociation_level}/4</div>
-                    <div>Anxiety: {entry.anxiety_score ?? "–"}/10</div>
-                    <div>Nausea: {entry.nausea_present ? "Yes" : "No"}</div>
+                    <div className="text-muted-foreground">Alert: <span className="text-foreground font-medium">{entry.alertness_score}/5</span></div>
+                    <div className="text-muted-foreground">Mood: <span className="text-foreground font-medium">{entry.mood_score}/10</span></div>
+                    <div className="text-muted-foreground">Pain: <span className="text-foreground font-medium">{entry.pain_score}/10</span></div>
+                    <div className="text-muted-foreground">Dissoc: <span className="text-foreground font-medium">{entry.dissociation_level}/4</span></div>
+                    <div className="text-muted-foreground">Anxiety: <span className="text-foreground font-medium">{entry.anxiety_score ?? "–"}/10</span></div>
+                    <div className="text-muted-foreground">Nausea: <span className="text-foreground font-medium">{entry.nausea_present ? "Yes" : "No"}</span></div>
                   </div>
-                  {entry.notes && <p className="text-sm text-muted-foreground">{entry.notes}</p>}
+                  {entry.notes && <p className="text-xs text-muted-foreground">{entry.notes}</p>}
                 </div>
               ))}
             </div>

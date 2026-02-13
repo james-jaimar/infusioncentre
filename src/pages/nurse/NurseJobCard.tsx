@@ -62,9 +62,9 @@ function TreatmentTimer({ startedAt }: { startedAt: string | null }) {
   const seconds = elapsed % 60;
 
   return (
-    <div className="text-center">
-      <p className="text-sm text-muted-foreground mb-1">Elapsed Time</p>
-      <p className="text-4xl font-mono font-bold text-foreground tabular-nums">
+    <div className="text-center py-2">
+      <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Elapsed Time</p>
+      <p className="text-4xl font-mono font-bold text-foreground tabular-nums tracking-tight">
         {String(hours).padStart(2, "0")}:{String(minutes).padStart(2, "0")}:{String(seconds).padStart(2, "0")}
       </p>
     </div>
