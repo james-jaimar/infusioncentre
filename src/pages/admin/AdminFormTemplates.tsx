@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useFormTemplates, useDeleteFormTemplate, FormTemplate } from "@/hooks/useFormTemplates";
+import { useAppointmentTypes } from "@/hooks/useAppointmentTypes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +33,7 @@ const categoryColors: Record<string, string> = {
 
 export default function AdminFormTemplates() {
   const { data: templates, isLoading } = useFormTemplates();
+  const { data: appointmentTypes } = useAppointmentTypes();
   const deleteTemplate = useDeleteFormTemplate();
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -147,6 +149,7 @@ export default function AdminFormTemplates() {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Category</TableHead>
+                <TableHead>Assigned To</TableHead>
                 <TableHead>Fields</TableHead>
                 <TableHead>Version</TableHead>
                 <TableHead>Status</TableHead>
@@ -156,11 +159,11 @@ export default function AdminFormTemplates() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
                 </TableRow>
               ) : filtered?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No templates found</TableCell>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No templates found</TableCell>
                 </TableRow>
               ) : (
                 filtered?.map((t) => {
@@ -181,6 +184,22 @@ export default function AdminFormTemplates() {
                         <Badge variant="secondary" className={categoryColors[t.category]}>
                           {categoryLabels[t.category] || t.category}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {!t.required_for_treatment_types ? (
+                          <Badge variant="outline" className="text-[10px]">All Patients</Badge>
+                        ) : (
+                          <div className="flex flex-wrap gap-1">
+                            {t.required_for_treatment_types.map((typeId: string) => {
+                              const at = appointmentTypes?.find((a) => a.id === typeId);
+                              return (
+                                <Badge key={typeId} variant="outline" className="text-[10px]">
+                                  {at?.name || "Unknown"}
+                                </Badge>
+                              );
+                            })}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell>{fieldCount} fields</TableCell>
                       <TableCell>v{t.version}</TableCell>

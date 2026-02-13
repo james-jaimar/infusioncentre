@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, Save, Eye, ChevronUp, ChevronDown, Trash2, GripVertical, Loader2, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import FieldPalette from "./FieldPalette";
@@ -12,6 +13,7 @@ import FieldEditor from "./FieldEditor";
 import FormRenderer, { type FormField } from "./FormRenderer";
 import AIImportDialog from "./AIImportDialog";
 import { useCreateFormTemplate, useUpdateFormTemplate, type FormTemplate } from "@/hooks/useFormTemplates";
+import { useAppointmentTypes } from "@/hooks/useAppointmentTypes";
 import { toast } from "@/hooks/use-toast";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -87,11 +89,14 @@ export default function FormTemplateEditor({
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState<FormCategory>("consent");
   const [isActive, setIsActive] = useState(true);
+  const [isUniversal, setIsUniversal] = useState(true);
+  const [selectedTreatmentTypes, setSelectedTreatmentTypes] = useState<string[]>([]);
   const [showPreview, setShowPreview] = useState(false);
   const [previewValues, setPreviewValues] = useState<Record<string, any>>({});
 
   const createTemplate = useCreateFormTemplate();
   const updateTemplate = useUpdateFormTemplate();
+  const { data: appointmentTypes } = useAppointmentTypes();
   const isSaving = createTemplate.isPending || updateTemplate.isPending;
 
   // Re-import dialog state (inside editor)
@@ -101,24 +106,29 @@ export default function FormTemplateEditor({
   useEffect(() => {
     if (!open) return;
     if (template && initialSchema) {
-      // Re-import scenario: template metadata + new AI schema
       setFields(initialSchema);
       setName(template.name);
       setDescription(template.description || "");
       setCategory(template.category as FormCategory);
       setIsActive(template.is_active);
+      setIsUniversal(!template.required_for_treatment_types);
+      setSelectedTreatmentTypes(template.required_for_treatment_types || []);
     } else if (template) {
       setFields((template.form_schema as FormField[]) || []);
       setName(template.name);
       setDescription(template.description || "");
       setCategory(template.category as FormCategory);
       setIsActive(template.is_active);
+      setIsUniversal(!template.required_for_treatment_types);
+      setSelectedTreatmentTypes(template.required_for_treatment_types || []);
     } else {
       setFields(initialSchema || []);
       setName(initialName || "");
       setDescription(initialDescription || "");
       setCategory(initialCategory || "consent");
       setIsActive(true);
+      setIsUniversal(true);
+      setSelectedTreatmentTypes([]);
     }
     setSelectedIdx(null);
     setShowPreview(false);
@@ -167,6 +177,7 @@ export default function FormTemplateEditor({
       toast({ title: "Please enter a form name", variant: "destructive" });
       return;
     }
+    const treatmentTypes = isUniversal ? null : (selectedTreatmentTypes.length > 0 ? selectedTreatmentTypes : null);
     try {
       if (template?.id) {
         await updateTemplate.mutateAsync({
@@ -176,6 +187,7 @@ export default function FormTemplateEditor({
           category,
           form_schema: fields as any,
           is_active: isActive,
+          required_for_treatment_types: treatmentTypes,
           version: template.version + 1,
         });
         toast({ title: "Template updated" });
@@ -186,6 +198,7 @@ export default function FormTemplateEditor({
           category,
           form_schema: fields as any,
           is_active: isActive,
+          required_for_treatment_types: treatmentTypes,
         });
         toast({ title: "Template created" });
       }
@@ -279,6 +292,59 @@ export default function FormTemplateEditor({
               <div className="flex items-center gap-2">
                 <Switch checked={isActive} onCheckedChange={setIsActive} />
                 <Label className="text-xs">Active</Label>
+              </div>
+
+              {/* Treatment Type Assignment */}
+              <div className="space-y-2 sm:col-span-2 border-t pt-3 mt-1">
+                <Label className="text-xs font-medium">Assigned to Treatment Types</Label>
+                <div className="flex items-center gap-2 mb-2">
+                  <Switch
+                    checked={isUniversal}
+                    onCheckedChange={(checked) => {
+                      setIsUniversal(checked);
+                      if (checked) setSelectedTreatmentTypes([]);
+                    }}
+                  />
+                  <Label className="text-xs text-muted-foreground">
+                    Universal — assign to all patients regardless of treatment
+                  </Label>
+                </div>
+                {!isUniversal && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {appointmentTypes?.map((type) => (
+                      <label
+                        key={type.id}
+                        className={cn(
+                          "flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all text-xs",
+                          selectedTreatmentTypes.includes(type.id)
+                            ? "border-primary/30 bg-primary/[0.04]"
+                            : "border-border/50 hover:border-border"
+                        )}
+                      >
+                        <Checkbox
+                          checked={selectedTreatmentTypes.includes(type.id)}
+                          onCheckedChange={(checked) => {
+                            setSelectedTreatmentTypes(
+                              checked
+                                ? [...selectedTreatmentTypes, type.id]
+                                : selectedTreatmentTypes.filter((id) => id !== type.id)
+                            );
+                          }}
+                        />
+                        <span
+                          className="h-2.5 w-2.5 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: type.color }}
+                        />
+                        {type.name}
+                      </label>
+                    ))}
+                  </div>
+                )}
+                {!isUniversal && selectedTreatmentTypes.length === 0 && (
+                  <p className="text-[10px] text-amber-600">
+                    No treatment types selected — this form won't be auto-assigned to any patients.
+                  </p>
+                )}
               </div>
             </div>
 
