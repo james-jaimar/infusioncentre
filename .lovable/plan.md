@@ -1,82 +1,86 @@
 
 
-# SMTP Email Edge Function Setup
+## Fix: Invite Landing Page - RLS Blocks Unauthenticated Access
 
-## Overview
+### Problem
+When a new patient clicks their invite link, the `InviteLanding` page queries the `patient_invites` table to validate the token. However, the visitor is **not logged in**, and all RLS policies on `patient_invites` require an authenticated user (admin, nurse, or linked patient). The query silently returns no data, triggering the "Invite Not Valid" error.
 
-Build a reusable `send-email` Edge Function using `denomailer` for ALL outgoing emails, including password resets. No Supabase Dashboard SMTP config -- everything goes through the Edge Function.
+### Solution
+Add an RLS policy that allows **anyone** to read a single invite row **by token** -- this is safe because:
+- Tokens are cryptographic UUIDs (unguessable)
+- The policy only exposes the invite row matching the token, not the full table
+- No sensitive data beyond email and patient first/last name is exposed
 
-## Secrets Needed (5)
+### Changes
 
-| Secret | Example |
-|---|---|
-| SMTP_HOST | mail.yourdomain.com |
-| SMTP_PORT | 587 |
-| SMTP_USERNAME | noreply@yourdomain.com |
-| SMTP_PASSWORD | your password |
-| SMTP_FROM_EMAIL | noreply@infusioncentre.co.za |
+**1. Database Migration -- Add public SELECT policy on `patient_invites`**
 
-## What Gets Built
-
-### 1. New Edge Function: `send-email`
-
-General-purpose SMTP sender using `denomailer`. Accepts `to`, `subject`, `html`, `text`. Logs all attempts to `communication_log` table.
-
-### 2. Update `send-patient-invite`
-
-After creating the invite record, sends a branded email with the invite link via `send-email` logic.
-
-### 3. Custom Password Reset Flow
-
-Replace `supabase.auth.resetPasswordForEmail()` in `ForgotPassword.tsx` with a custom flow:
-
-- New Edge Function action or endpoint: generates a secure reset token, stores it in a new `password_reset_tokens` table, and sends a branded reset email via SMTP
-- Update `ResetPassword.tsx` to validate the token and call `supabase.auth.admin.updateUserById()` via an edge function to set the new password
-
-### Database Changes
-
-**New table: `password_reset_tokens`**
-
-| Column | Type | Notes |
-|---|---|---|
-| id | UUID | Primary key |
-| user_id | UUID | References profiles.user_id |
-| token | TEXT | Unique, secure token |
-| email | TEXT | User's email |
-| created_at | TIMESTAMPTZ | Default now() |
-| expires_at | TIMESTAMPTZ | Default now() + 1 hour |
-| used | BOOLEAN | Default false |
-
-RLS: No public access. Service role only.
-
-### Files
-
-| File | Change |
-|---|---|
-| supabase/functions/send-email/index.ts | NEW -- reusable SMTP sender with denomailer |
-| supabase/functions/send-patient-invite/index.ts | UPDATE -- send invite email after creation |
-| supabase/functions/password-reset/index.ts | NEW -- generate token + send reset email, and handle reset completion |
-| supabase/config.toml | Add send-email and password-reset functions |
-| src/pages/ForgotPassword.tsx | UPDATE -- call password-reset edge function instead of supabase.auth.resetPasswordForEmail() |
-| src/pages/ResetPassword.tsx | UPDATE -- validate custom token, call edge function to set new password |
-
-### Email Templates (built into the edge functions as HTML strings)
-
-- **Patient Invite**: Branded email with patient name, invite link, expiry info, clinic contact
-- **Password Reset**: Branded email with reset link, expiry (1 hour), clinic contact
-
-### Flow
-
-```text
-Password Reset:
-User enters email -> password-reset edge function generates token
--> sends branded email via send-email -> user clicks link
--> ResetPassword page validates token -> user sets new password
--> edge function calls admin.updateUserById() to update password
-
-Patient Invite:
-Admin/nurse creates invite -> send-patient-invite generates token
--> sends branded email via SMTP -> patient clicks link
--> InviteLanding page handles registration
+Add a new RLS policy:
+```sql
+CREATE POLICY "Anyone can view invite by token"
+  ON public.patient_invites
+  FOR SELECT
+  USING (true);
 ```
+
+Since the query always filters by `token` (a UUID), this is equivalent to a "lookup by secret" pattern. Alternatively, we could scope it more tightly, but the token itself acts as the access control.
+
+**2. Frontend -- No changes needed**
+
+The `InviteLanding.tsx` code already queries by `.eq("token", token)` and handles all status checks (expired, revoked, accepted) correctly. Once RLS allows the read, the existing logic will work.
+
+### Technical Details
+- The `patient_invites` table columns exposed: `id`, `patient_id`, `token`, `email`, `phone`, `status`, `expires_at`, `accepted_at`, `created_at`, `invited_by`
+- The join to `patients(first_name, last_name, user_id)` also needs the unauthenticated user to read patients -- but this will fail due to patients RLS. We need to handle this differently.
+
+**Revised approach**: Instead of a broad SELECT policy, create a **security-definer function** that validates the token and returns the needed data, bypassing RLS safely.
+
+**1. Database Migration -- Create a `validate_invite_token` function**
+
+```sql
+CREATE OR REPLACE FUNCTION public.validate_invite_token(invite_token text)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  result json;
+BEGIN
+  SELECT json_build_object(
+    'id', pi.id,
+    'patient_id', pi.patient_id,
+    'token', pi.token,
+    'email', pi.email,
+    'status', pi.status,
+    'expires_at', pi.expires_at,
+    'accepted_at', pi.accepted_at,
+    'patient', json_build_object(
+      'first_name', p.first_name,
+      'last_name', p.last_name,
+      'user_id', p.user_id
+    )
+  ) INTO result
+  FROM patient_invites pi
+  JOIN patients p ON p.id = pi.patient_id
+  WHERE pi.token = invite_token;
+
+  RETURN result;
+END;
+$$;
+```
+
+**2. Frontend -- Update `InviteLanding.tsx`**
+
+Replace the direct table query with an RPC call:
+```typescript
+const { data, error } = await supabase.rpc("validate_invite_token", {
+  invite_token: token,
+});
+```
+
+This approach:
+- Bypasses RLS safely via `SECURITY DEFINER`
+- Only returns data for a valid token (unguessable UUID)
+- Avoids opening up broad SELECT access on sensitive tables
+- Returns exactly the fields needed for the landing page
 
