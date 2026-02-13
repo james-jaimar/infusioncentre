@@ -147,22 +147,33 @@ export default function InviteLanding() {
       // Since patient can view own invite but can't update, we'll use the accept flow
       // Actually, let's call a dedicated accept endpoint
 
-      // For simplicity, since the user just signed up and the trigger assigns 'patient' role,
-      // we can use a Supabase function or handle it differently.
-      // Let's call the send-patient-invite function with an accept action instead.
+      // Link patient record via edge function with retry
+      let linkSuccess = false;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const { error: linkError } = await supabase.functions.invoke("send-patient-invite", {
+            body: {
+              action: "accept",
+              token: invite.token,
+              user_id: newUserId,
+            },
+          });
+          if (!linkError) {
+            linkSuccess = true;
+            break;
+          }
+          console.error(`Link attempt ${attempt + 1} failed:`, linkError);
+        } catch (e) {
+          console.error(`Link attempt ${attempt + 1} exception:`, e);
+        }
+        // Brief delay before retry
+        if (attempt === 0) await new Promise(r => setTimeout(r, 1500));
+      }
 
-      // Actually the simplest approach: after signup, call an edge function to link the patient
-      const { error: linkError } = await supabase.functions.invoke("send-patient-invite", {
-        body: {
-          action: "accept",
-          token: invite.token,
-          user_id: newUserId,
-        },
-      });
-
-      // Even if linking fails, the user is created — they can be linked manually
-      if (linkError) {
-        console.error("Link error:", linkError);
+      if (!linkSuccess) {
+        toast.error("Your account was created but we couldn't complete setup. Please contact the clinic — they can fix this from the admin panel.");
+        navigate("/login", { replace: true });
+        return;
       }
 
       toast.success("Account created! Welcome to JIC.");
