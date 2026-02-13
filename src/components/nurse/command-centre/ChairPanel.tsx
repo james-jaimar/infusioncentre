@@ -2,24 +2,59 @@ import { useNavigate } from "react-router-dom";
 import { ChairData } from "@/hooks/useCommandCentre";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Armchair, Clock } from "lucide-react";
+import { Armchair, Clock, Activity } from "lucide-react";
 import { ElapsedTimer } from "./ElapsedTimer";
 import { VitalsCountdown } from "./VitalsCountdown";
 
 const EXPECTED_DURATION_MS = 2 * 60 * 60 * 1000;
 
-const statusConfig: Record<string, { label: string; variant: "success" | "info" | "warning" | "neutral"; borderClass: string; bgClass: string }> = {
-  pre_assessment: { label: "Pre-Assessment", variant: "info", borderClass: "border-l-4 border-l-clinical-info", bgClass: "" },
-  in_progress: { label: "Running", variant: "success", borderClass: "border-l-4 border-l-clinical-success", bgClass: "" },
-  post_assessment: { label: "Observing", variant: "warning", borderClass: "border-l-4 border-l-clinical-warning", bgClass: "bg-clinical-warning-soft/30" },
+type ChairState = "running" | "pre" | "due" | "available";
+
+const stateUI: Record<ChairState, { label: string; badge: string; tint: string; accent: string; progressFill: string }> = {
+  running: {
+    label: "Running",
+    badge: "bg-clinical-success-soft text-clinical-success border border-clinical-success/20",
+    tint: "bg-gradient-to-b from-clinical-success-soft/70 to-card/80",
+    accent: "before:bg-clinical-success",
+    progressFill: "bg-clinical-success",
+  },
+  pre: {
+    label: "Pre-Assessment",
+    badge: "bg-clinical-info-soft text-clinical-info border border-clinical-info/20",
+    tint: "bg-gradient-to-b from-clinical-info-soft/70 to-card/80",
+    accent: "before:bg-clinical-info",
+    progressFill: "bg-clinical-info",
+  },
+  due: {
+    label: "Observing",
+    badge: "bg-clinical-warning-soft text-clinical-warning border border-clinical-warning/20",
+    tint: "bg-gradient-to-b from-clinical-warning-soft/70 to-card/80",
+    accent: "before:bg-clinical-warning",
+    progressFill: "bg-clinical-warning",
+  },
+  available: {
+    label: "Available",
+    badge: "bg-muted/60 text-muted-foreground border border-border/70",
+    tint: "bg-card/70",
+    accent: "before:bg-muted-foreground/30",
+    progressFill: "bg-muted",
+  },
 };
+
+function mapStatus(status: string): ChairState {
+  switch (status) {
+    case "in_progress": return "running";
+    case "pre_assessment": return "pre";
+    case "post_assessment": return "due";
+    default: return "running";
+  }
+}
 
 export function ChairPanel({ chair }: { chair: ChairData }) {
   const navigate = useNavigate();
   const occ = chair.occupant;
-  const cfg = occ ? statusConfig[occ.status] || { label: occ.status, variant: "neutral" as const, borderClass: "", bgClass: "" } : null;
+  const state: ChairState = occ ? mapStatus(occ.status) : "available";
+  const ui = stateUI[state];
 
   const getProgress = () => {
     if (!occ?.startedAt) return 0;
@@ -41,24 +76,28 @@ export function ChairPanel({ chair }: { chair: ChairData }) {
   // Available chair
   if (!occ) {
     return (
-      <Card className="flex flex-col justify-center items-center p-6 bg-muted/30 border-border/50">
+      <div className={`relative overflow-hidden rounded-xl border border-border/50 shadow-clinical-sm ${ui.tint} before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:rounded-l-xl ${ui.accent} flex flex-col justify-center items-center p-6`}>
         <Armchair className="h-8 w-8 text-muted-foreground/20 mb-2" />
         <span className="text-sm font-medium text-muted-foreground">{chair.name}</span>
         <span className="text-xs text-muted-foreground/60 mt-0.5">Available</span>
-      </Card>
+      </div>
     );
   }
 
+  const remainingLabel = getRemainingLabel();
+
   // Occupied chair
   return (
-    <Card className={`flex flex-col justify-between p-0 overflow-hidden ${cfg?.borderClass || ""} ${cfg?.bgClass || ""}`}>
+    <div className={`relative overflow-hidden rounded-xl border border-border/40 shadow-clinical-md ${ui.tint} before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:rounded-l-xl ${ui.accent} flex flex-col`}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-4 pb-1.5">
-        <div className="flex items-center gap-2">
-          <Armchair className="h-4 w-4 text-muted-foreground/60" />
-          <span className="text-sm text-muted-foreground">{chair.name}</span>
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Armchair className="h-4 w-4" />
+          <span className="text-sm">{chair.name}</span>
         </div>
-        <Badge variant={cfg?.variant || "neutral"}>{cfg?.label || occ.status}</Badge>
+        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${ui.badge}`}>
+          {ui.label}
+        </span>
       </div>
 
       {/* Body */}
@@ -68,24 +107,36 @@ export function ChairPanel({ chair }: { chair: ChairData }) {
           <p className="text-sm text-muted-foreground mt-0.5">{occ.treatmentType}</p>
         </div>
 
-        {/* Elapsed time + remaining */}
+        {/* Elapsed + remaining */}
         <div className="flex items-end justify-between gap-2">
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-muted-foreground/60" />
             <ElapsedTimer startedAt={occ.startedAt} />
           </div>
-          {getRemainingLabel() && (
-            <span className={`text-xs font-medium ${getRemainingLabel()?.startsWith("Overdue") ? "text-clinical-danger" : "text-muted-foreground"}`}>
-              {getRemainingLabel()}
-            </span>
-          )}
+          <div className="text-right text-xs text-muted-foreground space-y-0.5">
+            <p>Expected 2h</p>
+            {remainingLabel && (
+              <p className={`font-medium ${remainingLabel.startsWith("Overdue") ? "text-clinical-danger" : ""}`}>
+                {remainingLabel}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Custom progress bar */}
+        <div className="w-full h-2.5 rounded-full bg-muted/60 overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${ui.progressFill}`}
+            style={{ width: `${getProgress()}%` }}
+          />
         </div>
 
         {/* Vitals strip */}
-        <VitalsCountdown startedAt={occ.startedAt} lastVitalsAt={occ.lastVitalsAt} />
-
-        {/* Progress */}
-        <Progress value={getProgress()} className="h-2.5" />
+        <div className="flex items-center gap-2">
+          <Activity className="h-3.5 w-3.5 text-muted-foreground/60" />
+          <span className="text-xs text-muted-foreground">Vitals</span>
+          <VitalsCountdown startedAt={occ.startedAt} lastVitalsAt={occ.lastVitalsAt} />
+        </div>
       </div>
 
       {/* Action */}
@@ -97,6 +148,6 @@ export function ChairPanel({ chair }: { chair: ChairData }) {
           Open Session
         </Button>
       </div>
-    </Card>
+    </div>
   );
 }
