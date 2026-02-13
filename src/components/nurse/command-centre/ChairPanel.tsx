@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ChairData } from "@/hooks/useCommandCentre";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -52,6 +52,8 @@ function mapStatus(status: string): ChairState {
 
 export function ChairPanel({ chair }: { chair: ChairData }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isAdmin = location.pathname.startsWith("/admin");
   const occ = chair.occupant;
   const state: ChairState = occ ? mapStatus(occ.status) : "available";
   const ui = stateUI[state];
@@ -143,7 +145,7 @@ export function ChairPanel({ chair }: { chair: ChairData }) {
       <div className="px-4 pb-4 pt-3">
         <Button
           className="w-full h-14 text-base font-medium"
-          onClick={() => navigate(`/nurse/job-card/${occ.appointmentId}`)}
+          onClick={() => navigate(isAdmin ? `/admin/job-card/${occ.appointmentId}` : `/nurse/job-card/${occ.appointmentId}`)}
         >
           Open Session
         </Button>

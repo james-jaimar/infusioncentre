@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -74,8 +74,14 @@ function TreatmentTimer({ startedAt }: { startedAt: string | null }) {
 export default function NurseJobCard() {
   const { appointmentId } = useParams<{ appointmentId: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const location = useLocation();
+  const { user, role } = useAuth();
   const isMobile = useIsMobile();
+
+  // Determine back destination based on role/referrer
+  const backPath = location.pathname.startsWith("/admin")
+    ? "/admin/command-centre"
+    : "/nurse/command-centre";
 
   const { data: appointment, isLoading: loadingApt } = useAppointment(appointmentId);
   const { data: treatment, isLoading: loadingTreatment } = useTreatmentByAppointment(appointmentId);
@@ -237,7 +243,7 @@ export default function NurseJobCard() {
     <div className="pb-24">
       {/* Back button + sidebar toggle for tablet */}
       <div className="flex items-center gap-2 mb-3">
-        <Button variant="ghost" onClick={() => navigate("/nurse/patients")} className="gap-2 h-12 min-w-[48px]">
+        <Button variant="ghost" onClick={() => navigate(backPath)} className="gap-2 h-12 min-w-[48px]">
           <ArrowLeft className="h-5 w-5" /> Back
         </Button>
         {useSheetSidebar && (
