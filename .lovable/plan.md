@@ -1,177 +1,109 @@
 
 
-# Master Redesign: Private Medical Centre Clinical Platform
+# Command Centre v2: Clinical Operations Board
+
+## Overview
+
+Complete architectural redesign of `NurseCommandCentre.tsx` from a flat card grid into a zoned clinical operations board with a 12-column layout, dedicated monitoring sidebar, and dominant chair panels.
+
+## Layout Architecture
+
+```text
++------------------------------------------------------------------+
+| Header: "Clinical Operations"            11:45 AM  * 3 Active    |
++------------------------------------------------------------------+
+| PRIMARY OPERATIONS (8 cols)       | MONITORING (4 cols)           |
+|                                   |                               |
+| +-------------+ +-------------+  | Live Alerts                   |
+| | Chair 1     | | Chair 2     |  |   Chair 3: Vitals overdue     |
+| | Thandi N.   | | Johan vdM   |  |   Chair 2: Running over       |
+| | Iron Inf.   | | Ketamine    |  |                               |
+| | 54:01       | | 1:40:23     |  | Unassigned Treatments         |
+| | [progress]  | | [progress]  |  |   Sipho D. - IV Vitamin       |
+| | [Open]      | | [Open]      |  |   [Assign Chair v]            |
+| +-------------+ +-------------+  |                               |
+| +-------------+ +-------------+  | Quick Stats                   |
+| | Chair 3     | | Chair 4     |  |   3 Active Infusions          |
+| | Fatima P.   | | Available   |  |   1 Chair Available           |
+| | Biologics   | |             |  |   Avg: 2h 03m                 |
+| | 2:16:16     | |             |  |                               |
+| | [Open]      | |             |  |                               |
+| +-------------+ +-------------+  |                               |
++------------------------------------------------------------------+
+| SECONDARY: Upcoming Sessions                                     |
++------------------------------------------------------------------+
+```
+
+On tablet portrait (below 1024px), the monitoring sidebar collapses below the primary zone as a full-width section.
 
 ## What Changes
 
-This redesign transforms every visual layer of the platform — from foundational design tokens through to the key clinical screens. The goal is to shift from a "startup SaaS admin panel" feel to a **premium private medical centre operating system**.
+### 1. Header -- Thin, Institutional
 
-## Phase 1: Design Foundation (Tokens, Fonts, Primitives)
+Replace the current title + 3 large KPI cards with a single thin header row (60-72px):
+- Left: "Clinical Operations" title + "Real-time treatment monitoring" subtitle
+- Right: Live clock (updates every second), active infusion count with a subtle green dot indicator
 
-### 1A. Font System
-- **Replace** Exo + Poppins with **Inter** (Google Fonts) — a clean, institutional sans-serif with excellent numeric rendering and medical-grade legibility
-- Update `index.html` font imports and `index.css` / `tailwind.config.ts` font-family references
-- Establish clear hierarchy: Page titles 28px semibold, section headers 18px medium, primary metrics 36px bold, supporting text 14px regular muted
+The 3 large stat cards at the top are **removed entirely**.
 
-### 1B. Color System Overhaul (`index.css`)
-- **Background**: Shift from pure white `#FFFFFF` to soft institutional grey `#F4F6F8`
-- **Primary**: Shift from `#3E5B84` (slate blue) to deeper navy `#1F3A5F` — more authoritative
-- **Card surfaces**: Stay white `#FFFFFF` for contrast against grey background
-- **Border**: Softer `#D8E0E6` instead of current `#E5E5E5`
-- **Add clinical state CSS custom properties**:
-  - `--state-success` / `--state-success-soft` for Running/Stable (muted green)
-  - `--state-warning` / `--state-warning-soft` for Monitor/Due (warm amber)
-  - `--state-danger` / `--state-danger-soft` for Critical (deep red)
-  - `--state-info` / `--state-info-soft` for Pre-assessment (muted blue)
-  - `--state-neutral` / `--state-neutral-soft` for Completed (grey)
+### 2. Primary Operations Zone (8/12 columns)
 
-### 1C. Radius + Shadow System
-- **Radius**: Change `--radius` from `0rem` (square) to `6px` — institutional, not bubbly
-- **Shadows**: Add utility classes for `shadow-clinical-sm`, `shadow-clinical-md`, `shadow-clinical-lg` with very subtle depth
+A container card labeled "Primary Operations" holding all chair panels in a 2-column grid. Only occupied chairs show full panel treatment; available chairs render as compact neutral placeholders.
 
-### 1D. Component Primitives
-- **Card** (`card.tsx`): Add `shadow-clinical-md` default, use `rounded-md` (6px)
-- **Badge** (`badge.tsx`): Keep pill shape but add clinical state variants (`success`, `warning`, `danger`, `info`, `neutral`)
-- **Button** (`button.tsx`): Slightly increase default height, use 6px radius
-- **Progress** (`progress.tsx`): Reduce height to 8px with rounded ends for infusion bars
+Chair Panel redesign (each occupied chair):
+- **4px left border** colour-coded by state
+- **Top row**: Chair icon + name (muted) | State badge (right-aligned)
+- **Patient name**: 18px semibold, dominant
+- **Treatment type**: 14px muted text below
+- **Elapsed time**: 32px monospace bold with clock icon
+- **Duration metadata**: "Remaining 1h 05m" or "Overdue 14m" as a small inline indicator
+- **Vitals strip**: Inline countdown badge (reuse existing VitalsCountdown)
+- **Progress bar**: 8px with state-coloured fill and smooth transition
+- **Open Session button**: Full-width, h-14, institutional navy
 
-### Files changed:
-- `index.html` — font import
-- `src/index.css` — full token overhaul + clinical state utilities
-- `tailwind.config.ts` — colors, radius, shadows, fonts
-- `src/components/ui/card.tsx` — shadow + radius
-- `src/components/ui/badge.tsx` — clinical state variants
-- `src/components/ui/button.tsx` — radius + sizing
-- `src/components/ui/progress.tsx` — slimmer clinical bar
+Available chairs: Minimal card with ghosted chair icon, name, "Available" label -- no stripe, muted border.
 
-## Phase 2: Layout Shell
+### 3. Monitoring and Alerts Zone (4/12 columns)
 
-### 2A. Nurse Layout (`NurseLayout.tsx`)
-- Sidebar: Deep navy `#1F3A5F` background (using new primary)
-- Main content area: Soft grey `#F4F6F8` background
-- Navigation links: Slightly more spacing, subtle left-border accent on active item instead of background highlight
-- User section: Cleaner typography hierarchy
+A new right-side column with three stacked sections:
 
-### 2B. Admin Layout (`AdminLayout.tsx`)
-- Same sidebar treatment as nurse layout for consistency
-- Main area uses institutional grey background
+**Live Alerts**: Computed from existing hook data:
+- Vitals overdue: any chair where `lastVitalsAt` or `startedAt` is >15 minutes ago
+- Running over expected: any chair where elapsed > 2 hours (default expected)
+- Each alert shows: warning icon, "Chair X: Vitals overdue", timestamp, soft state-tinted background
 
-### 2C. Login Page (`Login.tsx`)
-- Full institutional grey background
-- Card with subtle shadow and 6px radius
-- Logo prominent, restrained typography
-- Remove "Sign in to your account" heading bloat — keep it clean
+**Unassigned Treatments**: Compact list (moved from bottom), each row shows patient name, treatment type, and inline "Assign Chair" select dropdown.
 
-### Files changed:
-- `src/components/layout/NurseLayout.tsx`
-- `src/components/layout/AdminLayout.tsx`
-- `src/pages/Login.tsx`
+**Quick Stats**: Three minimal text lines (no decorative cards):
+- Active Infusions count (with small clinical-success number)
+- Chairs Available count
+- Average Session Duration (computed from active treatments)
 
-## Phase 3: Command Centre Redesign
+### 4. Secondary Zone: Upcoming Sessions
 
-The Command Centre transforms from a basic card grid into a **Clinical Operations Board**.
+A new section below the main grid showing upcoming appointments for today that haven't started yet. This requires a small addition to the `useCommandCentre` hook to fetch today's pending appointments.
 
-### Chair Cards — Complete Visual Overhaul
-Each occupied chair card gets:
-- **4px left border** colour-coded by state (green=running, amber=monitor, blue=pre-assessment)
-- **Soft tinted background** matching state (e.g. `bg-[#E6F3EE]` for running)
-- **Patient name** large and prominent (18px semibold)
-- **Treatment type** as a subtle text label, not a coloured badge
-- **Elapsed time** displayed large and dominant (monospace, 28px+)
-- **Infusion progress bar** — subtle 8px bar showing time elapsed vs expected duration
-- **Vitals indicator strip** — compact row showing last BP/HR/O2 inline
-- **Status chip** in upper-right corner using clinical state colours
-- **"Open Session" button** — strong, full-width, institutional
+### 5. Responsive Behaviour
 
-Empty chairs:
-- Neutral grey background, muted border
-- Minimal visual weight — clearly "available"
+- **Desktop (1024px+)**: 12-column grid -- 8 cols primary, 4 cols monitoring sidebar
+- **Tablet portrait (<1024px)**: Single column -- primary operations full width, monitoring sections stack below
+- All touch targets remain 48px+ for gloved use
 
-### Summary Stats Row
-- Add a top-level stats strip: Active Infusions count, Chairs in Use, Alerts count
-- Clean, metric-focused — large numbers with supporting labels
+## Files Changed
 
-### Unassigned Treatments Card
-- Amber left border accent
-- Cleaner row layout with better spacing
+| File | Change |
+|------|--------|
+| `src/pages/nurse/NurseCommandCentre.tsx` | Complete rewrite: zoned layout, new header, monitoring sidebar, alert computation, upcoming sessions |
+| `src/hooks/useCommandCentre.ts` | Add `upcomingSessions` query for today's pending/scheduled appointments not yet started |
 
-### Files changed:
-- `src/pages/nurse/NurseCommandCentre.tsx` — full redesign
+## No Other Files Change
 
-## Phase 4: Treatment Session (Job Card) Redesign
+All design tokens, badge variants, progress component, and layout shell remain as-is from the previous redesign. This is purely a page-level architectural change.
 
-### Header Strip (`JobCardHeader.tsx`)
-- Patient name dominant (22px semibold)
-- DOB/age, diagnosis info on second line
-- Allergies banner: controlled deep red tint background, not screaming
-- Chair number, session time window, and clinical state as compact metadata
-- Subtle bottom border separation
+## Data Notes
 
-### Treatment Timer
-- Elapsed time rendered at **36px bold monospace** — the primary metric
-- Subtle label above: "Elapsed Time"
-- Sits in a slightly elevated card with institutional feel
-
-### Stepper (`JobCardStepper.tsx`)
-- Steps use subtle background tints matching clinical states
-- Active step gets a left-border accent line
-- Completed steps show muted with check icon
-- Clean horizontal layout with better spacing
-
-### Vitals Card (`JobCardVitals.tsx`)
-- Countdown badge with clinical state colours (green/amber/red)
-- Latest vitals displayed as a structured grid with icon + label + value
-- History section: cleaner table-like layout
-
-### Medications, IV Access, Reactions, Billing Cards
-- All cards get consistent 24px padding, 6px radius, subtle shadow
-- Section headers: 18px medium weight
-- Better internal spacing using 8px grid
-
-### Sticky Action Bar (`JobCardActions.tsx`)
-- Cleaner backdrop blur
-- Buttons with institutional styling
-- Emergency button: deep red, controlled
-
-### Files changed:
-- `src/pages/nurse/NurseJobCard.tsx`
-- `src/components/nurse/JobCardHeader.tsx`
-- `src/components/nurse/JobCardStepper.tsx`
-- `src/components/nurse/JobCardVitals.tsx`
-- `src/components/nurse/JobCardActions.tsx`
-- `src/components/nurse/JobCardSidebar.tsx`
-- `src/components/nurse/JobCardBilling.tsx`
-- `src/components/nurse/JobCardMedications.tsx`
-- `src/components/nurse/JobCardIVAccess.tsx`
-- `src/components/nurse/JobCardReactions.tsx`
-- `src/components/nurse/JobCardKetaminePanel.tsx`
-
-## Phase 5: Admin Dashboard Polish
-
-- Stat cards: Subtle shadow, institutional colours
-- Today's appointments: Cleaner list with left-border state indicators
-- Quick actions: More restrained, less "click me" energy
-
-### Files changed:
-- `src/pages/admin/AdminDashboard.tsx`
-
-## What Does NOT Change
-
-- **All functionality** stays identical — no database changes, no hook changes, no routing changes
-- **Tablet/gloved-hand optimisations** from previous work are preserved (48px touch targets, tap grids, sheet sidebar)
-- **Public-facing pages** (home, services, training) keep the current brand — this redesign targets the clinical operations platform only
-
-## Design Principles Enforced
-
-Every element will be checked against:
-1. Does it increase **clarity**?
-2. Does it increase **safety**?
-3. Does it increase **hierarchy**?
-4. Does it increase **confidence**?
-
-If not — it gets removed.
-
-## Total Files Changed: ~22
-
-All changes are CSS/component-level. No database migrations, no new dependencies, no breaking changes.
+- Alerts are **derived client-side** from existing `chairs` data (vitals overdue = `lastVitalsAt` or `startedAt` older than 15 min; running over = elapsed > 2hr)
+- Upcoming sessions query filters `appointments` table for today's date with status `scheduled` or `confirmed`, ordered by `scheduled_start`
+- Average session duration computed from active treatments' `started_at` timestamps
+- Live clock uses a single `setInterval` at the page level, shared via state
 
