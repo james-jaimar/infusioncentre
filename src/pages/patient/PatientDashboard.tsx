@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import FullScreenFormDialog from "@/components/forms/FullScreenFormDialog";
 import type { FormField } from "@/components/forms/FormRenderer";
+import { usePatientMedicalHistory } from "@/hooks/usePatientMedicalHistory";
+import { prefillFormValues } from "@/lib/prefillFormData";
+import type { Patient } from "@/types/patient";
 
 export default function PatientDashboard() {
   const { profile, user } = useAuth();
@@ -24,19 +27,21 @@ export default function PatientDashboard() {
 
   const firstName = profile?.first_name || "there";
 
-  // Get the patient record linked to this user
+  // Get the full patient record linked to this user
   const { data: patientRecord } = useQuery({
     queryKey: ["my_patient_record"],
     queryFn: async () => {
       const { data } = await supabase
         .from("patients")
-        .select("id")
+        .select("*")
         .eq("user_id", user?.id)
         .single();
-      return data;
+      return data as Patient | null;
     },
     enabled: !!user?.id,
   });
+
+  const { data: medicalHistory } = usePatientMedicalHistory(patientRecord?.id);
 
   const { data: checklist } = useOnboardingChecklist(patientRecord?.id);
   const { data: activeFormTemplate } = useFormTemplate(activeFormTemplateId);
@@ -50,12 +55,27 @@ export default function PatientDashboard() {
   // Check if this is a newly invited patient (has checklist items but hasn't completed any)
   const isNewPatient = checklist && checklist.length > 0 && completedForms.length === 0;
 
+  const prefillAppliedRef = useRef<string | null>(null);
+
   const handleOpenForm = (item: any) => {
+    prefillAppliedRef.current = null;
     setActiveFormTemplateId(item.form_template_id);
     setActiveChecklistItemId(item.id);
     setFormValues({});
     setFormDialogOpen(true);
   };
+
+  // Apply prefill when form template loads and patient data is available
+  useEffect(() => {
+    const schema = activeFormTemplate?.form_schema as FormField[] | undefined;
+    if (!schema || !patientRecord || !formDialogOpen) return;
+    if (prefillAppliedRef.current === activeFormTemplate.id) return;
+    prefillAppliedRef.current = activeFormTemplate.id;
+    const prefilled = prefillFormValues(schema, patientRecord, medicalHistory);
+    if (Object.keys(prefilled).length > 0) {
+      setFormValues(prefilled);
+    }
+  }, [activeFormTemplate, patientRecord, medicalHistory, formDialogOpen]);
 
   const handleSubmitForm = async () => {
     if (!patientRecord?.id || !activeFormTemplate || !activeChecklistItemId) return;
