@@ -1,61 +1,79 @@
 
 
-# Command Centre v2 — Layout Fix
+# Command Centre — Reference Image Rebuild
 
-## The Problem
+## Approach
 
-The current implementation breaks on tablet because:
-- The 12-column grid uses `lg:grid-cols-12` (1024px+) — most tablets in portrait are 768-834px, so the grid never activates
-- Chair panels have `min-h-[320px]` — far too tall, pushing everything off-screen
-- The monitoring sidebar renders below all 4 chairs, requiring extensive scrolling
-- Excessive padding and spacing throughout wastes precious viewport space
+Adapt the user-provided reference component code to work with the existing HSL-based design system tokens (`clinical-success`, `clinical-warning`, etc.) rather than adding conflicting RGB tokens. The existing `index.css` and `tailwind.config.ts` already have all needed color tokens.
 
-In the reference image, the chair grid and monitoring sidebar sit side-by-side even on a tablet-width viewport.
+## Token Mapping (no file changes needed)
 
-## Changes
+The reference code uses `oksoft`, `warnsoft`, etc. These map directly to existing tokens:
 
-### 1. NurseCommandCentre.tsx — Grid Breakpoint + Header
+| Reference Token | Existing Token |
+|---|---|
+| `ok` / `oksoft` | `clinical-success` / `clinical-success-soft` |
+| `warn` / `warnsoft` | `clinical-warning` / `clinical-warning-soft` |
+| `danger` / `dangersoft` | `clinical-danger` / `clinical-danger-soft` |
+| `info` / `infosoft` | `clinical-info` / `clinical-info-soft` |
+| `surface` | `card` (white) |
+| `surface2` | `muted` |
+| `muted` (text) | `muted-foreground` |
+| `text` | `foreground` |
+| `primary` | `primary` |
 
-- Change `lg:grid-cols-12` to `md:grid-cols-12` so the 8+4 column layout activates at 768px (tablet portrait)
-- Add a styled "Active Infusions" badge/chip in the header row matching the reference (green checkmark icon + count + label in a soft tinted container)
-- Reduce `space-y-6` to `space-y-4` for tighter vertical rhythm
-- Reduce gap between grid columns from `gap-6` to `gap-4`
-
-### 2. ChairPanel.tsx — Compact Cards
-
-- Remove `min-h-[320px]` — let content determine height naturally
-- Reduce internal padding from `px-6 pt-5 pb-5` to `px-4 pt-4 pb-4`
-- Reduce spacing between internal sections from `space-y-4` to `space-y-3`
-- Make the elapsed timer slightly smaller (28px instead of 32px) so cards fit 2-per-row without being enormous
-- Available chair card: reduce `min-h-[200px]` to let it be compact, matching the reference's small neutral placeholder
-- Reduce "Open Session" button bottom padding
-
-### 3. MonitoringSidebar.tsx — Tighter Sidebar
-
-- Reduce card padding from `p-5` to `p-4`
-- Reduce spacing between sections from `space-y-4` to `space-y-3`
-- Make alert rows more compact (matching the reference's 2-line alert format with chair name + detail)
-- Reduce section header text/margins slightly
-
-### 4. UpcomingSessions.tsx — Compact
-
-- Reduce padding to match sidebar density
-- Tighten row spacing
-
-### 5. ElapsedTimer.tsx — Slightly Smaller
-
-- Reduce from `text-[32px]` to `text-[28px]` to allow chair panels to be more compact while still dominant
+No changes to `index.css` or `tailwind.config.ts` required.
 
 ## Files Changed
 
-| File | Change |
-|------|--------|
-| `src/pages/nurse/NurseCommandCentre.tsx` | Grid breakpoint `md:`, tighter spacing, active infusions badge |
-| `src/components/nurse/command-centre/ChairPanel.tsx` | Remove min-height, compact padding, tighter internal spacing |
-| `src/components/nurse/command-centre/MonitoringSidebar.tsx` | Compact padding and spacing |
-| `src/components/nurse/command-centre/UpcomingSessions.tsx` | Compact padding |
-| `src/components/nurse/command-centre/ElapsedTimer.tsx` | Reduce timer font to 28px |
+### 1. `src/pages/nurse/NurseCommandCentre.tsx` — Full rewrite
 
-## Result
+Replace the entire page with the reference layout structure:
+- Thin header row with "Clinical Operations" title + live clock + active badge
+- 12-column grid (`md:grid-cols-12`): 8-col primary zone + 4-col monitoring sidebar
+- Primary zone contains a Card wrapping the 2-col chair grid, plus a secondary row with "Unassigned Treatments" and "Upcoming Sessions" side by side
+- Monitoring sidebar with Live Alerts, Quick Stats (stacked cards)
+- All data wired from the existing `useCommandCentre` hook
 
-The entire Command Centre (header + 4 chair panels + monitoring sidebar) will be visible on a single tablet screen without scrolling, matching the zoned layout from the reference image.
+### 2. `src/components/nurse/command-centre/ChairPanel.tsx` — Rewrite to match reference
+
+Key styling changes:
+- Left accent stripe via CSS `before:` pseudo-element (4px wide, state-colored)
+- Soft tinted gradient background per state (`bg-gradient-to-b from-clinical-success-soft/70 to-card/80`)
+- State badge with border styling (`border border-clinical-success/20`)
+- Chair number + icon in header, state badge right-aligned
+- Patient name 18px semibold, treatment type muted
+- Elapsed timer (reuse existing `ElapsedTimer` component)
+- Duration metadata (expected + remaining)
+- Custom progress bar (styled div, not default shadcn Progress) with state-colored fill
+- Vitals strip row with icon + label + overdue badge
+- "Open Session" button full-width, h-14
+- Available chairs: compact, neutral styling with ghosted icon
+
+### 3. `src/components/nurse/command-centre/MonitoringSidebar.tsx` — Restyle
+
+- Alert rows with colored left dot, title + subtitle, time right-aligned
+- Quick Stats as minimal text rows (active infusions, chairs available, avg duration)
+- Tighter padding (p-4), compact spacing
+
+### 4. `src/components/nurse/command-centre/UpcomingSessions.tsx` — Integrate into primary zone
+
+Move upcoming sessions into the primary zone's secondary row (side by side with unassigned treatments) instead of being a standalone bottom section.
+
+### 5. `src/components/nurse/command-centre/ElapsedTimer.tsx` — No changes needed
+
+Already correctly styled with monospace font.
+
+### 6. `src/components/nurse/command-centre/VitalsCountdown.tsx` — No changes needed
+
+Already works as inline badge.
+
+## Key Visual Details from Reference
+
+- Cards use `rounded-xl` (16px) with `shadow-md` for soft institutional feel
+- Left accent stripe is a `before:` pseudo-element: `before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:rounded-l-xl`
+- State tint backgrounds use gradients: `bg-gradient-to-b from-[state-soft]/70 to-card/80`
+- Progress bar is a custom div (not shadcn Progress) with state-colored fill and rounded corners
+- Sidebar cards have subtle borders and compact internal spacing
+- The entire layout should fit on a single tablet screen without scrolling
+
