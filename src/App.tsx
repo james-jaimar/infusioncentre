@@ -63,6 +63,7 @@ import DoctorPatientView from "./pages/doctor/DoctorPatientView";
 import PatientLayout from "./components/layout/PatientLayout";
 import PatientDashboard from "./pages/patient/PatientDashboard";
 import InviteLanding from "./pages/InviteLanding";
+import PendingApproval from "./pages/PendingApproval";
 
 const queryClient = new QueryClient();
 
@@ -89,6 +90,7 @@ const App = () => (
             {/* Auth routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/pending-approval" element={<PendingApproval />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
 

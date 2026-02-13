@@ -27,25 +27,34 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn, user, role, loading } = useAuth();
+  const { signIn, signOut, user, role, profile, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
 
-  // Redirect if already logged in
+  // Redirect if already logged in, or block if not approved
   useEffect(() => {
-    if (!loading && user) {
+    if (!loading && user && profile) {
+      if (!profile.is_approved) {
+        toast({
+          variant: "destructive",
+          title: "Account pending approval",
+          description: "Your account is awaiting admin approval. Please contact the clinic.",
+        });
+        signOut();
+        navigate("/pending-approval", { replace: true });
+        return;
+      }
       if (role) {
         const destination = from || getRoleBasedPath(role);
         navigate(destination, { replace: true });
       } else {
-        // User authenticated but no role assigned — redirect to home
         navigate("/", { replace: true });
       }
     }
-  }, [user, role, loading, from, navigate]);
+  }, [user, role, profile, loading, from, navigate]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

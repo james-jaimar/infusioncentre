@@ -175,6 +175,12 @@ Deno.serve(async (req) => {
         .update({ user_id })
         .eq("id", inviteData.patient_id);
 
+      // Auto-approve invited patients
+      await adminClient
+        .from("profiles")
+        .update({ is_approved: true })
+        .eq("user_id", user_id);
+
       // Mark invite as accepted
       await adminClient
         .from("patient_invites")

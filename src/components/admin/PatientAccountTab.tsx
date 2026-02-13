@@ -1,11 +1,12 @@
 import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Mail, Key, ShieldCheck, AlertTriangle } from "lucide-react";
+import { Loader2, Mail, Key, ShieldCheck, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 interface PatientAccountTabProps {
@@ -25,8 +26,47 @@ export default function PatientAccountTab({
   const [settingPassword, setSettingPassword] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [approving, setApproving] = useState(false);
+  const queryClient = useQueryClient();
 
   const hasAccount = !!patientUserId;
+
+  // Fetch approval status
+  const { data: profileData, isLoading: profileLoading } = useQuery({
+    queryKey: ['patient-approval', patientUserId],
+    queryFn: async () => {
+      if (!patientUserId) return null;
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("is_approved")
+        .eq("user_id", patientUserId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!patientUserId,
+  });
+
+  const isApproved = profileData?.is_approved ?? false;
+
+  async function handleToggleApproval() {
+    if (!patientUserId) return;
+    setApproving(true);
+    try {
+      const newValue = !isApproved;
+      const { error } = await supabase
+        .from("profiles")
+        .update({ is_approved: newValue } as any)
+        .eq("user_id", patientUserId);
+      if (error) throw error;
+      toast.success(newValue ? "Account approved" : "Account approval revoked");
+      queryClient.invalidateQueries({ queryKey: ['patient-approval', patientUserId] });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update approval status");
+    } finally {
+      setApproving(false);
+    }
+  }
 
   async function handleSendResetEmail() {
     if (!patientEmail) {
@@ -108,6 +148,31 @@ export default function PatientAccountTab({
               <Badge variant="secondary">No Account</Badge>
             )}
           </div>
+          {hasAccount && (
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium">Approval Status:</span>
+              {profileLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : isApproved ? (
+                <Badge variant="default" className="gap-1">
+                  <CheckCircle2 className="h-3 w-3" /> Approved
+                </Badge>
+              ) : (
+                <Badge variant="destructive" className="gap-1">
+                  <XCircle className="h-3 w-3" /> Pending Approval
+                </Badge>
+              )}
+              <Button
+                variant={isApproved ? "outline" : "default"}
+                size="sm"
+                onClick={handleToggleApproval}
+                disabled={approving}
+              >
+                {approving && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+                {isApproved ? "Revoke Approval" : "Approve Account"}
+              </Button>
+            </div>
+          )}
           <div className="flex items-center gap-3">
             <span className="text-sm font-medium">Email:</span>
             <span className="text-sm text-muted-foreground">{patientEmail || "Not set"}</span>
