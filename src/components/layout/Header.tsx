@@ -1,12 +1,18 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
-import { Menu, X, Phone, Mail, ChevronDown } from "lucide-react";
+import { Menu, X, Phone, Mail, ChevronDown, LogIn, LogOut, LayoutDashboard } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo.png";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, role, signOut } = useAuth();
+
+  const dashboardPath = role === "admin" ? "/admin" : role === "nurse" ? "/nurse" : role === "doctor" ? "/doctor" : role === "patient" ? "/patient" : null;
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -158,6 +164,29 @@ const Header = () => {
             >
               Contact Us
             </Link>
+
+            {/* Auth buttons */}
+            <div className="ml-auto flex items-center gap-2">
+              {user ? (
+                <>
+                  {dashboardPath && (
+                    <Button variant="outline" size="sm" onClick={() => navigate(dashboardPath)}>
+                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                      Dashboard
+                    </Button>
+                  )}
+                  <Button variant="ghost" size="sm" onClick={() => signOut()}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign Out
+                  </Button>
+                </>
+              ) : (
+                <Button size="sm" onClick={() => navigate("/login")}>
+                  <LogIn className="mr-2 h-4 w-4" />
+                  Login
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -219,6 +248,29 @@ const Header = () => {
               >
                 Contact Us
               </Link>
+
+              {/* Mobile auth */}
+              <div className="pt-4 border-t border-border">
+                {user ? (
+                  <div className="flex flex-col gap-2">
+                    {dashboardPath && (
+                      <Button variant="outline" className="w-full justify-start" onClick={() => { navigate(dashboardPath); setIsMenuOpen(false); }}>
+                        <LayoutDashboard className="mr-2 h-4 w-4" />
+                        Dashboard
+                      </Button>
+                    )}
+                    <Button variant="ghost" className="w-full justify-start" onClick={() => { signOut(); setIsMenuOpen(false); }}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Sign Out
+                    </Button>
+                  </div>
+                ) : (
+                  <Button className="w-full" onClick={() => { navigate("/login"); setIsMenuOpen(false); }}>
+                    <LogIn className="mr-2 h-4 w-4" />
+                    Login
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         )}
