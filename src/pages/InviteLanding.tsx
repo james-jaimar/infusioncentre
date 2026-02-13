@@ -218,6 +218,9 @@ export default function InviteLanding() {
             <Button onClick={() => navigate("/login")} className="w-full">
               Go to Login
             </Button>
+            <Button variant="link" onClick={() => navigate("/forgot-password")} className="w-full">
+              Forgot your password?
+            </Button>
           </CardContent>
         </Card>
       </div>
