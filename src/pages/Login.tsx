@@ -39,19 +39,11 @@ export default function Login() {
         return;
       }
       if (role === "doctor") {
-        // Check if doctor must change password
-        supabase
-          .from("doctors")
-          .select("must_change_password")
-          .eq("user_id", user.id)
-          .maybeSingle()
-          .then(({ data }) => {
-            if (data?.must_change_password) {
-              navigate("/change-password", { replace: true });
-            } else {
-              navigate(from || "/doctor", { replace: true });
-            }
-          });
+        if (mustChangePassword) {
+          navigate("/change-password", { replace: true });
+        } else {
+          navigate(from || "/doctor", { replace: true });
+        }
         return;
       }
       if (role) {
