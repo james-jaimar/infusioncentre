@@ -36,6 +36,7 @@ const navigation = [
   { name: "Training Bookings", href: "/admin/training", icon: GraduationCap },
   { name: "Billable Items", href: "/admin/billable-items", icon: Package },
   { name: "Communications", href: "/admin/communications", icon: Mail },
+  { name: "Doctor Reports", href: "/admin/doctor-reports", icon: Stethoscope },
   { name: "Reports", href: "/admin/reports", icon: BarChart3 },
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
