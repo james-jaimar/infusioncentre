@@ -60,12 +60,15 @@ import DoctorLayout from "./components/layout/DoctorLayout";
 import DoctorDashboard from "./pages/doctor/DoctorDashboard";
 import DoctorReferrals from "./pages/doctor/DoctorReferrals";
 import DoctorNewReferral from "./pages/doctor/DoctorNewReferral";
+import DoctorMyPatients from "./pages/doctor/DoctorMyPatients";
+import DoctorProfile from "./pages/doctor/DoctorProfile";
 import DoctorPatientView from "./pages/doctor/DoctorPatientView";
 import DoctorReportsPage from "./pages/doctor/DoctorReports";
 import DoctorPatientProgress from "./pages/doctor/DoctorPatientProgress";
 import AdminDoctorReports from "./pages/admin/AdminDoctorReports";
 import AdminBilling from "./pages/admin/AdminBilling";
 import AdminTenants from "./pages/admin/AdminTenants";
+import AdminDoctors from "./pages/admin/AdminDoctors";
 
 // Platform (super-admin) pages
 import PlatformLayout from "./components/layout/PlatformLayout";
