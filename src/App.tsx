@@ -60,12 +60,15 @@ import DoctorLayout from "./components/layout/DoctorLayout";
 import DoctorDashboard from "./pages/doctor/DoctorDashboard";
 import DoctorReferrals from "./pages/doctor/DoctorReferrals";
 import DoctorNewReferral from "./pages/doctor/DoctorNewReferral";
+import DoctorMyPatients from "./pages/doctor/DoctorMyPatients";
+import DoctorProfile from "./pages/doctor/DoctorProfile";
 import DoctorPatientView from "./pages/doctor/DoctorPatientView";
 import DoctorReportsPage from "./pages/doctor/DoctorReports";
 import DoctorPatientProgress from "./pages/doctor/DoctorPatientProgress";
 import AdminDoctorReports from "./pages/admin/AdminDoctorReports";
 import AdminBilling from "./pages/admin/AdminBilling";
 import AdminTenants from "./pages/admin/AdminTenants";
+import AdminDoctors from "./pages/admin/AdminDoctors";
 
 // Platform (super-admin) pages
 import PlatformLayout from "./components/layout/PlatformLayout";
@@ -131,6 +134,7 @@ const App = () => (
               <Route path="appointments/:id" element={<AppointmentDetail />} />
               <Route path="staff" element={<AdminStaff />} />
               <Route path="training" element={<AdminTraining />} />
+              <Route path="doctors" element={<AdminDoctors />} />
               <Route path="referrals" element={<AdminReferrals />} />
               <Route path="treatment-courses" element={<AdminTreatmentCourses />} />
               <Route path="form-templates" element={<AdminFormTemplates />} />
@@ -174,8 +178,10 @@ const App = () => (
               <Route index element={<DoctorDashboard />} />
               <Route path="referrals" element={<DoctorReferrals />} />
               <Route path="referrals/new" element={<DoctorNewReferral />} />
-              <Route path="reports" element={<DoctorReportsPage />} />
+              <Route path="patients" element={<DoctorMyPatients />} />
               <Route path="patients/:patientId" element={<DoctorPatientView />} />
+              <Route path="profile" element={<DoctorProfile />} />
+              <Route path="reports" element={<DoctorReportsPage />} />
               <Route path="courses/:courseId" element={<DoctorPatientProgress />} />
             </Route>
 

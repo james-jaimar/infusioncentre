@@ -31,6 +31,7 @@ const navigation = [
   { name: "Command Centre", href: "/admin/command-centre", icon: Monitor },
   { name: "Contact Submissions", href: "/admin/contacts", icon: MessageSquare },
   { name: "Patients", href: "/admin/patients", icon: Users },
+  { name: "Doctors", href: "/admin/doctors", icon: Stethoscope },
   { name: "Appointments", href: "/admin/appointments", icon: Calendar },
   { name: "Referrals", href: "/admin/referrals", icon: FileText },
   { name: "Treatment Courses", href: "/admin/treatment-courses", icon: Layers },

@@ -925,6 +925,7 @@ export type Database = {
           email: string | null
           id: string
           is_active: boolean
+          notification_preferences: Json | null
           phone: string | null
           postal_code: string | null
           practice_name: string | null
@@ -942,6 +943,7 @@ export type Database = {
           email?: string | null
           id?: string
           is_active?: boolean
+          notification_preferences?: Json | null
           phone?: string | null
           postal_code?: string | null
           practice_name?: string | null
@@ -959,6 +961,7 @@ export type Database = {
           email?: string | null
           id?: string
           is_active?: boolean
+          notification_preferences?: Json | null
           phone?: string | null
           postal_code?: string | null
           practice_name?: string | null
@@ -1914,12 +1917,69 @@ export type Database = {
           },
         ]
       }
+      referral_attachments: {
+        Row: {
+          file_name: string
+          file_path: string
+          file_size: number | null
+          file_type: string | null
+          id: string
+          referral_id: string
+          tenant_id: string
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          referral_id: string
+          tenant_id?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          referral_id?: string
+          tenant_id?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_attachments_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "referrals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referral_attachments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       referrals: {
         Row: {
+          clinical_history: string | null
           created_at: string
+          current_medications: string | null
           diagnosis: string | null
           doctor_id: string
+          icd10_codes: string[] | null
           id: string
+          medical_aid_main_member: string | null
+          medical_aid_number: string | null
+          medical_aid_scheme: string | null
           notes: string | null
           patient_email: string | null
           patient_first_name: string
@@ -1927,20 +1987,28 @@ export type Database = {
           patient_last_name: string
           patient_phone: string | null
           prescription_notes: string | null
+          reason_for_referral: string | null
           referral_document_path: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           status: Database["public"]["Enums"]["referral_status"]
           tenant_id: string
           treatment_requested: string | null
+          treatment_type_id: string | null
           updated_at: string
           urgency: Database["public"]["Enums"]["referral_urgency"]
         }
         Insert: {
+          clinical_history?: string | null
           created_at?: string
+          current_medications?: string | null
           diagnosis?: string | null
           doctor_id: string
+          icd10_codes?: string[] | null
           id?: string
+          medical_aid_main_member?: string | null
+          medical_aid_number?: string | null
+          medical_aid_scheme?: string | null
           notes?: string | null
           patient_email?: string | null
           patient_first_name: string
@@ -1948,20 +2016,28 @@ export type Database = {
           patient_last_name: string
           patient_phone?: string | null
           prescription_notes?: string | null
+          reason_for_referral?: string | null
           referral_document_path?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: Database["public"]["Enums"]["referral_status"]
           tenant_id?: string
           treatment_requested?: string | null
+          treatment_type_id?: string | null
           updated_at?: string
           urgency?: Database["public"]["Enums"]["referral_urgency"]
         }
         Update: {
+          clinical_history?: string | null
           created_at?: string
+          current_medications?: string | null
           diagnosis?: string | null
           doctor_id?: string
+          icd10_codes?: string[] | null
           id?: string
+          medical_aid_main_member?: string | null
+          medical_aid_number?: string | null
+          medical_aid_scheme?: string | null
           notes?: string | null
           patient_email?: string | null
           patient_first_name?: string
@@ -1969,12 +2045,14 @@ export type Database = {
           patient_last_name?: string
           patient_phone?: string | null
           prescription_notes?: string | null
+          reason_for_referral?: string | null
           referral_document_path?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: Database["public"]["Enums"]["referral_status"]
           tenant_id?: string
           treatment_requested?: string | null
+          treatment_type_id?: string | null
           updated_at?: string
           urgency?: Database["public"]["Enums"]["referral_urgency"]
         }
@@ -1998,6 +2076,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_treatment_type_id_fkey"
+            columns: ["treatment_type_id"]
+            isOneToOne: false
+            referencedRelation: "appointment_types"
             referencedColumns: ["id"]
           },
         ]
@@ -3394,6 +3479,7 @@ export type Database = {
         | "info_requested"
         | "rejected"
         | "converted_to_course"
+        | "draft"
       referral_urgency: "routine" | "urgent"
       reminder_status: "pending" | "sent" | "failed"
       reminder_type: "email" | "whatsapp" | "sms"
@@ -3660,6 +3746,7 @@ export const Constants = {
         "info_requested",
         "rejected",
         "converted_to_course",
+        "draft",
       ],
       referral_urgency: ["routine", "urgent"],
       reminder_status: ["pending", "sent", "failed"],

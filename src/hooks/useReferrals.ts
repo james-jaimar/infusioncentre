@@ -34,10 +34,19 @@ export function useCreateReferral() {
       treatment_requested?: string;
       prescription_notes?: string;
       urgency: "routine" | "urgent";
+      status?: string;
+      medical_aid_scheme?: string | null;
+      medical_aid_number?: string | null;
+      medical_aid_main_member?: string | null;
+      icd10_codes?: string[] | null;
+      clinical_history?: string | null;
+      current_medications?: string | null;
+      reason_for_referral?: string | null;
+      treatment_type_id?: string | null;
     }) => {
       const { data, error } = await supabase
         .from("referrals")
-        .insert(referral)
+        .insert(referral as any)
         .select()
         .single();
       if (error) throw error;

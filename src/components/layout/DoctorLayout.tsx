@@ -12,13 +12,15 @@ import {
 import { useState } from "react";
 import logo from "@/assets/logo.png";
 
-import { ClipboardList } from "lucide-react";
+import { ClipboardList, Users, UserCircle } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/doctor", icon: LayoutDashboard },
   { name: "My Referrals", href: "/doctor/referrals", icon: FileText },
+  { name: "My Patients", href: "/doctor/patients", icon: Users },
   { name: "Reports", href: "/doctor/reports", icon: ClipboardList },
   { name: "New Referral", href: "/doctor/referrals/new", icon: PlusCircle },
+  { name: "My Profile", href: "/doctor/profile", icon: UserCircle },
 ];
 
 export default function DoctorLayout() {
