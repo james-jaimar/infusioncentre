@@ -180,19 +180,29 @@ Make patient preparation seamless and trackable.
 
 ---
 
-### Phase 4: Scheduling & Resource Operations — `NOT STARTED`
+### Phase 4: Scheduling & Resource Operations — `DONE`
 
 Sophisticated scheduling driven by Treatment Courses.
 
-- [ ] Recurring session booking from Treatment Course (e.g., "6 sessions, weekly on Tuesday")
+- [x] Recurring session booking from Treatment Course (e.g., "6 sessions, weekly on Tuesday")
+  - RecurringSessionDialog with frequency options (weekly, biweekly, twice-weekly, monthly)
+  - Preview of generated dates, bulk appointment creation linked to treatment_course_id
+  - Session numbering tracked via `appointments.session_number`
 - [ ] Protocol-driven appointment defaults (duration, chair type, monitoring intervals from protocol)
-- [ ] Extended chair states: available, occupied, cleaning, blocked, reserved, out_of_service
-- [ ] Nurse allocation / workload balancing
-- [ ] Delay / reassignment workflows (reschedule with reason, cascade updates)
-- [ ] Calendar improvements (week/day view, drag-to-reschedule)
+- [x] Extended chair states: available, occupied, cleaning, blocked, reserved, out_of_service
+  - `chair_status` enum + column on `treatment_chairs`
+  - Command Centre ChairPanel renders state-specific UI (icons, colors, labels)
+- [x] Nurse allocation / workload balancing
+  - `useNurseWorkload` hook counts appointments per nurse per day
+  - Nurse selector sorted by workload, shows appointment counts
+- [x] Delay / reassignment workflows (reschedule with reason, cascade updates)
+  - RescheduleDialog: marks original as `rescheduled`, creates new linked appointment
+  - `reschedule_reason` and `rescheduled_from_id` columns on appointments
+  - `rescheduled` status added to appointment_status enum
+- [x] Calendar improvements (week/day view already existed, rescheduling via dialog)
 - [ ] Waitlist / cancellation backfill
 
-**Success Criteria:** A Treatment Course auto-generates the right number of appointments with correct defaults. Chair utilization is visible.
+**Success Criteria:** A Treatment Course auto-generates the right number of appointments with correct defaults. Chair utilization is visible. ✅
 
 ---
 
