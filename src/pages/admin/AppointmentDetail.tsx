@@ -79,6 +79,7 @@ export default function AppointmentDetail() {
   const [cancellationReason, setCancellationReason] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<any>({});
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
 
   const { data: appointment, isLoading } = useAppointment(id);
   const { data: appointmentTypes } = useAppointmentTypes(true);
