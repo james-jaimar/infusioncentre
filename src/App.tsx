@@ -145,6 +145,23 @@ const App = () => (
               <Route path="settings" element={<AdminSettings />} />
             </Route>
 
+            {/* Platform super-admin routes */}
+            <Route
+              path="/platform"
+              element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <PlatformLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<PlatformDashboard />} />
+              <Route path="tenants" element={<PlatformTenants />} />
+              <Route path="users" element={<PlatformUsers />} />
+              <Route path="subscriptions" element={<PlatformSubscriptions />} />
+              <Route path="audit-log" element={<PlatformAuditLog />} />
+              <Route path="settings" element={<PlatformSettings />} />
+            </Route>
+
             {/* Doctor routes */}
             <Route
               path="/doctor"
