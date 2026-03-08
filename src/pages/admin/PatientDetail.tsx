@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import PatientReadinessBadge from "@/components/shared/PatientReadinessBadge";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import SendInviteDialog from "@/components/admin/SendInviteDialog";
 import PatientAccountTab from "@/components/admin/PatientAccountTab";
@@ -287,6 +288,7 @@ export default function PatientDetail() {
                 <Badge variant={patient.status === 'active' ? 'default' : 'secondary'}>
                   {patient.status}
                 </Badge>
+                <PatientReadinessBadge patientId={patient.id} />
                 {patient.id_number && (
                   <span className="text-sm text-muted-foreground">
                     ID: {patient.id_number}
