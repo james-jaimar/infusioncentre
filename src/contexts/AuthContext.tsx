@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 type AppRole = "admin" | "nurse" | "patient" | "doctor";
 
+
 interface Profile {
   id: string;
   user_id: string;
