@@ -89,6 +89,12 @@ export default function AppointmentNew() {
   const watchedTypeId = form.watch("appointment_type_id");
   const readiness = useOnboardingReadiness(watchedPatientId || undefined, watchedTypeId || undefined);
 
+  // Nurse workload for the selected date
+  const watchedDate = form.watch("date");
+  const workloadStart = watchedDate ? new Date(new Date(watchedDate).setHours(0, 0, 0, 0)) : undefined;
+  const workloadEnd = watchedDate ? new Date(new Date(watchedDate).setHours(23, 59, 59, 999)) : undefined;
+  const { data: nurseWorkload = {} } = useNurseWorkload(workloadStart, workloadEnd);
+
   // Auto-select patient from URL param
   useEffect(() => {
     if (preselectedPatientId) {
