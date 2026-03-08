@@ -512,11 +512,21 @@ export default function AppointmentNew() {
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="none">No nurse assigned</SelectItem>
-                          {nurses.map((nurse) => (
-                            <SelectItem key={nurse.user_id} value={nurse.user_id}>
-                              {nurse.first_name || ""} {nurse.last_name || ""} 
-                            </SelectItem>
-                          ))}
+                          {[...nurses]
+                            .sort((a, b) => (nurseWorkload[a.user_id] || 0) - (nurseWorkload[b.user_id] || 0))
+                            .map((nurse) => {
+                              const count = nurseWorkload[nurse.user_id] || 0;
+                              return (
+                                <SelectItem key={nurse.user_id} value={nurse.user_id}>
+                                  {nurse.first_name || ""} {nurse.last_name || ""}
+                                  {watchedDate && (
+                                    <span className="ml-2 text-muted-foreground">
+                                      ({count} appt{count !== 1 ? "s" : ""})
+                                    </span>
+                                  )}
+                                </SelectItem>
+                              );
+                            })}
                         </SelectContent>
                       </Select>
                       <FormMessage />
