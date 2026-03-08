@@ -1,4 +1,30 @@
 export type TreatmentStatus = 'pending' | 'pre_assessment' | 'in_progress' | 'post_assessment' | 'completed' | 'cancelled';
+export type TreatmentCourseStatus = 'draft' | 'onboarding' | 'ready' | 'active' | 'paused' | 'completing' | 'completed' | 'cancelled';
+
+export interface TreatmentCourse {
+  id: string;
+  referral_id: string | null;
+  patient_id: string;
+  doctor_id: string | null;
+  treatment_type_id: string;
+  status: TreatmentCourseStatus;
+  total_sessions_planned: number;
+  sessions_completed: number;
+  started_at: string | null;
+  expected_end_date: string | null;
+  completed_at: string | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TreatmentCourseWithRelations extends TreatmentCourse {
+  patient: { id: string; first_name: string; last_name: string };
+  appointment_type: { id: string; name: string; color: string };
+  doctor?: { id: string; practice_name: string | null } | null;
+  referral?: { id: string; diagnosis: string | null; urgency: string } | null;
+}
 export type VitalsPhase = 'pre' | 'during' | 'post';
 export type MedicationRoute = 'iv' | 'oral' | 'im' | 'sc';
 export type AssessmentType = 'pre_treatment' | 'during_treatment' | 'post_treatment' | 'ketamine_monitoring';
