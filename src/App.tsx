@@ -80,7 +80,6 @@ const App = () => (
     <AuthProvider>
       <TenantProvider>
       <TooltipProvider>
-      <TooltipProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
