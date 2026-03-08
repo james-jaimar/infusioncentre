@@ -137,19 +137,21 @@ The structural foundation everything else depends on.
 
 ---
 
-### Phase 2: Referral & Intake Excellence — `NOT STARTED`
+### Phase 2: Referral & Intake Excellence — `DONE`
 
 Make referral processing fast, accurate, and trackable.
 
-- [ ] Referral review queue with filters (status, urgency, date, doctor)
-- [ ] Referral triage workflow (accept / request info / reject with reason)
-- [ ] Referral → Treatment Course conversion wizard (guided multi-step)
-- [ ] Document request workflow (request missing docs from doctor via email)
-- [ ] Patient matching / duplicate detection on intake
-- [ ] Doctor acknowledgement notifications (referral received, accepted, scheduled)
-- [ ] Referral dashboard metrics (time-to-triage, conversion rate)
+- [x] Referral review queue with filters (status, urgency, date, doctor) + patient name search
+- [x] Referral triage workflow (accept / request info / reject with reason) — uses status dictionaries & transitions
+- [x] Referral → Treatment Course conversion wizard (guided multi-step via ConvertReferralDialog)
+- [x] Document request workflow (request missing docs from doctor via email, sets info_requested status)
+- [x] Patient matching / duplicate detection on intake (PatientMatcher component with fuzzy search)
+- [x] Doctor acknowledgement notifications (email sent on every status transition via send-email edge function)
+- [x] Referral dashboard metrics (pending count, urgent count, accepted count, avg triage time)
+- [x] Referral status enum extended: under_review, info_requested, rejected, converted_to_course
+- [x] Refactored AdminReferrals into focused components: ReferralMetrics, ReferralFilters, ReferralTable, ReferralTriageDialog, PatientMatcher
 
-**Success Criteria:** A referral goes from submission to Treatment Course creation in < 5 clicks. Doctor is notified at each stage.
+**Success Criteria:** A referral goes from submission to Treatment Course creation in < 5 clicks. Doctor is notified at each stage. ✅
 
 ---
 
