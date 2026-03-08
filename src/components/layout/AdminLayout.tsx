@@ -48,6 +48,7 @@ const navigation = [
 
 export default function AdminLayout() {
   const { profile, signOut } = useAuth();
+  const { isSuperAdmin } = useTenant();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
