@@ -72,11 +72,16 @@ Deno.serve(async (req) => {
     // Service role client for admin operations
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-    // Create auth user
+    // Create auth user — pass user_metadata so the handle_new_user trigger
+    // creates the profile with the correct name
     const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
+      user_metadata: {
+        first_name: first_name || null,
+        last_name: last_name || null,
+      },
     });
 
     if (createError) {
@@ -88,20 +93,21 @@ Deno.serve(async (req) => {
 
     const userId = newUser.user.id;
 
-    // Insert profile (auto-approved for staff)
-    await adminClient.from("profiles").insert({
-      user_id: userId,
+    // Small delay to let the handle_new_user trigger complete
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    // UPDATE profile (trigger already created it) to set is_approved = true and names
+    await adminClient.from("profiles").update({
       first_name: first_name || null,
       last_name: last_name || null,
       phone: phone || null,
       is_approved: true,
-    });
+    }).eq("user_id", userId);
 
-    // Insert role
-    await adminClient.from("user_roles").insert({
-      user_id: userId,
+    // UPDATE user_roles (trigger already inserted 'patient') to the correct role
+    await adminClient.from("user_roles").update({
       role,
-    });
+    }).eq("user_id", userId);
 
     // If doctor, also create a doctors table entry
     if (role === "doctor") {
@@ -112,6 +118,7 @@ Deno.serve(async (req) => {
         phone: phone || null,
         email: email,
         specialisation: specialisation || null,
+        must_change_password: true,
       });
     }
 
