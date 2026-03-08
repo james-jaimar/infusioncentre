@@ -109,7 +109,7 @@ Establish the architectural foundation before building features.
 
 ---
 
-### Phase 1: Workflow Backbone — `IN PROGRESS`
+### Phase 1: Workflow Backbone — `DONE`
 
 The structural foundation everything else depends on.
 
@@ -129,10 +129,11 @@ The structural foundation everything else depends on.
   - Seeded for all entity types with full lifecycle transitions
 - [x] Admin UI for status management (Settings → Status Management tab)
 - [x] `useStatusDictionaries` hook with transition validation helpers
-- [ ] Audit event logging enhancement
-  - Structured audit events for all status transitions
+- [x] Audit event logging enhancement
+  - DB trigger `log_status_change()` on treatment_courses, referrals, appointments, treatments
+  - Automatically writes structured events to `audit_log` on every status change
 
-**Success Criteria:** A referral can be converted into a Treatment Course. Appointments belong to a Treatment Course. Status transitions are validated.
+**Success Criteria:** A referral can be converted into a Treatment Course. Appointments belong to a Treatment Course. Status transitions are validated. ✅
 
 ---
 
