@@ -11,6 +11,7 @@ interface Profile {
   last_name: string | null;
   phone: string | null;
   is_approved: boolean;
+  tenant_id: string;
 }
 
 interface AuthContextType {

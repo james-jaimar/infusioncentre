@@ -65,6 +65,7 @@ import DoctorReportsPage from "./pages/doctor/DoctorReports";
 import DoctorPatientProgress from "./pages/doctor/DoctorPatientProgress";
 import AdminDoctorReports from "./pages/admin/AdminDoctorReports";
 import AdminBilling from "./pages/admin/AdminBilling";
+import AdminTenants from "./pages/admin/AdminTenants";
 
 // Patient pages
 import PatientLayout from "./components/layout/PatientLayout";
