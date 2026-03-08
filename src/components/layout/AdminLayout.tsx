@@ -18,6 +18,7 @@ import {
   Mail,
   Monitor,
   Layers,
+  Stethoscope,
 } from "lucide-react";
 import { useState } from "react";
 import logo from "@/assets/logo.png";
