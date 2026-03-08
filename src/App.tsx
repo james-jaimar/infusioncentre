@@ -67,6 +67,15 @@ import AdminDoctorReports from "./pages/admin/AdminDoctorReports";
 import AdminBilling from "./pages/admin/AdminBilling";
 import AdminTenants from "./pages/admin/AdminTenants";
 
+// Platform (super-admin) pages
+import PlatformLayout from "./components/layout/PlatformLayout";
+import PlatformDashboard from "./pages/platform/PlatformDashboard";
+import PlatformTenants from "./pages/platform/PlatformTenants";
+import PlatformUsers from "./pages/platform/PlatformUsers";
+import PlatformSubscriptions from "./pages/platform/PlatformSubscriptions";
+import PlatformAuditLog from "./pages/platform/PlatformAuditLog";
+import PlatformSettings from "./pages/platform/PlatformSettings";
+
 // Patient pages
 import PatientLayout from "./components/layout/PatientLayout";
 import PatientDashboard from "./pages/patient/PatientDashboard";
