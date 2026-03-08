@@ -74,9 +74,22 @@ function useDoctorsAdmin() {
     queryFn: async () => {
       const { data: doctors, error } = await supabase
         .from("doctors")
-        .select("*, profiles!doctors_user_id_fkey(first_name, last_name, user_id)")
+        .select("*")
         .order("created_at", { ascending: false });
       if (error) throw error;
+
+      // Get profile names for each doctor
+      const userIds = (doctors || []).map((d: any) => d.user_id).filter(Boolean);
+      let profileMap: Record<string, { first_name: string | null; last_name: string | null }> = {};
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("user_id, first_name, last_name")
+          .in("user_id", userIds);
+        (profiles || []).forEach((p: any) => {
+          profileMap[p.user_id] = { first_name: p.first_name, last_name: p.last_name };
+        });
+      }
 
       // Get referral counts per doctor
       const { data: referralCounts } = await supabase
@@ -88,13 +101,16 @@ function useDoctorsAdmin() {
         countMap[r.doctor_id] = (countMap[r.doctor_id] || 0) + 1;
       });
 
-      return (doctors || []).map((d: any) => ({
-        ...d,
-        doctor_name: d.profiles
-          ? `${d.profiles.first_name || ""} ${d.profiles.last_name || ""}`.trim()
-          : "Unknown",
-        referral_count: countMap[d.id] || 0,
-      }));
+      return (doctors || []).map((d: any) => {
+        const profile = profileMap[d.user_id];
+        return {
+          ...d,
+          doctor_name: profile
+            ? `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || "Unknown"
+            : "Unknown",
+          referral_count: countMap[d.id] || 0,
+        };
+      });
     },
   });
 }
