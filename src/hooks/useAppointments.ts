@@ -175,3 +175,124 @@ export function useCheckConflicts() {
     },
   });
 }
+
+export function useCreateBulkAppointments() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ appointments }: { appointments: BulkAppointmentData[] }) => {
+      const rows = appointments.map((a) => ({
+        patient_id: a.patient_id,
+        appointment_type_id: a.appointment_type_id,
+        treatment_course_id: a.treatment_course_id,
+        chair_id: a.chair_id,
+        assigned_nurse_id: a.assigned_nurse_id,
+        scheduled_start: a.scheduled_start.toISOString(),
+        scheduled_end: addMinutes(a.scheduled_start, a.duration_minutes).toISOString(),
+        session_number: a.session_number,
+        notes: a.notes,
+      }));
+
+      const { data, error } = await supabase
+        .from("appointments")
+        .insert(rows)
+        .select();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      queryClient.invalidateQueries({ queryKey: ["treatment-courses"] });
+    },
+  });
+}
+
+export function useRescheduleAppointment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      originalAppointmentId,
+      newData,
+      reason,
+    }: {
+      originalAppointmentId: string;
+      newData: {
+        patient_id: string;
+        appointment_type_id: string;
+        treatment_course_id: string | null;
+        chair_id: string | null;
+        assigned_nurse_id: string | null;
+        scheduled_start: Date;
+        scheduled_end: Date;
+        session_number: number | null;
+      };
+      reason: string;
+    }) => {
+      // Mark original as rescheduled
+      const { error: updateError } = await supabase
+        .from("appointments")
+        .update({
+          status: "rescheduled" as any,
+          reschedule_reason: reason,
+        })
+        .eq("id", originalAppointmentId);
+
+      if (updateError) throw updateError;
+
+      // Create new appointment linked to original
+      const { data, error: insertError } = await supabase
+        .from("appointments")
+        .insert({
+          patient_id: newData.patient_id,
+          appointment_type_id: newData.appointment_type_id,
+          treatment_course_id: newData.treatment_course_id,
+          chair_id: newData.chair_id,
+          assigned_nurse_id: newData.assigned_nurse_id,
+          scheduled_start: newData.scheduled_start.toISOString(),
+          scheduled_end: newData.scheduled_end.toISOString(),
+          rescheduled_from_id: originalAppointmentId,
+          session_number: newData.session_number,
+        })
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      queryClient.invalidateQueries({ queryKey: ["appointment"] });
+    },
+  });
+}
+
+export function useNurseWorkload(startDate?: Date, endDate?: Date) {
+  return useQuery({
+    queryKey: ["nurse-workload", startDate?.toISOString(), endDate?.toISOString()],
+    queryFn: async () => {
+      if (!startDate || !endDate) return {};
+
+      const { data, error } = await supabase
+        .from("appointments")
+        .select("assigned_nurse_id")
+        .gte("scheduled_start", startDate.toISOString())
+        .lte("scheduled_start", endDate.toISOString())
+        .neq("status", "cancelled")
+        .neq("status", "no_show")
+        .not("assigned_nurse_id", "is", null);
+
+      if (error) throw error;
+
+      const counts: Record<string, number> = {};
+      for (const row of data || []) {
+        if (row.assigned_nurse_id) {
+          counts[row.assigned_nurse_id] = (counts[row.assigned_nurse_id] || 0) + 1;
+        }
+      }
+      return counts;
+    },
+    enabled: !!startDate && !!endDate,
+  });
+}
