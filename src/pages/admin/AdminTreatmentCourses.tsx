@@ -1,20 +1,19 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
-import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, FileText, ArrowRight } from "lucide-react";
-import { useTreatmentCourses, useUpdateTreatmentCourse } from "@/hooks/useTreatmentCourses";
+import { FileText, ArrowRight, CalendarPlus } from "lucide-react";
+import { useTreatmentCourses } from "@/hooks/useTreatmentCourses";
 import { TreatmentCourseStatus } from "@/types/treatment";
 import { ConvertReferralDialog } from "@/components/admin/ConvertReferralDialog";
+import { RecurringSessionDialog } from "@/components/admin/RecurringSessionDialog";
 
 const STATUS_CONFIG: Record<TreatmentCourseStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   draft: { label: "Draft", variant: "secondary" },
@@ -30,6 +29,7 @@ const STATUS_CONFIG: Record<TreatmentCourseStatus, { label: string; variant: "de
 export default function AdminTreatmentCourses() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
+  const [recurringCourse, setRecurringCourse] = useState<any>(null);
   const { data: courses = [], isLoading } = useTreatmentCourses(
     statusFilter === "all" ? undefined : [statusFilter as TreatmentCourseStatus]
   );
@@ -83,11 +83,13 @@ export default function AdminTreatmentCourses() {
                   <TableHead>Sessions</TableHead>
                   <TableHead>Doctor</TableHead>
                   <TableHead>Created</TableHead>
+                  <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {courses.map((course: any) => {
                   const cfg = STATUS_CONFIG[course.status as TreatmentCourseStatus] || STATUS_CONFIG.draft;
+                  const canSchedule = ["onboarding", "ready", "active"].includes(course.status);
                   return (
                     <TableRow key={course.id}>
                       <TableCell className="font-medium">
@@ -114,6 +116,19 @@ export default function AdminTreatmentCourses() {
                       <TableCell className="text-muted-foreground">
                         {format(new Date(course.created_at), "dd MMM yyyy")}
                       </TableCell>
+                      <TableCell>
+                        {canSchedule && course.sessions_completed < course.total_sessions_planned && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setRecurringCourse(course)}
+                            className="gap-1"
+                          >
+                            <CalendarPlus className="h-4 w-4" />
+                            Schedule
+                          </Button>
+                        )}
+                      </TableCell>
                     </TableRow>
                   );
                 })}
@@ -127,6 +142,22 @@ export default function AdminTreatmentCourses() {
         open={convertDialogOpen}
         onOpenChange={setConvertDialogOpen}
       />
+
+      {recurringCourse && (
+        <RecurringSessionDialog
+          open={!!recurringCourse}
+          onOpenChange={(open) => !open && setRecurringCourse(null)}
+          treatmentCourse={{
+            id: recurringCourse.id,
+            patient_id: recurringCourse.patient_id,
+            treatment_type_id: recurringCourse.treatment_type_id,
+            total_sessions_planned: recurringCourse.total_sessions_planned,
+            sessions_completed: recurringCourse.sessions_completed,
+            appointment_type: recurringCourse.appointment_type,
+            patient: recurringCourse.patient,
+          }}
+        />
+      )}
     </div>
   );
 }
