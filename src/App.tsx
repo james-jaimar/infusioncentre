@@ -40,6 +40,7 @@ import AdminReferrals from "./pages/admin/AdminReferrals";
 import AdminFormTemplates from "./pages/admin/AdminFormTemplates";
 import AdminBillableItems from "./pages/admin/AdminBillableItems";
 import AdminCommunications from "./pages/admin/AdminCommunications";
+import AdminTreatmentCourses from "./pages/admin/AdminTreatmentCourses";
 
 // Nurse pages
 import NurseLayout from "./components/layout/NurseLayout";
