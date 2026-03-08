@@ -130,7 +130,7 @@ export function useCommandCentre() {
           lastVitalsAt: (vitalsQuery.data || {})[treatment.id] || null,
         }
       : null;
-    return { id: chair.id, name: chair.name, displayOrder: chair.display_order, occupant };
+    return { id: chair.id, name: chair.name, displayOrder: chair.display_order, status: chair.status || "available", occupant };
   });
 
   // Unassigned treatments (no chair_id on appointment)
