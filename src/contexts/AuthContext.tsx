@@ -152,6 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
     setProfile(null);
     setRole(null);
+    setMustChangePassword(false);
   }
 
   const value: AuthContextType = {
