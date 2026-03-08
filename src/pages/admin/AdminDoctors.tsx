@@ -228,6 +228,7 @@ export default function AdminDoctors() {
           doctor_id: selectedDoctor.id,
           email: selectedDoctor.email,
           doctor_name: selectedDoctor.doctor_name,
+          temp_password: lastCreatedPassword || undefined,
         },
       });
       if (res.error || res.data?.error) {
