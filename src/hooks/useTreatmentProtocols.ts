@@ -298,10 +298,24 @@ export function useClinicalAlerts(treatmentId: string | undefined, status?: Clin
 export function useCreateClinicalAlert() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: Omit<ClinicalAlert, "id" | "triggered_at" | "created_at" | "acknowledged_at" | "acknowledged_by" | "resolved_at" | "resolved_by">) => {
+    mutationFn: async (input: {
+      treatment_id: string;
+      alert_type: string;
+      severity: ClinicalAlert["severity"];
+      status: ClinicalAlert["status"];
+      message: string;
+      details?: Record<string, unknown>;
+    }) => {
       const { data, error } = await supabase
         .from("clinical_alerts")
-        .insert(input)
+        .insert({
+          treatment_id: input.treatment_id,
+          alert_type: input.alert_type,
+          severity: input.severity,
+          status: input.status,
+          message: input.message,
+          details: (input.details || {}) as any,
+        })
         .select()
         .single();
       if (error) throw error;
