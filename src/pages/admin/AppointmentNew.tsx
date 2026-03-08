@@ -33,7 +33,7 @@ import { cn } from "@/lib/utils";
 import { usePatients } from "@/hooks/usePatients";
 import { useAppointmentTypes } from "@/hooks/useAppointmentTypes";
 import { useTreatmentChairs } from "@/hooks/useTreatmentChairs";
-import { useCreateAppointment, useCheckConflicts } from "@/hooks/useAppointments";
+import { useCreateAppointment, useCheckConflicts, useNurseWorkload } from "@/hooks/useAppointments";
 import { useNurseStaff } from "@/hooks/useNurseStaff";
 import { useOnboardingReadiness } from "@/hooks/useOnboardingChecklist";
 import { useGenerateChecklist } from "@/hooks/useOnboardingChecklist";
