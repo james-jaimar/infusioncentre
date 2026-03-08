@@ -33,7 +33,7 @@ import { cn } from "@/lib/utils";
 import { usePatients } from "@/hooks/usePatients";
 import { useAppointmentTypes } from "@/hooks/useAppointmentTypes";
 import { useTreatmentChairs } from "@/hooks/useTreatmentChairs";
-import { useCreateAppointment, useCheckConflicts } from "@/hooks/useAppointments";
+import { useCreateAppointment, useCheckConflicts, useNurseWorkload } from "@/hooks/useAppointments";
 import { useNurseStaff } from "@/hooks/useNurseStaff";
 import { useOnboardingReadiness } from "@/hooks/useOnboardingChecklist";
 import { useGenerateChecklist } from "@/hooks/useOnboardingChecklist";
@@ -88,6 +88,12 @@ export default function AppointmentNew() {
   const watchedPatientId = form.watch("patient_id");
   const watchedTypeId = form.watch("appointment_type_id");
   const readiness = useOnboardingReadiness(watchedPatientId || undefined, watchedTypeId || undefined);
+
+  // Nurse workload for the selected date
+  const watchedDate = form.watch("date");
+  const workloadStart = watchedDate ? new Date(new Date(watchedDate).setHours(0, 0, 0, 0)) : undefined;
+  const workloadEnd = watchedDate ? new Date(new Date(watchedDate).setHours(23, 59, 59, 999)) : undefined;
+  const { data: nurseWorkload = {} } = useNurseWorkload(workloadStart, workloadEnd);
 
   // Auto-select patient from URL param
   useEffect(() => {
@@ -506,11 +512,21 @@ export default function AppointmentNew() {
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="none">No nurse assigned</SelectItem>
-                          {nurses.map((nurse) => (
-                            <SelectItem key={nurse.user_id} value={nurse.user_id}>
-                              {nurse.first_name || ""} {nurse.last_name || ""} 
-                            </SelectItem>
-                          ))}
+                          {[...nurses]
+                            .sort((a, b) => (nurseWorkload[a.user_id] || 0) - (nurseWorkload[b.user_id] || 0))
+                            .map((nurse) => {
+                              const count = nurseWorkload[nurse.user_id] || 0;
+                              return (
+                                <SelectItem key={nurse.user_id} value={nurse.user_id}>
+                                  {nurse.first_name || ""} {nurse.last_name || ""}
+                                  {watchedDate && (
+                                    <span className="ml-2 text-muted-foreground">
+                                      ({count} appt{count !== 1 ? "s" : ""})
+                                    </span>
+                                  )}
+                                </SelectItem>
+                              );
+                            })}
                         </SelectContent>
                       </Select>
                       <FormMessage />

@@ -40,7 +40,9 @@ import {
   Save,
   X,
   ClipboardList,
+  RefreshCw,
 } from "lucide-react";
+import { RescheduleDialog } from "@/components/admin/RescheduleDialog";
 import { cn } from "@/lib/utils";
 import { useAppointment, useUpdateAppointment, useDeleteAppointment } from "@/hooks/useAppointments";
 import { useAppointmentTypes } from "@/hooks/useAppointmentTypes";
@@ -57,6 +59,7 @@ const statusColors: Record<AppointmentStatus, string> = {
   completed: "bg-gray-100 text-gray-800 border-gray-200",
   cancelled: "bg-red-100 text-red-800 border-red-200",
   no_show: "bg-orange-100 text-orange-800 border-orange-200",
+  rescheduled: "bg-indigo-100 text-indigo-800 border-indigo-200",
 };
 
 const statusLabels: Record<AppointmentStatus, string> = {
@@ -67,6 +70,7 @@ const statusLabels: Record<AppointmentStatus, string> = {
   completed: "Completed",
   cancelled: "Cancelled",
   no_show: "No Show",
+  rescheduled: "Rescheduled",
 };
 
 export default function AppointmentDetail() {
@@ -75,6 +79,7 @@ export default function AppointmentDetail() {
   const [cancellationReason, setCancellationReason] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<any>({});
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
 
   const { data: appointment, isLoading } = useAppointment(id);
   const { data: appointmentTypes } = useAppointmentTypes(true);
@@ -425,6 +430,11 @@ export default function AppointmentDetail() {
                   Open Job Card
                 </Button>
               )}
+              {(appointment.status === "scheduled" || appointment.status === "confirmed") && (
+                <Button variant="outline" onClick={() => setRescheduleOpen(true)} className="gap-2">
+                  <RefreshCw className="h-4 w-4" /> Reschedule
+                </Button>
+              )}
             </div>
           )}
 
@@ -470,6 +480,14 @@ export default function AppointmentDetail() {
           </div>
         </CardContent>
       </Card>
+
+      {appointment && (
+        <RescheduleDialog
+          open={rescheduleOpen}
+          onOpenChange={setRescheduleOpen}
+          appointment={appointment}
+        />
+      )}
     </div>
   );
 }

@@ -17,6 +17,7 @@ export interface ChairData {
   id: string;
   name: string;
   displayOrder: number;
+  status: string;
   occupant: ChairOccupant | null;
 }
 
@@ -47,7 +48,7 @@ export function useCommandCentre() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("treatment_chairs")
-        .select("id, name, display_order")
+        .select("id, name, display_order, status")
         .eq("is_active", true)
         .order("display_order", { ascending: true });
       if (error) throw error;
@@ -129,7 +130,7 @@ export function useCommandCentre() {
           lastVitalsAt: (vitalsQuery.data || {})[treatment.id] || null,
         }
       : null;
-    return { id: chair.id, name: chair.name, displayOrder: chair.display_order, occupant };
+    return { id: chair.id, name: chair.name, displayOrder: chair.display_order, status: chair.status || "available", occupant };
   });
 
   // Unassigned treatments (no chair_id on appointment)

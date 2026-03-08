@@ -2,15 +2,15 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { ChairData } from "@/hooks/useCommandCentre";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Armchair, Clock, Activity } from "lucide-react";
+import { Armchair, Clock, Activity, ShieldAlert, Wrench, CalendarClock } from "lucide-react";
 import { ElapsedTimer } from "./ElapsedTimer";
 import { VitalsCountdown } from "./VitalsCountdown";
 
 const EXPECTED_DURATION_MS = 2 * 60 * 60 * 1000;
 
-type ChairState = "running" | "pre" | "due" | "available";
+type ChairState = "running" | "pre" | "due" | "available" | "cleaning" | "blocked" | "reserved" | "out_of_service";
 
-const stateUI: Record<ChairState, { label: string; badge: string; tint: string; accent: string; progressFill: string }> = {
+const stateUI: Record<ChairState, { label: string; badge: string; tint: string; accent: string; progressFill: string; icon?: React.ReactNode }> = {
   running: {
     label: "Running",
     badge: "bg-clinical-success-soft text-clinical-success border border-clinical-success/20",
@@ -39,6 +39,38 @@ const stateUI: Record<ChairState, { label: string; badge: string; tint: string; 
     accent: "before:bg-muted-foreground/30",
     progressFill: "bg-muted",
   },
+  cleaning: {
+    label: "Cleaning",
+    badge: "bg-amber-100 text-amber-800 border border-amber-200",
+    tint: "bg-gradient-to-b from-amber-50/70 to-card/80",
+    accent: "before:bg-amber-500",
+    progressFill: "bg-amber-400",
+    icon: <Wrench className="h-8 w-8 text-amber-300 mb-2" />,
+  },
+  blocked: {
+    label: "Blocked",
+    badge: "bg-red-100 text-red-800 border border-red-200",
+    tint: "bg-gradient-to-b from-red-50/70 to-card/80",
+    accent: "before:bg-red-500",
+    progressFill: "bg-red-400",
+    icon: <ShieldAlert className="h-8 w-8 text-red-300 mb-2" />,
+  },
+  reserved: {
+    label: "Reserved",
+    badge: "bg-indigo-100 text-indigo-800 border border-indigo-200",
+    tint: "bg-gradient-to-b from-indigo-50/70 to-card/80",
+    accent: "before:bg-indigo-500",
+    progressFill: "bg-indigo-400",
+    icon: <CalendarClock className="h-8 w-8 text-indigo-300 mb-2" />,
+  },
+  out_of_service: {
+    label: "Out of Service",
+    badge: "bg-gray-200 text-gray-700 border border-gray-300",
+    tint: "bg-gradient-to-b from-gray-100/70 to-card/80",
+    accent: "before:bg-gray-500",
+    progressFill: "bg-gray-400",
+    icon: <ShieldAlert className="h-8 w-8 text-gray-300 mb-2" />,
+  },
 };
 
 function mapStatus(status: string): ChairState {
@@ -55,6 +87,24 @@ export function ChairPanel({ chair }: { chair: ChairData }) {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith("/admin");
   const occ = chair.occupant;
+
+  // Check chair-level status first (non-available states without occupant)
+  const chairStatus = (chair as any).status as string | undefined;
+  const nonAvailableStates: ChairState[] = ["cleaning", "blocked", "reserved", "out_of_service"];
+
+  if (!occ && chairStatus && nonAvailableStates.includes(chairStatus as ChairState)) {
+    const ui = stateUI[chairStatus as ChairState];
+    return (
+      <div className={`relative overflow-hidden rounded-xl border border-border/50 shadow-clinical-sm ${ui.tint} before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:rounded-l-xl ${ui.accent} flex flex-col justify-center items-center p-6`}>
+        {ui.icon}
+        <span className="text-sm font-medium text-muted-foreground">{chair.name}</span>
+        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold mt-2 ${ui.badge}`}>
+          {ui.label}
+        </span>
+      </div>
+    );
+  }
+
   const state: ChairState = occ ? mapStatus(occ.status) : "available";
   const ui = stateUI[state];
 
