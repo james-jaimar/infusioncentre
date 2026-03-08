@@ -17,6 +17,7 @@ import {
   Package,
   Mail,
   Monitor,
+  Layers,
 } from "lucide-react";
 import { useState } from "react";
 import logo from "@/assets/logo.png";
