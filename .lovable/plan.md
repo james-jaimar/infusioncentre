@@ -271,18 +271,34 @@ Keep referring doctors informed throughout the Treatment Course.
 
 ---
 
-### Phase 7: Billing & Revenue Flow — `NOT STARTED`
+### Phase 7: Billing & Revenue Flow — `DONE`
 
 From treatment items to invoice to payment.
 
-- [ ] Invoice / claim generation (aggregate billable items per visit or per Treatment Course)
-- [ ] Medical aid / payer mappings (which items are claimable, at what rates)
-- [ ] Payment status tracking (submitted, paid, rejected, appealed)
-- [ ] Billing exception queue (rejected claims, missing codes, price mismatches)
-- [ ] Financial dashboards (revenue by period, outstanding claims, collection rate)
-- [ ] Export to accounting (CSV/PDF for external systems)
+- [x] Invoice / claim generation (aggregate billable items per visit or per Treatment Course)
+  - `invoices` table with auto-generated invoice numbers (INV-YYYYMM-NNNN)
+  - `invoice_line_items` table linking to billable_items and treatment_billable_items
+  - `useGenerateInvoiceFromCourse` hook: aggregates all billable items across a course's treatments into a single invoice
+  - Computed `amount_outstanding` column (total - paid)
+- [x] Medical aid / payer mappings (which items are claimable, at what rates)
+  - `payer_rate_mappings` table: payer + billable item → contracted rate, effective dates, claimable flag
+  - Admin CRUD UI for rate mappings (Billing → Payer Rates tab)
+- [x] Payment status tracking (submitted, paid, rejected, appealed)
+  - `billing_claims` table with full lifecycle: draft → submitted → accepted → paid (or rejected → appealed → written_off)
+  - `invoice_status` enum: draft, finalized, submitted, partially_paid, paid, void
+  - Submit Claim action from invoice (auto-creates claim + updates invoice status)
+  - Audit triggers on both invoices and claims
+- [x] Billing exception queue (rejected claims, missing codes, price mismatches)
+  - Claims tab with status filters — rejected claims surfaced with rejection reasons/codes
+  - Financial summary card showing rejected claim count
+- [x] Financial dashboards (revenue by period, outstanding claims, collection rate)
+  - `useFinancialSummary` hook: totalInvoiced, totalCollected, totalOutstanding, collectionRate
+  - Dashboard cards with collection rate progress bar
+  - Admin Billing page with 4 summary cards + invoices/claims/rates tabs
+- [x] Export to accounting (CSV/PDF for external systems)
+  - CSV export of invoices (invoice #, patient, status, total, paid, outstanding, date)
 
-**Success Criteria:** Treatment billing items flow into invoices. Claims can be tracked to payment. Revenue is visible.
+**Success Criteria:** Treatment billing items flow into invoices. Claims can be tracked to payment. Revenue is visible. ✅
 
 ---
 

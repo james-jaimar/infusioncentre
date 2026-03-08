@@ -63,6 +63,7 @@ import DoctorPatientView from "./pages/doctor/DoctorPatientView";
 import DoctorReportsPage from "./pages/doctor/DoctorReports";
 import DoctorPatientProgress from "./pages/doctor/DoctorPatientProgress";
 import AdminDoctorReports from "./pages/admin/AdminDoctorReports";
+import AdminBilling from "./pages/admin/AdminBilling";
 
 // Patient pages
 import PatientLayout from "./components/layout/PatientLayout";
@@ -125,6 +126,7 @@ const App = () => (
               <Route path="billable-items" element={<AdminBillableItems />} />
               <Route path="communications" element={<AdminCommunications />} />
               <Route path="doctor-reports" element={<AdminDoctorReports />} />
+              <Route path="billing" element={<AdminBilling />} />
               <Route path="command-centre" element={<NurseCommandCentre />} />
               <Route path="job-card/:appointmentId" element={<NurseJobCard />} />
               <Route path="settings" element={<AdminSettings />} />

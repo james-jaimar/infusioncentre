@@ -19,6 +19,7 @@ import {
   Monitor,
   Layers,
   Stethoscope,
+  Receipt,
 } from "lucide-react";
 import { useState } from "react";
 import logo from "@/assets/logo.png";
@@ -37,6 +38,7 @@ const navigation = [
   { name: "Billable Items", href: "/admin/billable-items", icon: Package },
   { name: "Communications", href: "/admin/communications", icon: Mail },
   { name: "Doctor Reports", href: "/admin/doctor-reports", icon: Stethoscope },
+  { name: "Billing", href: "/admin/billing", icon: Receipt },
   { name: "Reports", href: "/admin/reports", icon: BarChart3 },
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
