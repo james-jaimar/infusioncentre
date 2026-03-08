@@ -67,6 +67,15 @@ import AdminDoctorReports from "./pages/admin/AdminDoctorReports";
 import AdminBilling from "./pages/admin/AdminBilling";
 import AdminTenants from "./pages/admin/AdminTenants";
 
+// Platform (super-admin) pages
+import PlatformLayout from "./components/layout/PlatformLayout";
+import PlatformDashboard from "./pages/platform/PlatformDashboard";
+import PlatformTenants from "./pages/platform/PlatformTenants";
+import PlatformUsers from "./pages/platform/PlatformUsers";
+import PlatformSubscriptions from "./pages/platform/PlatformSubscriptions";
+import PlatformAuditLog from "./pages/platform/PlatformAuditLog";
+import PlatformSettings from "./pages/platform/PlatformSettings";
+
 // Patient pages
 import PatientLayout from "./components/layout/PatientLayout";
 import PatientDashboard from "./pages/patient/PatientDashboard";
@@ -134,6 +143,23 @@ const App = () => (
               <Route path="command-centre" element={<NurseCommandCentre />} />
               <Route path="job-card/:appointmentId" element={<NurseJobCard />} />
               <Route path="settings" element={<AdminSettings />} />
+            </Route>
+
+            {/* Platform super-admin routes */}
+            <Route
+              path="/platform"
+              element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <PlatformLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<PlatformDashboard />} />
+              <Route path="tenants" element={<PlatformTenants />} />
+              <Route path="users" element={<PlatformUsers />} />
+              <Route path="subscriptions" element={<PlatformSubscriptions />} />
+              <Route path="audit-log" element={<PlatformAuditLog />} />
+              <Route path="settings" element={<PlatformSettings />} />
             </Route>
 
             {/* Doctor routes */}

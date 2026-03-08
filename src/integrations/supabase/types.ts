@@ -3241,6 +3241,50 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      platform_get_all_users: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          first_name: string
+          is_approved: boolean
+          last_name: string
+          role: string
+          tenant_id: string
+          tenant_name: string
+          user_id: string
+        }[]
+      }
+      platform_get_audit_log: {
+        Args: { _limit?: number }
+        Returns: {
+          action: string
+          created_at: string
+          details: Json
+          id: string
+          tenant_id: string
+          tenant_name: string
+          user_id: string
+        }[]
+      }
+      platform_get_metrics: { Args: never; Returns: Json }
+      platform_get_tenant_stats: {
+        Args: never
+        Returns: {
+          active_treatment_count: number
+          appointment_count: number
+          is_active: boolean
+          max_chairs: number
+          max_users: number
+          patient_count: number
+          plan: string
+          slug: string
+          tenant_id: string
+          tenant_name: string
+          user_count: number
+        }[]
+      }
       validate_invite_token: { Args: { invite_token: string }; Returns: Json }
     }
     Enums: {
