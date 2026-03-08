@@ -62,6 +62,7 @@ export default function AdminSettings() {
         <TabsList>
           <TabsTrigger value="chairs">Treatment Chairs</TabsTrigger>
           <TabsTrigger value="types">Appointment Types</TabsTrigger>
+          <TabsTrigger value="statuses">Status Management</TabsTrigger>
         </TabsList>
 
         <TabsContent value="chairs">
@@ -70,6 +71,10 @@ export default function AdminSettings() {
 
         <TabsContent value="types">
           <AppointmentTypesSettings />
+        </TabsContent>
+
+        <TabsContent value="statuses">
+          <StatusDictionaryTab />
         </TabsContent>
       </Tabs>
     </div>
