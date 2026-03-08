@@ -17,6 +17,7 @@ export interface ChairData {
   id: string;
   name: string;
   displayOrder: number;
+  status: string;
   occupant: ChairOccupant | null;
 }
 
