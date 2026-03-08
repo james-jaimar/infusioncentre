@@ -35,6 +35,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Plus, Edit, Trash2, GripVertical } from "lucide-react";
+import StatusDictionaryTab from "@/components/admin/StatusDictionaryTab";
 import {
   useTreatmentChairs,
   useCreateChair,
