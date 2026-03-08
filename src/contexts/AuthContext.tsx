@@ -100,7 +100,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (roleResult.data) {
-        setRole(roleResult.data.role as AppRole);
+        const userRole = roleResult.data.role as AppRole;
+        setRole(userRole);
+
+        // If doctor, check must_change_password flag
+        if (userRole === "doctor") {
+          const { data: docData } = await supabase
+            .from("doctors")
+            .select("must_change_password")
+            .eq("user_id", userId)
+            .maybeSingle();
+          setMustChangePassword(docData?.must_change_password === true);
+        } else {
+          setMustChangePassword(false);
+        }
       }
     } catch (error) {
       console.error("Error fetching user data:", error);
