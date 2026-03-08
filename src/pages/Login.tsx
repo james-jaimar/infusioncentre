@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,7 +23,7 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn, signOut, user, role, profile, loading } = useAuth();
+  const { signIn, signOut, user, role, profile, loading, mustChangePassword } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
@@ -39,19 +39,11 @@ export default function Login() {
         return;
       }
       if (role === "doctor") {
-        // Check if doctor must change password
-        supabase
-          .from("doctors")
-          .select("must_change_password")
-          .eq("user_id", user.id)
-          .maybeSingle()
-          .then(({ data }) => {
-            if (data?.must_change_password) {
-              navigate("/change-password", { replace: true });
-            } else {
-              navigate(from || "/doctor", { replace: true });
-            }
-          });
+        if (mustChangePassword) {
+          navigate("/change-password", { replace: true });
+        } else {
+          navigate(from || "/doctor", { replace: true });
+        }
         return;
       }
       if (role) {
@@ -61,7 +53,7 @@ export default function Login() {
         navigate("/", { replace: true });
       }
     }
-  }, [user, role, profile, loading, from, navigate]);
+  }, [user, role, profile, loading, mustChangePassword, from, navigate]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

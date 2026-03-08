@@ -10,7 +10,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
-  const { user, role, profile, loading } = useAuth();
+  const { user, role, profile, loading, mustChangePassword } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -29,9 +29,12 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     return <Navigate to="/pending-approval" replace />;
   }
 
+  // Force password change for doctors
+  if (role === "doctor" && mustChangePassword) {
+    return <Navigate to="/change-password" replace />;
+  }
+
   if (allowedRoles && role && !allowedRoles.includes(role)) {
-    // User is logged in but doesn't have the required role
-    // Redirect to their appropriate dashboard
     const redirectPath = role === "admin" ? "/admin" : role === "nurse" ? "/nurse" : role === "doctor" ? "/doctor" : "/patient";
     return <Navigate to={redirectPath} replace />;
   }

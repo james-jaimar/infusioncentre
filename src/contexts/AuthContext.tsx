@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 type AppRole = "admin" | "nurse" | "patient" | "doctor";
 
+
 interface Profile {
   id: string;
   user_id: string;
@@ -20,6 +21,7 @@ interface AuthContextType {
   profile: Profile | null;
   role: AppRole | null;
   loading: boolean;
+  mustChangePassword: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, metadata?: { first_name?: string; last_name?: string }) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -35,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
+  const [mustChangePassword, setMustChangePassword] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -97,7 +100,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (roleResult.data) {
-        setRole(roleResult.data.role as AppRole);
+        const userRole = roleResult.data.role as AppRole;
+        setRole(userRole);
+
+        // If doctor, check must_change_password flag
+        if (userRole === "doctor") {
+          const { data: docData } = await supabase
+            .from("doctors")
+            .select("must_change_password")
+            .eq("user_id", userId)
+            .maybeSingle();
+          setMustChangePassword(docData?.must_change_password === true);
+        } else {
+          setMustChangePassword(false);
+        }
       }
     } catch (error) {
       console.error("Error fetching user data:", error);
@@ -136,6 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
     setProfile(null);
     setRole(null);
+    setMustChangePassword(false);
   }
 
   const value: AuthContextType = {
@@ -144,6 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     profile,
     role,
     loading,
+    mustChangePassword,
     signIn,
     signUp,
     signOut,
