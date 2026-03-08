@@ -19,6 +19,7 @@ import {
   Monitor,
   Layers,
   Stethoscope,
+  Receipt,
 } from "lucide-react";
 import { useState } from "react";
 import logo from "@/assets/logo.png";
