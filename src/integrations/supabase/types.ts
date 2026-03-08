@@ -282,6 +282,62 @@ export type Database = {
           },
         ]
       }
+      clinical_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          alert_type: string
+          created_at: string
+          details: Json | null
+          id: string
+          message: string
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: Database["public"]["Enums"]["clinical_alert_severity"]
+          status: Database["public"]["Enums"]["clinical_alert_status"]
+          treatment_id: string
+          triggered_at: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          message: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: Database["public"]["Enums"]["clinical_alert_severity"]
+          status?: Database["public"]["Enums"]["clinical_alert_status"]
+          treatment_id: string
+          triggered_at?: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          message?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: Database["public"]["Enums"]["clinical_alert_severity"]
+          status?: Database["public"]["Enums"]["clinical_alert_status"]
+          treatment_id?: string
+          triggered_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinical_alerts_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "treatments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       communication_log: {
         Row: {
           created_at: string
@@ -415,6 +471,50 @@ export type Database = {
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "training_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      discharge_criteria: {
+        Row: {
+          created_at: string
+          criterion_key: string
+          description: string | null
+          display_label: string
+          display_order: number
+          id: string
+          is_required: boolean
+          protocol_id: string
+          rule_config: Json | null
+        }
+        Insert: {
+          created_at?: string
+          criterion_key: string
+          description?: string | null
+          display_label: string
+          display_order?: number
+          id?: string
+          is_required?: boolean
+          protocol_id: string
+          rule_config?: Json | null
+        }
+        Update: {
+          created_at?: string
+          criterion_key?: string
+          description?: string | null
+          display_label?: string
+          display_order?: number
+          id?: string
+          is_required?: boolean
+          protocol_id?: string
+          rule_config?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discharge_criteria_protocol_id_fkey"
+            columns: ["protocol_id"]
+            isOneToOne: false
+            referencedRelation: "treatment_protocols"
             referencedColumns: ["id"]
           },
         ]
@@ -1531,6 +1631,125 @@ export type Database = {
           },
         ]
       }
+      treatment_protocol_steps: {
+        Row: {
+          config: Json | null
+          created_at: string
+          description: string | null
+          estimated_duration_mins: number | null
+          form_template_id: string | null
+          id: string
+          is_required: boolean
+          name: string
+          protocol_id: string
+          step_order: number
+          step_type: Database["public"]["Enums"]["protocol_step_type"]
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string
+          description?: string | null
+          estimated_duration_mins?: number | null
+          form_template_id?: string | null
+          id?: string
+          is_required?: boolean
+          name: string
+          protocol_id: string
+          step_order: number
+          step_type: Database["public"]["Enums"]["protocol_step_type"]
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string
+          description?: string | null
+          estimated_duration_mins?: number | null
+          form_template_id?: string | null
+          id?: string
+          is_required?: boolean
+          name?: string
+          protocol_id?: string
+          step_order?: number
+          step_type?: Database["public"]["Enums"]["protocol_step_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treatment_protocol_steps_form_template_id_fkey"
+            columns: ["form_template_id"]
+            isOneToOne: false
+            referencedRelation: "form_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_protocol_steps_protocol_id_fkey"
+            columns: ["protocol_id"]
+            isOneToOne: false
+            referencedRelation: "treatment_protocols"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      treatment_protocols: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          min_vitals_during: number
+          min_vitals_post: number
+          name: string
+          post_infusion_observation_mins: number
+          treatment_type_id: string
+          updated_at: string
+          version: number
+          vitals_initial_period_mins: number
+          vitals_interval_initial_mins: number
+          vitals_interval_standard_mins: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          min_vitals_during?: number
+          min_vitals_post?: number
+          name: string
+          post_infusion_observation_mins?: number
+          treatment_type_id: string
+          updated_at?: string
+          version?: number
+          vitals_initial_period_mins?: number
+          vitals_interval_initial_mins?: number
+          vitals_interval_standard_mins?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          min_vitals_during?: number
+          min_vitals_post?: number
+          name?: string
+          post_infusion_observation_mins?: number
+          treatment_type_id?: string
+          updated_at?: string
+          version?: number
+          vitals_initial_period_mins?: number
+          vitals_interval_initial_mins?: number
+          vitals_interval_standard_mins?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treatment_protocols_treatment_type_id_fkey"
+            columns: ["treatment_type_id"]
+            isOneToOne: false
+            referencedRelation: "appointment_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       treatment_reactions: {
         Row: {
           created_at: string
@@ -1648,6 +1867,47 @@ export type Database = {
             foreignKeyName: "treatment_site_checks_treatment_id_fkey"
             columns: ["treatment_id"]
             isOneToOne: false
+            referencedRelation: "treatments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      treatment_summaries: {
+        Row: {
+          edited_at: string | null
+          edited_by: string | null
+          generated_at: string
+          generated_by: string | null
+          id: string
+          narrative_summary: string | null
+          summary_data: Json
+          treatment_id: string
+        }
+        Insert: {
+          edited_at?: string | null
+          edited_by?: string | null
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          narrative_summary?: string | null
+          summary_data?: Json
+          treatment_id: string
+        }
+        Update: {
+          edited_at?: string | null
+          edited_by?: string | null
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          narrative_summary?: string | null
+          summary_data?: Json
+          treatment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treatment_summaries_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: true
             referencedRelation: "treatments"
             referencedColumns: ["id"]
           },
@@ -1794,6 +2054,71 @@ export type Database = {
         }
         Relationships: []
       }
+      vitals_thresholds: {
+        Row: {
+          bp_diastolic_high: number | null
+          bp_diastolic_low: number | null
+          bp_systolic_high: number | null
+          bp_systolic_low: number | null
+          created_at: string
+          hr_high: number | null
+          hr_low: number | null
+          id: string
+          is_active: boolean
+          o2_sat_low: number | null
+          protocol_id: string | null
+          resp_rate_high: number | null
+          resp_rate_low: number | null
+          temp_high: number | null
+          temp_low: number | null
+          updated_at: string
+        }
+        Insert: {
+          bp_diastolic_high?: number | null
+          bp_diastolic_low?: number | null
+          bp_systolic_high?: number | null
+          bp_systolic_low?: number | null
+          created_at?: string
+          hr_high?: number | null
+          hr_low?: number | null
+          id?: string
+          is_active?: boolean
+          o2_sat_low?: number | null
+          protocol_id?: string | null
+          resp_rate_high?: number | null
+          resp_rate_low?: number | null
+          temp_high?: number | null
+          temp_low?: number | null
+          updated_at?: string
+        }
+        Update: {
+          bp_diastolic_high?: number | null
+          bp_diastolic_low?: number | null
+          bp_systolic_high?: number | null
+          bp_systolic_low?: number | null
+          created_at?: string
+          hr_high?: number | null
+          hr_low?: number | null
+          id?: string
+          is_active?: boolean
+          o2_sat_low?: number | null
+          protocol_id?: string | null
+          resp_rate_high?: number | null
+          resp_rate_low?: number | null
+          temp_high?: number | null
+          temp_low?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vitals_thresholds_protocol_id_fkey"
+            columns: ["protocol_id"]
+            isOneToOne: false
+            referencedRelation: "treatment_protocols"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1844,6 +2169,12 @@ export type Database = {
         | "reserved"
         | "out_of_service"
       checklist_item_status: "pending" | "in_progress" | "completed" | "waived"
+      clinical_alert_severity: "info" | "warning" | "critical"
+      clinical_alert_status:
+        | "active"
+        | "acknowledged"
+        | "resolved"
+        | "dismissed"
       communication_status: "pending" | "sent" | "failed"
       communication_type: "email" | "whatsapp" | "sms"
       contact_status: "new" | "in_progress" | "resolved" | "archived"
@@ -1865,6 +2196,17 @@ export type Database = {
       medication_route: "iv" | "oral" | "im" | "sc"
       patient_gender: "male" | "female" | "other"
       patient_status: "active" | "inactive" | "archived"
+      protocol_step_type:
+        | "consent_check"
+        | "assessment_form"
+        | "vitals_capture"
+        | "iv_access"
+        | "medication_prep"
+        | "infusion_start"
+        | "monitoring_interval"
+        | "site_check"
+        | "post_assessment"
+        | "discharge_criteria"
       reaction_outcome:
         | "resolved"
         | "ongoing"
@@ -2062,6 +2404,13 @@ export const Constants = {
         "out_of_service",
       ],
       checklist_item_status: ["pending", "in_progress", "completed", "waived"],
+      clinical_alert_severity: ["info", "warning", "critical"],
+      clinical_alert_status: [
+        "active",
+        "acknowledged",
+        "resolved",
+        "dismissed",
+      ],
       communication_status: ["pending", "sent", "failed"],
       communication_type: ["email", "whatsapp", "sms"],
       contact_status: ["new", "in_progress", "resolved", "archived"],
@@ -2085,6 +2434,18 @@ export const Constants = {
       medication_route: ["iv", "oral", "im", "sc"],
       patient_gender: ["male", "female", "other"],
       patient_status: ["active", "inactive", "archived"],
+      protocol_step_type: [
+        "consent_check",
+        "assessment_form",
+        "vitals_capture",
+        "iv_access",
+        "medication_prep",
+        "infusion_start",
+        "monitoring_interval",
+        "site_check",
+        "post_assessment",
+        "discharge_criteria",
+      ],
       reaction_outcome: [
         "resolved",
         "ongoing",

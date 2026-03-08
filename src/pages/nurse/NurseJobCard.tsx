@@ -33,6 +33,8 @@ import JobCardBilling from "@/components/nurse/JobCardBilling";
 import JobCardIVAccess from "@/components/nurse/JobCardIVAccess";
 import JobCardReactions from "@/components/nurse/JobCardReactions";
 import JobCardKetaminePanel from "@/components/nurse/JobCardKetaminePanel";
+import ClinicalAlerts from "@/components/nurse/ClinicalAlerts";
+import ProtocolMonitoringBanner from "@/components/nurse/ProtocolMonitoringBanner";
 
 // ── Manual pre-treatment checklist items (non-form items) ──
 const manualChecklist = [
@@ -423,6 +425,20 @@ export default function NurseJobCard() {
           {/* Active treatment panels */}
           {treatment && (
             <>
+              {/* Protocol monitoring banner */}
+              <ProtocolMonitoringBanner
+                treatmentTypeId={appointment.appointment_type.id}
+                treatmentId={treatment.id}
+                treatmentStartedAt={treatment.started_at}
+              />
+
+              {/* Clinical alerts */}
+              <ClinicalAlerts
+                treatmentId={treatment.id}
+                treatmentTypeId={appointment.appointment_type.id}
+                treatmentStartedAt={treatment.started_at}
+              />
+
               <JobCardVitals
                 treatmentId={treatment.id}
                 phase={treatment.status === "in_progress" ? "during" : "post"}
