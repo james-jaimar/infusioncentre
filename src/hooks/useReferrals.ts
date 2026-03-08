@@ -66,9 +66,9 @@ export function useUpdateReferralStatus() {
       notes?: string;
     }) => {
       const update: Record<string, any> = { status, reviewed_at: new Date().toISOString() };
-      if (patient_id) update.patient_id = patient_id;
+      if (patient_id !== undefined) update.patient_id = patient_id;
       if (reviewed_by) update.reviewed_by = reviewed_by;
-      if (notes) update.notes = notes;
+      if (notes !== undefined) update.notes = notes;
 
       const { error } = await supabase
         .from("referrals")
@@ -80,4 +80,16 @@ export function useUpdateReferralStatus() {
       queryClient.invalidateQueries({ queryKey: ["referrals"] });
     },
   });
+}
+
+export function useSearchPatients() {
+  return async (search: string) => {
+    const { data, error } = await supabase
+      .from("patients")
+      .select("id, first_name, last_name, email, phone, date_of_birth, status")
+      .or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%`)
+      .limit(5);
+    if (error) throw error;
+    return data || [];
+  };
 }

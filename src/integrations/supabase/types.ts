@@ -1849,6 +1849,10 @@ export type Database = {
         | "scheduled"
         | "completed"
         | "cancelled"
+        | "under_review"
+        | "info_requested"
+        | "rejected"
+        | "converted_to_course"
       referral_urgency: "routine" | "urgent"
       reminder_status: "pending" | "sent" | "failed"
       reminder_type: "email" | "whatsapp" | "sms"
@@ -2057,6 +2061,10 @@ export const Constants = {
         "scheduled",
         "completed",
         "cancelled",
+        "under_review",
+        "info_requested",
+        "rejected",
+        "converted_to_course",
       ],
       referral_urgency: ["routine", "urgent"],
       reminder_status: ["pending", "sent", "failed"],
