@@ -173,6 +173,7 @@ export default function AdminDoctors() {
       }
 
       toast({ title: "Doctor created successfully" });
+      setLastCreatedPassword(formData.password);
       queryClient.invalidateQueries({ queryKey: ["admin-doctors"] });
       setCreateOpen(false);
       setFormData(emptyForm);
