@@ -53,7 +53,7 @@ export default function Login() {
         navigate("/", { replace: true });
       }
     }
-  }, [user, role, profile, loading, from, navigate]);
+  }, [user, role, profile, loading, mustChangePassword, from, navigate]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
