@@ -480,6 +480,14 @@ export default function AppointmentDetail() {
           </div>
         </CardContent>
       </Card>
+
+      {appointment && (
+        <RescheduleDialog
+          open={rescheduleOpen}
+          onOpenChange={setRescheduleOpen}
+          appointment={appointment}
+        />
+      )}
     </div>
   );
 }
