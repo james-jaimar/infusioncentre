@@ -40,7 +40,9 @@ import {
   Save,
   X,
   ClipboardList,
+  RefreshCw,
 } from "lucide-react";
+import { RescheduleDialog } from "@/components/admin/RescheduleDialog";
 import { cn } from "@/lib/utils";
 import { useAppointment, useUpdateAppointment, useDeleteAppointment } from "@/hooks/useAppointments";
 import { useAppointmentTypes } from "@/hooks/useAppointmentTypes";
