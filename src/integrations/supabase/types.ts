@@ -519,6 +519,154 @@ export type Database = {
           },
         ]
       }
+      doctor_report_templates: {
+        Row: {
+          body_template: string
+          created_at: string
+          description: string | null
+          display_order: number
+          id: string
+          is_active: boolean
+          milestone_trigger: string
+          name: string
+          subject_template: string
+          treatment_type_id: string | null
+          updated_at: string
+          variables: string[] | null
+        }
+        Insert: {
+          body_template?: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          milestone_trigger: string
+          name: string
+          subject_template?: string
+          treatment_type_id?: string | null
+          updated_at?: string
+          variables?: string[] | null
+        }
+        Update: {
+          body_template?: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          milestone_trigger?: string
+          name?: string
+          subject_template?: string
+          treatment_type_id?: string | null
+          updated_at?: string
+          variables?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "doctor_report_templates_treatment_type_id_fkey"
+            columns: ["treatment_type_id"]
+            isOneToOne: false
+            referencedRelation: "appointment_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      doctor_reports: {
+        Row: {
+          acknowledged_at: string | null
+          body_html: string
+          body_text: string | null
+          created_at: string
+          doctor_id: string
+          edited_at: string | null
+          edited_by: string | null
+          generated_at: string | null
+          generated_by: string | null
+          id: string
+          milestone: string
+          notes: string | null
+          patient_id: string
+          sent_at: string | null
+          status: Database["public"]["Enums"]["doctor_report_status"]
+          subject: string
+          template_id: string | null
+          treatment_course_id: string
+          updated_at: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          body_html?: string
+          body_text?: string | null
+          created_at?: string
+          doctor_id: string
+          edited_at?: string | null
+          edited_by?: string | null
+          generated_at?: string | null
+          generated_by?: string | null
+          id?: string
+          milestone: string
+          notes?: string | null
+          patient_id: string
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["doctor_report_status"]
+          subject: string
+          template_id?: string | null
+          treatment_course_id: string
+          updated_at?: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          body_html?: string
+          body_text?: string | null
+          created_at?: string
+          doctor_id?: string
+          edited_at?: string | null
+          edited_by?: string | null
+          generated_at?: string | null
+          generated_by?: string | null
+          id?: string
+          milestone?: string
+          notes?: string | null
+          patient_id?: string
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["doctor_report_status"]
+          subject?: string
+          template_id?: string | null
+          treatment_course_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "doctor_reports_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "doctors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "doctor_reports_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "doctor_reports_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "doctor_report_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "doctor_reports_treatment_course_id_fkey"
+            columns: ["treatment_course_id"]
+            isOneToOne: false
+            referencedRelation: "treatment_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       doctors: {
         Row: {
           address_line_1: string | null
@@ -2178,6 +2326,12 @@ export type Database = {
       communication_status: "pending" | "sent" | "failed"
       communication_type: "email" | "whatsapp" | "sms"
       contact_status: "new" | "in_progress" | "resolved" | "archived"
+      doctor_report_status:
+        | "pending"
+        | "generating"
+        | "review"
+        | "sent"
+        | "acknowledged"
       document_type:
         | "prescription"
         | "referral"
@@ -2414,6 +2568,13 @@ export const Constants = {
       communication_status: ["pending", "sent", "failed"],
       communication_type: ["email", "whatsapp", "sms"],
       contact_status: ["new", "in_progress", "resolved", "archived"],
+      doctor_report_status: [
+        "pending",
+        "generating",
+        "review",
+        "sent",
+        "acknowledged",
+      ],
       document_type: [
         "prescription",
         "referral",

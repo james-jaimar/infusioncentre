@@ -60,6 +60,9 @@ import DoctorDashboard from "./pages/doctor/DoctorDashboard";
 import DoctorReferrals from "./pages/doctor/DoctorReferrals";
 import DoctorNewReferral from "./pages/doctor/DoctorNewReferral";
 import DoctorPatientView from "./pages/doctor/DoctorPatientView";
+import DoctorReportsPage from "./pages/doctor/DoctorReports";
+import DoctorPatientProgress from "./pages/doctor/DoctorPatientProgress";
+import AdminDoctorReports from "./pages/admin/AdminDoctorReports";
 
 // Patient pages
 import PatientLayout from "./components/layout/PatientLayout";
@@ -121,6 +124,7 @@ const App = () => (
               <Route path="reports" element={<AdminReports />} />
               <Route path="billable-items" element={<AdminBillableItems />} />
               <Route path="communications" element={<AdminCommunications />} />
+              <Route path="doctor-reports" element={<AdminDoctorReports />} />
               <Route path="command-centre" element={<NurseCommandCentre />} />
               <Route path="job-card/:appointmentId" element={<NurseJobCard />} />
               <Route path="settings" element={<AdminSettings />} />
@@ -138,7 +142,9 @@ const App = () => (
               <Route index element={<DoctorDashboard />} />
               <Route path="referrals" element={<DoctorReferrals />} />
               <Route path="referrals/new" element={<DoctorNewReferral />} />
+              <Route path="reports" element={<DoctorReportsPage />} />
               <Route path="patients/:patientId" element={<DoctorPatientView />} />
+              <Route path="courses/:courseId" element={<DoctorPatientProgress />} />
             </Route>
 
             {/* Nurse routes */}
