@@ -1,10 +1,11 @@
 import { useNavigate } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useTodaysTreatments } from "@/hooks/useTreatments";
 import { format } from "date-fns";
 import { Clock, User, ArrowRight } from "lucide-react";
+import PatientReadinessBadge from "@/components/shared/PatientReadinessBadge";
 
 const statusColors: Record<string, string> = {
   scheduled: "bg-muted text-muted-foreground",
@@ -63,6 +64,7 @@ export default function NurseTodaysPatients() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
+                    <PatientReadinessBadge patientId={apt.patient.id} compact />
                     <Badge className={statusColors[apt.status] || ""}>
                       {apt.status.replace("_", " ")}
                     </Badge>
