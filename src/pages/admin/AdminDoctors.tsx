@@ -139,8 +139,31 @@ export default function AdminDoctors() {
   const [formData, setFormData] = useState<DoctorFormData>(emptyForm);
   const [editDoctor, setEditDoctor] = useState<any>(null);
   const [selectedDoctor, setSelectedDoctor] = useState<any>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteDoctor, setDeleteDoctor] = useState<any>(null);
   const [saving, setSaving] = useState(false);
   const [lastCreatedPassword, setLastCreatedPassword] = useState("");
+
+  const handleDelete = async () => {
+    if (!deleteDoctor?.user_id) return;
+    setSaving(true);
+    try {
+      const res = await supabase.functions.invoke("delete-staff", {
+        body: { user_id: deleteDoctor.user_id },
+      });
+      if (res.error || res.data?.error) {
+        throw new Error(res.data?.error || res.error?.message || "Failed to delete doctor");
+      }
+      toast({ title: "Doctor deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ["admin-doctors"] });
+      setDeleteOpen(false);
+      setDeleteDoctor(null);
+    } catch (e: any) {
+      toast({ title: e.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleCreate = async () => {
     if (!formData.email || !formData.password) {
