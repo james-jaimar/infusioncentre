@@ -29,6 +29,7 @@ const navigation = [
   { name: "Patients", href: "/admin/patients", icon: Users },
   { name: "Appointments", href: "/admin/appointments", icon: Calendar },
   { name: "Referrals", href: "/admin/referrals", icon: FileText },
+  { name: "Treatment Courses", href: "/admin/treatment-courses", icon: Layers },
   { name: "Form Templates", href: "/admin/form-templates", icon: ClipboardList },
   { name: "Staff", href: "/admin/staff", icon: Users },
   { name: "Training Bookings", href: "/admin/training", icon: GraduationCap },
