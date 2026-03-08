@@ -3394,6 +3394,7 @@ export type Database = {
         | "info_requested"
         | "rejected"
         | "converted_to_course"
+        | "draft"
       referral_urgency: "routine" | "urgent"
       reminder_status: "pending" | "sent" | "failed"
       reminder_type: "email" | "whatsapp" | "sms"
@@ -3660,6 +3661,7 @@ export const Constants = {
         "info_requested",
         "rejected",
         "converted_to_course",
+        "draft",
       ],
       referral_urgency: ["routine", "urgent"],
       reminder_status: ["pending", "sent", "failed"],
