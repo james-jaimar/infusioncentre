@@ -20,6 +20,7 @@ import {
   Layers,
   Stethoscope,
   Receipt,
+  Building2,
 } from "lucide-react";
 import { useState } from "react";
 import logo from "@/assets/logo.png";
