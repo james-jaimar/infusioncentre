@@ -334,18 +334,38 @@ Full self-service admin for all configurable aspects.
 
 ---
 
-### Phase 9: SaaS Hardening — `NOT STARTED`
+### Phase 9: SaaS Hardening — `DONE`
 
 Prepare for multi-tenant deployment.
 
-- [ ] `tenant_id` on all tables + RLS policies
-- [ ] Tenant-scoped configuration (each tenant has own protocols, templates, settings)
-- [ ] Branding engine (logo, colors, clinic name per tenant)
-- [ ] Subscription model + usage metering
-- [ ] Tenant onboarding wizard
-- [ ] Data isolation audit
+- [x] `tenant_id` on all tables (46 tables) + RLS policies updated for tenant isolation
+  - `tenants` table with branding fields (logo, primary/secondary/accent colors), subscription plan, limits
+  - `get_user_tenant_id()` security definer function for efficient tenant resolution
+  - `has_tenant_role()` tenant-scoped role check function
+  - Default tenant seeded for all existing data (`00000000-0000-0000-0000-000000000001`)
+  - Indexes on tenant_id for high-traffic tables (patients, appointments, treatments, etc.)
+- [x] Tenant-scoped configuration (each tenant has own protocols, templates, settings, feature flags)
+  - All config tables (clinic_settings, feature_flags, status_dictionaries, etc.) scoped by tenant_id
+  - RLS policies ensure tenants only see their own configuration
+- [x] Branding engine (logo, colors, clinic name per tenant)
+  - `TenantContext` + `TenantProvider` with CSS variable injection for custom colors
+  - `useTenant()` hook provides tenant info throughout the app
+  - Dynamic branding applied via `--tenant-primary`, `--tenant-secondary`, `--tenant-accent` CSS vars
+- [x] Subscription model + usage metering
+  - `subscription_plan` enum (free, starter, professional, enterprise)
+  - `subscription_usage` table tracking per-tenant metrics by billing period
+  - Tenant limits: max_chairs, max_users per plan
+- [x] Tenant onboarding / management
+  - `AdminTenants` page for super-admin tenant CRUD
+  - Create tenant wizard with branding color pickers, plan selection, limit configuration
+  - Tenant list with plan badges, active status, resource counts
+  - `handle_new_user()` updated to assign tenant_id from signup metadata
+- [x] Data isolation audit
+  - All 46 tables have tenant_id NOT NULL with FK to tenants
+  - All RLS policies updated to include `tenant_id = get_user_tenant_id(auth.uid())`
+  - Super-admin (default tenant) can manage all tenants
 
-**Success Criteria:** Two clinics can run on the same instance without seeing each other's data.
+**Success Criteria:** Two clinics can run on the same instance without seeing each other's data. ✅
 
 ---
 
