@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import PatientReadinessBadge from "@/components/shared/PatientReadinessBadge";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import SendInviteDialog from "@/components/admin/SendInviteDialog";
 import PatientAccountTab from "@/components/admin/PatientAccountTab";
