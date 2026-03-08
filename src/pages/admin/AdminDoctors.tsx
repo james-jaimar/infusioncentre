@@ -36,7 +36,18 @@ import {
   Mail,
   MapPin,
   Building2,
+  Trash2,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type DoctorFormData = {
   first_name: string;
@@ -128,8 +139,31 @@ export default function AdminDoctors() {
   const [formData, setFormData] = useState<DoctorFormData>(emptyForm);
   const [editDoctor, setEditDoctor] = useState<any>(null);
   const [selectedDoctor, setSelectedDoctor] = useState<any>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteDoctor, setDeleteDoctor] = useState<any>(null);
   const [saving, setSaving] = useState(false);
   const [lastCreatedPassword, setLastCreatedPassword] = useState("");
+
+  const handleDelete = async () => {
+    if (!deleteDoctor?.user_id) return;
+    setSaving(true);
+    try {
+      const res = await supabase.functions.invoke("delete-staff", {
+        body: { user_id: deleteDoctor.user_id },
+      });
+      if (res.error || res.data?.error) {
+        throw new Error(res.data?.error || res.error?.message || "Failed to delete doctor");
+      }
+      toast({ title: "Doctor deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ["admin-doctors"] });
+      setDeleteOpen(false);
+      setDeleteDoctor(null);
+    } catch (e: any) {
+      toast({ title: e.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleCreate = async () => {
     if (!formData.email || !formData.password) {
@@ -354,6 +388,15 @@ export default function AdminDoctors() {
                         >
                           <Send className="h-4 w-4" />
                         </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => { setDeleteDoctor(doc); setDeleteOpen(true); }}
+                          title="Delete doctor"
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -553,6 +596,28 @@ export default function AdminDoctors() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Doctor</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete <strong>{deleteDoctor?.doctor_name}</strong>? This will remove their account, profile, and role. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={saving}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {saving ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
