@@ -108,6 +108,7 @@ export type Database = {
           scheduled_end: string
           scheduled_start: string
           status: Database["public"]["Enums"]["appointment_status"]
+          treatment_course_id: string | null
           updated_at: string
         }
         Insert: {
@@ -123,6 +124,7 @@ export type Database = {
           scheduled_end: string
           scheduled_start: string
           status?: Database["public"]["Enums"]["appointment_status"]
+          treatment_course_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -138,6 +140,7 @@ export type Database = {
           scheduled_end?: string
           scheduled_start?: string
           status?: Database["public"]["Enums"]["appointment_status"]
+          treatment_course_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -160,6 +163,13 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_treatment_course_id_fkey"
+            columns: ["treatment_course_id"]
+            isOneToOne: false
+            referencedRelation: "treatment_courses"
             referencedColumns: ["id"]
           },
         ]
@@ -1214,6 +1224,89 @@ export type Database = {
         }
         Relationships: []
       }
+      treatment_courses: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          doctor_id: string | null
+          expected_end_date: string | null
+          id: string
+          notes: string | null
+          patient_id: string
+          referral_id: string | null
+          sessions_completed: number
+          started_at: string | null
+          status: Database["public"]["Enums"]["treatment_course_status"]
+          total_sessions_planned: number
+          treatment_type_id: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          doctor_id?: string | null
+          expected_end_date?: string | null
+          id?: string
+          notes?: string | null
+          patient_id: string
+          referral_id?: string | null
+          sessions_completed?: number
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["treatment_course_status"]
+          total_sessions_planned?: number
+          treatment_type_id: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          doctor_id?: string | null
+          expected_end_date?: string | null
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          referral_id?: string | null
+          sessions_completed?: number
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["treatment_course_status"]
+          total_sessions_planned?: number
+          treatment_type_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treatment_courses_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "doctors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_courses_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_courses_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "referrals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_courses_treatment_type_id_fkey"
+            columns: ["treatment_type_id"]
+            isOneToOne: false
+            referencedRelation: "appointment_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       treatment_iv_access: {
         Row: {
           access_type: Database["public"]["Enums"]["iv_access_type"]
@@ -1681,6 +1774,15 @@ export type Database = {
       referral_urgency: "routine" | "urgent"
       reminder_status: "pending" | "sent" | "failed"
       reminder_type: "email" | "whatsapp" | "sms"
+      treatment_course_status:
+        | "draft"
+        | "onboarding"
+        | "ready"
+        | "active"
+        | "paused"
+        | "completing"
+        | "completed"
+        | "cancelled"
       treatment_status:
         | "pending"
         | "pre_assessment"
@@ -1881,6 +1983,16 @@ export const Constants = {
       referral_urgency: ["routine", "urgent"],
       reminder_status: ["pending", "sent", "failed"],
       reminder_type: ["email", "whatsapp", "sms"],
+      treatment_course_status: [
+        "draft",
+        "onboarding",
+        "ready",
+        "active",
+        "paused",
+        "completing",
+        "completed",
+        "cancelled",
+      ],
       treatment_status: [
         "pending",
         "pre_assessment",
