@@ -288,6 +288,7 @@ export default function PatientDetail() {
                 <Badge variant={patient.status === 'active' ? 'default' : 'secondary'}>
                   {patient.status}
                 </Badge>
+                <PatientReadinessBadge patientId={patient.id} />
                 {patient.id_number && (
                   <span className="text-sm text-muted-foreground">
                     ID: {patient.id_number}
