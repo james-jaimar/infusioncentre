@@ -425,6 +425,20 @@ export default function NurseJobCard() {
           {/* Active treatment panels */}
           {treatment && (
             <>
+              {/* Protocol monitoring banner */}
+              <ProtocolMonitoringBanner
+                treatmentTypeId={appointment.appointment_type.id}
+                treatmentId={treatment.id}
+                treatmentStartedAt={treatment.started_at}
+              />
+
+              {/* Clinical alerts */}
+              <ClinicalAlerts
+                treatmentId={treatment.id}
+                treatmentTypeId={appointment.appointment_type.id}
+                treatmentStartedAt={treatment.started_at}
+              />
+
               <JobCardVitals
                 treatmentId={treatment.id}
                 phase={treatment.status === "in_progress" ? "during" : "post"}
