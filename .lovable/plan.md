@@ -109,22 +109,23 @@ Establish the architectural foundation before building features.
 
 ---
 
-### Phase 1: Workflow Backbone — `NOT STARTED`
+### Phase 1: Workflow Backbone — `IN PROGRESS`
 
 The structural foundation everything else depends on.
 
-- [ ] `treatment_courses` table — links referral to episode of care
-  - Fields: id, referral_id, patient_id, doctor_id, protocol_id (nullable), treatment_type_id, status, total_sessions_planned, sessions_completed, started_at, expected_end_date, completed_at, notes, created_by
+- [x] `treatment_courses` table — links referral to episode of care
+  - Fields: id, referral_id, patient_id, doctor_id, treatment_type_id, status, total_sessions_planned, sessions_completed, started_at, expected_end_date, completed_at, notes, created_by
+- [x] `treatment_course_status` enum (draft, onboarding, ready, active, paused, completing, completed, cancelled)
+- [x] `appointments.treatment_course_id` FK added
+- [x] RLS policies (admin full, nurse read/update, doctor own patients, patient own)
+- [x] `useTreatmentCourses` hook (CRUD + convert referral)
+- [x] Admin Treatment Courses page with list view + status filter
+- [x] Convert Referral → Treatment Course dialog
 - [ ] Status dictionaries — replace DB-level enums with configurable lookup tables
   - `status_dictionaries` table: entity_type, status_key, display_label, display_order, color, is_terminal, is_default
   - Entities: referral, treatment_course, appointment, visit, treatment, billing_claim
 - [ ] Status transition rules — define valid state transitions per entity
   - `status_transitions` table: entity_type, from_status, to_status, required_role, auto_trigger (nullable)
-- [ ] Referral → Treatment Course conversion flow
-  - Admin reviews referral → creates Treatment Course → links patient → generates appointment slots
-- [ ] Treatment Course → Appointment linking
-  - `appointments.treatment_course_id` FK added
-  - When Treatment Course created, optionally generate N appointment slots
 - [ ] Audit event logging enhancement
   - Structured audit events for all status transitions
 
