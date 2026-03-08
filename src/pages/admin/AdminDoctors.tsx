@@ -129,6 +129,7 @@ export default function AdminDoctors() {
   const [editDoctor, setEditDoctor] = useState<any>(null);
   const [selectedDoctor, setSelectedDoctor] = useState<any>(null);
   const [saving, setSaving] = useState(false);
+  const [lastCreatedPassword, setLastCreatedPassword] = useState("");
 
   const handleCreate = async () => {
     if (!formData.email || !formData.password) {
