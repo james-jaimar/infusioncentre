@@ -3,6 +3,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { Appointment, AppointmentWithRelations, AppointmentFormData } from "@/types/appointment";
 import { addMinutes } from "date-fns";
 
+interface BulkAppointmentData {
+  patient_id: string;
+  appointment_type_id: string;
+  treatment_course_id: string | null;
+  chair_id: string | null;
+  assigned_nurse_id: string | null;
+  scheduled_start: Date;
+  duration_minutes: number;
+  session_number: number;
+  notes: string;
+}
+
 export function useAppointments(startDate?: Date, endDate?: Date) {
   return useQuery({
     queryKey: ["appointments", startDate?.toISOString(), endDate?.toISOString()],
