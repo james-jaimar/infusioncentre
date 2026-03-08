@@ -105,8 +105,11 @@ export type Database = {
           id: string
           notes: string | null
           patient_id: string
+          reschedule_reason: string | null
+          rescheduled_from_id: string | null
           scheduled_end: string
           scheduled_start: string
+          session_number: number | null
           status: Database["public"]["Enums"]["appointment_status"]
           treatment_course_id: string | null
           updated_at: string
@@ -121,8 +124,11 @@ export type Database = {
           id?: string
           notes?: string | null
           patient_id: string
+          reschedule_reason?: string | null
+          rescheduled_from_id?: string | null
           scheduled_end: string
           scheduled_start: string
+          session_number?: number | null
           status?: Database["public"]["Enums"]["appointment_status"]
           treatment_course_id?: string | null
           updated_at?: string
@@ -137,8 +143,11 @@ export type Database = {
           id?: string
           notes?: string | null
           patient_id?: string
+          reschedule_reason?: string | null
+          rescheduled_from_id?: string | null
           scheduled_end?: string
           scheduled_start?: string
+          session_number?: number | null
           status?: Database["public"]["Enums"]["appointment_status"]
           treatment_course_id?: string | null
           updated_at?: string
@@ -163,6 +172,13 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_rescheduled_from_id_fkey"
+            columns: ["rescheduled_from_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
             referencedColumns: ["id"]
           },
           {
@@ -1280,6 +1296,7 @@ export type Database = {
           is_active: boolean
           name: string
           notes: string | null
+          status: Database["public"]["Enums"]["chair_status"]
           updated_at: string
         }
         Insert: {
@@ -1289,6 +1306,7 @@ export type Database = {
           is_active?: boolean
           name: string
           notes?: string | null
+          status?: Database["public"]["Enums"]["chair_status"]
           updated_at?: string
         }
         Update: {
@@ -1298,6 +1316,7 @@ export type Database = {
           is_active?: boolean
           name?: string
           notes?: string | null
+          status?: Database["public"]["Enums"]["chair_status"]
           updated_at?: string
         }
         Relationships: []
@@ -1803,6 +1822,7 @@ export type Database = {
         | "completed"
         | "cancelled"
         | "no_show"
+        | "rescheduled"
       assessment_type:
         | "pre_treatment"
         | "during_treatment"
@@ -1816,6 +1836,13 @@ export type Database = {
         | "facility_fee"
         | "other"
       booking_status: "pending" | "confirmed" | "completed" | "cancelled"
+      chair_status:
+        | "available"
+        | "occupied"
+        | "cleaning"
+        | "blocked"
+        | "reserved"
+        | "out_of_service"
       checklist_item_status: "pending" | "in_progress" | "completed" | "waived"
       communication_status: "pending" | "sent" | "failed"
       communication_type: "email" | "whatsapp" | "sms"
@@ -2009,6 +2036,7 @@ export const Constants = {
         "completed",
         "cancelled",
         "no_show",
+        "rescheduled",
       ],
       assessment_type: [
         "pre_treatment",
@@ -2025,6 +2053,14 @@ export const Constants = {
         "other",
       ],
       booking_status: ["pending", "confirmed", "completed", "cancelled"],
+      chair_status: [
+        "available",
+        "occupied",
+        "cleaning",
+        "blocked",
+        "reserved",
+        "out_of_service",
+      ],
       checklist_item_status: ["pending", "in_progress", "completed", "waived"],
       communication_status: ["pending", "sent", "failed"],
       communication_type: ["email", "whatsapp", "sms"],
