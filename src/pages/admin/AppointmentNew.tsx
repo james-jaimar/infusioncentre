@@ -72,6 +72,12 @@ export default function AppointmentNew() {
   const checkConflicts = useCheckConflicts();
   const generateChecklist = useGenerateChecklist();
 
+  // Nurse workload for the selected date
+  const selectedDate = form.watch("date");
+  const workloadStart = selectedDate ? new Date(selectedDate.setHours(0, 0, 0, 0)) : undefined;
+  const workloadEnd = selectedDate ? new Date(new Date(selectedDate).setHours(23, 59, 59, 999)) : undefined;
+  const { data: nurseWorkload = {} } = useNurseWorkload(workloadStart, workloadEnd);
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
