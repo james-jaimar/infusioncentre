@@ -141,7 +141,9 @@ const App = () => (
               <Route index element={<DoctorDashboard />} />
               <Route path="referrals" element={<DoctorReferrals />} />
               <Route path="referrals/new" element={<DoctorNewReferral />} />
+              <Route path="reports" element={<DoctorReportsPage />} />
               <Route path="patients/:patientId" element={<DoctorPatientView />} />
+              <Route path="courses/:courseId" element={<DoctorPatientProgress />} />
             </Route>
 
             {/* Nurse routes */}
