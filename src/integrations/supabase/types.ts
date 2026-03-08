@@ -282,6 +282,77 @@ export type Database = {
           },
         ]
       }
+      billing_claims: {
+        Row: {
+          appeal_notes: string | null
+          approved_amount: number | null
+          claim_reference: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          invoice_id: string
+          notes: string | null
+          paid_amount: number
+          paid_at: string | null
+          payer_name: string
+          rejection_code: string | null
+          rejection_reason: string | null
+          response_at: string | null
+          status: Database["public"]["Enums"]["billing_claim_status"]
+          submitted_amount: number
+          submitted_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          appeal_notes?: string | null
+          approved_amount?: number | null
+          claim_reference?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_id: string
+          notes?: string | null
+          paid_amount?: number
+          paid_at?: string | null
+          payer_name: string
+          rejection_code?: string | null
+          rejection_reason?: string | null
+          response_at?: string | null
+          status?: Database["public"]["Enums"]["billing_claim_status"]
+          submitted_amount?: number
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          appeal_notes?: string | null
+          approved_amount?: number | null
+          claim_reference?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_id?: string
+          notes?: string | null
+          paid_amount?: number
+          paid_at?: string | null
+          payer_name?: string
+          rejection_code?: string | null
+          rejection_reason?: string | null
+          response_at?: string | null
+          status?: Database["public"]["Enums"]["billing_claim_status"]
+          submitted_amount?: number
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_claims_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinical_alerts: {
         Row: {
           acknowledged_at: string | null
@@ -862,6 +933,163 @@ export type Database = {
         }
         Relationships: []
       }
+      invoice_line_items: {
+        Row: {
+          billable_item_id: string | null
+          code: string | null
+          created_at: string
+          description: string
+          icd10_code: string | null
+          id: string
+          invoice_id: string
+          line_total: number | null
+          quantity: number
+          tariff_code: string | null
+          treatment_billable_item_id: string | null
+          unit_price: number
+        }
+        Insert: {
+          billable_item_id?: string | null
+          code?: string | null
+          created_at?: string
+          description: string
+          icd10_code?: string | null
+          id?: string
+          invoice_id: string
+          line_total?: number | null
+          quantity?: number
+          tariff_code?: string | null
+          treatment_billable_item_id?: string | null
+          unit_price?: number
+        }
+        Update: {
+          billable_item_id?: string | null
+          code?: string | null
+          created_at?: string
+          description?: string
+          icd10_code?: string | null
+          id?: string
+          invoice_id?: string
+          line_total?: number | null
+          quantity?: number
+          tariff_code?: string | null
+          treatment_billable_item_id?: string | null
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_line_items_billable_item_id_fkey"
+            columns: ["billable_item_id"]
+            isOneToOne: false
+            referencedRelation: "billable_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_line_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_line_items_treatment_billable_item_id_fkey"
+            columns: ["treatment_billable_item_id"]
+            isOneToOne: false
+            referencedRelation: "treatment_billable_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoices: {
+        Row: {
+          amount_outstanding: number | null
+          amount_paid: number
+          created_at: string
+          created_by: string | null
+          discount_amount: number
+          due_date: string | null
+          id: string
+          invoice_number: string
+          issued_date: string
+          medical_aid_name: string | null
+          medical_aid_number: string | null
+          notes: string | null
+          paid_at: string | null
+          patient_id: string
+          payer_name: string | null
+          payer_type: string | null
+          status: Database["public"]["Enums"]["invoice_status"]
+          subtotal: number
+          tax_amount: number
+          total_amount: number
+          treatment_course_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount_outstanding?: number | null
+          amount_paid?: number
+          created_at?: string
+          created_by?: string | null
+          discount_amount?: number
+          due_date?: string | null
+          id?: string
+          invoice_number: string
+          issued_date?: string
+          medical_aid_name?: string | null
+          medical_aid_number?: string | null
+          notes?: string | null
+          paid_at?: string | null
+          patient_id: string
+          payer_name?: string | null
+          payer_type?: string | null
+          status?: Database["public"]["Enums"]["invoice_status"]
+          subtotal?: number
+          tax_amount?: number
+          total_amount?: number
+          treatment_course_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount_outstanding?: number | null
+          amount_paid?: number
+          created_at?: string
+          created_by?: string | null
+          discount_amount?: number
+          due_date?: string | null
+          id?: string
+          invoice_number?: string
+          issued_date?: string
+          medical_aid_name?: string | null
+          medical_aid_number?: string | null
+          notes?: string | null
+          paid_at?: string | null
+          patient_id?: string
+          payer_name?: string | null
+          payer_type?: string | null
+          status?: Database["public"]["Enums"]["invoice_status"]
+          subtotal?: number
+          tax_amount?: number
+          total_amount?: number
+          treatment_course_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_treatment_course_id_fkey"
+            columns: ["treatment_course_id"]
+            isOneToOne: false
+            referencedRelation: "treatment_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ketamine_monitoring: {
         Row: {
           alertness_score: number
@@ -1224,6 +1452,53 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      payer_rate_mappings: {
+        Row: {
+          billable_item_id: string
+          contracted_rate: number
+          created_at: string
+          effective_from: string
+          effective_to: string | null
+          id: string
+          is_claimable: boolean
+          notes: string | null
+          payer_name: string
+          updated_at: string
+        }
+        Insert: {
+          billable_item_id: string
+          contracted_rate: number
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          is_claimable?: boolean
+          notes?: string | null
+          payer_name: string
+          updated_at?: string
+        }
+        Update: {
+          billable_item_id?: string
+          contracted_rate?: number
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          is_claimable?: boolean
+          notes?: string | null
+          payer_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payer_rate_mappings_billable_item_id_fkey"
+            columns: ["billable_item_id"]
+            isOneToOne: false
+            referencedRelation: "billable_items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -2272,6 +2547,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_invoice_number: { Args: never; Returns: string }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -2308,6 +2584,15 @@ export type Database = {
         | "nursing_fee"
         | "facility_fee"
         | "other"
+      billing_claim_status:
+        | "draft"
+        | "submitted"
+        | "accepted"
+        | "rejected"
+        | "appealed"
+        | "partially_paid"
+        | "paid"
+        | "written_off"
       booking_status: "pending" | "confirmed" | "completed" | "cancelled"
       chair_status:
         | "available"
@@ -2346,6 +2631,13 @@ export type Database = {
         | "monitoring"
       form_submission_status: "draft" | "submitted" | "reviewed" | "approved"
       invite_status: "pending" | "accepted" | "expired" | "revoked"
+      invoice_status:
+        | "draft"
+        | "finalized"
+        | "submitted"
+        | "partially_paid"
+        | "paid"
+        | "void"
       iv_access_type: "peripheral" | "midline" | "picc" | "port" | "central"
       medication_route: "iv" | "oral" | "im" | "sc"
       patient_gender: "male" | "female" | "other"
@@ -2548,6 +2840,16 @@ export const Constants = {
         "facility_fee",
         "other",
       ],
+      billing_claim_status: [
+        "draft",
+        "submitted",
+        "accepted",
+        "rejected",
+        "appealed",
+        "partially_paid",
+        "paid",
+        "written_off",
+      ],
       booking_status: ["pending", "confirmed", "completed", "cancelled"],
       chair_status: [
         "available",
@@ -2591,6 +2893,14 @@ export const Constants = {
       ],
       form_submission_status: ["draft", "submitted", "reviewed", "approved"],
       invite_status: ["pending", "accepted", "expired", "revoked"],
+      invoice_status: [
+        "draft",
+        "finalized",
+        "submitted",
+        "partially_paid",
+        "paid",
+        "void",
+      ],
       iv_access_type: ["peripheral", "midline", "picc", "port", "central"],
       medication_route: ["iv", "oral", "im", "sc"],
       patient_gender: ["male", "female", "other"],
