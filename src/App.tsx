@@ -115,6 +115,7 @@ const App = () => (
             <Route path="/pending-approval" element={<PendingApproval />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/change-password" element={<ChangePassword />} />
 
             {/* Admin routes */}
             <Route

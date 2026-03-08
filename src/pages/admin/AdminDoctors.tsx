@@ -243,8 +243,8 @@ export default function AdminDoctors() {
   const openEdit = (doc: any) => {
     setEditDoctor({
       ...doc,
-      profile_first_name: doc.profiles?.first_name || "",
-      profile_last_name: doc.profiles?.last_name || "",
+      profile_first_name: doc.profile_first_name || "",
+      profile_last_name: doc.profile_last_name || "",
     });
     setEditOpen(true);
   };
