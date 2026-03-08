@@ -78,6 +78,8 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
+      <TenantProvider>
+      <TooltipProvider>
       <TooltipProvider>
         <Toaster />
         <Sonner />
