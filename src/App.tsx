@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { TenantProvider } from "@/contexts/TenantContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { SessionTimeoutWarning } from "@/components/SessionTimeoutWarning";
 
@@ -64,6 +65,7 @@ import DoctorReportsPage from "./pages/doctor/DoctorReports";
 import DoctorPatientProgress from "./pages/doctor/DoctorPatientProgress";
 import AdminDoctorReports from "./pages/admin/AdminDoctorReports";
 import AdminBilling from "./pages/admin/AdminBilling";
+import AdminTenants from "./pages/admin/AdminTenants";
 
 // Patient pages
 import PatientLayout from "./components/layout/PatientLayout";
@@ -76,6 +78,7 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
+      <TenantProvider>
       <TooltipProvider>
         <Toaster />
         <Sonner />
@@ -127,6 +130,7 @@ const App = () => (
               <Route path="communications" element={<AdminCommunications />} />
               <Route path="doctor-reports" element={<AdminDoctorReports />} />
               <Route path="billing" element={<AdminBilling />} />
+              <Route path="tenants" element={<AdminTenants />} />
               <Route path="command-centre" element={<NurseCommandCentre />} />
               <Route path="job-card/:appointmentId" element={<NurseJobCard />} />
               <Route path="settings" element={<AdminSettings />} />
@@ -190,6 +194,7 @@ const App = () => (
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
+      </TenantProvider>
     </AuthProvider>
   </QueryClientProvider>
 );
