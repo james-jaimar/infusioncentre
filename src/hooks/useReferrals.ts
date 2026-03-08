@@ -46,7 +46,7 @@ export function useCreateReferral() {
     }) => {
       const { data, error } = await supabase
         .from("referrals")
-        .insert(referral)
+        .insert(referral as any)
         .select()
         .single();
       if (error) throw error;
