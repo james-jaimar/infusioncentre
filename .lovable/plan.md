@@ -206,19 +206,36 @@ Sophisticated scheduling driven by Treatment Courses.
 
 ---
 
-### Phase 5: Clinical Treatment Engine — `NOT STARTED`
+### Phase 5: Clinical Treatment Engine — `DONE`
 
 Protocol-driven clinical workflows.
 
-- [ ] `treatment_protocols` table — configurable step sequences per treatment type
-  - Steps: pre-assessment, consent check, IV access, medication prep, infusion start, monitoring intervals, post-assessment, discharge criteria
-- [ ] Protocol-driven monitoring intervals (e.g., vitals every 15 min for first hour, then every 30 min)
-- [ ] Assessment packs by protocol (which forms/checks at each phase)
-- [ ] Discharge criteria engine (configurable rules: vitals in range, observation period elapsed, no reactions)
-- [ ] Treatment summary auto-generation (structured summary of what happened during visit)
-- [ ] Clinical alerts (overdue vitals, abnormal readings, reaction escalation)
+- [x] `treatment_protocols` table — configurable step sequences per treatment type
+  - Per-treatment-type protocols with monitoring intervals, observation periods, min vitals counts
+  - `treatment_protocol_steps` table for ordered step sequences
+  - Seeded protocols for all 5 treatment types (Iron, Ketamine, IV Vitamin, Biologics, Blood Transfusion)
+- [x] Protocol-driven monitoring intervals (e.g., vitals every 15 min for first hour, then every 30 min)
+  - `ProtocolMonitoringBanner` component shows live countdown to next vitals
+  - Interval changes based on elapsed time (initial vs standard period)
+- [x] Assessment packs by protocol (which forms/checks at each phase)
+  - `discharge_criteria` table with configurable rules per protocol
+  - Vitals thresholds, observation periods, reaction checks, IV site verification
+- [x] Discharge criteria engine (configurable rules: vitals in range, observation period elapsed, no reactions)
+  - `evaluateDischargeReadiness()` auto-evaluates all criteria against current treatment state
+  - Manual override checkboxes for criteria that can't be auto-evaluated
+  - Protocol-specific criteria (e.g., Ketamine requires dissociation resolution)
+- [x] Treatment summary auto-generation (structured summary of what happened during visit)
+  - `treatment_summaries` table with structured data + narrative markdown
+  - Auto-generated on discharge: duration, vitals count, medications, reactions, criteria met
+  - `generateNarrativeSummary()` creates human-readable treatment report
+- [x] Clinical alerts (overdue vitals, abnormal readings, reaction escalation)
+  - `clinical_alerts` table with severity levels (info/warning/critical) and status tracking
+  - `vitals_thresholds` table with configurable normal ranges (global + per-protocol)
+  - `ClinicalAlerts` component auto-evaluates vitals against thresholds on each recording
+  - Overdue vitals detection with protocol-aware intervals
+  - Acknowledge + resolve workflow for alerts
 
-**Success Criteria:** Nurse follows protocol steps guided by the system. Discharge is only possible when criteria are met. Treatment summary is auto-generated.
+**Success Criteria:** Nurse follows protocol steps guided by the system. Discharge is only possible when criteria are met. Treatment summary is auto-generated. ✅
 
 ---
 
