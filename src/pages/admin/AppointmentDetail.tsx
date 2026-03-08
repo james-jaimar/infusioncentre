@@ -57,6 +57,7 @@ const statusColors: Record<AppointmentStatus, string> = {
   completed: "bg-gray-100 text-gray-800 border-gray-200",
   cancelled: "bg-red-100 text-red-800 border-red-200",
   no_show: "bg-orange-100 text-orange-800 border-orange-200",
+  rescheduled: "bg-indigo-100 text-indigo-800 border-indigo-200",
 };
 
 const statusLabels: Record<AppointmentStatus, string> = {
