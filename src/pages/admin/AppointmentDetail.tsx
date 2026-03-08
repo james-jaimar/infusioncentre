@@ -68,6 +68,7 @@ const statusLabels: Record<AppointmentStatus, string> = {
   completed: "Completed",
   cancelled: "Cancelled",
   no_show: "No Show",
+  rescheduled: "Rescheduled",
 };
 
 export default function AppointmentDetail() {
