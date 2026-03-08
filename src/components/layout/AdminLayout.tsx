@@ -112,6 +112,18 @@ export default function AdminLayout() {
                 </Link>
               );
             })}
+            {isSuperAdmin && (
+              <div className="pt-3 mt-3 border-t border-primary-foreground/10">
+                <Link
+                  to="/platform"
+                  className="flex items-center gap-3 px-3 py-2.5 text-sm font-semibold text-amber-300 hover:bg-primary-foreground/8 hover:text-amber-200 rounded-md"
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <Building2 className="h-4 w-4" />
+                  Platform Console
+                </Link>
+              </div>
+            )}
           </nav>
 
           {/* User section */}
