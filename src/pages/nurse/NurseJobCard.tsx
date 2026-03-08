@@ -33,6 +33,8 @@ import JobCardBilling from "@/components/nurse/JobCardBilling";
 import JobCardIVAccess from "@/components/nurse/JobCardIVAccess";
 import JobCardReactions from "@/components/nurse/JobCardReactions";
 import JobCardKetaminePanel from "@/components/nurse/JobCardKetaminePanel";
+import ClinicalAlerts from "@/components/nurse/ClinicalAlerts";
+import ProtocolMonitoringBanner from "@/components/nurse/ProtocolMonitoringBanner";
 
 // ── Manual pre-treatment checklist items (non-form items) ──
 const manualChecklist = [
