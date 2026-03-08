@@ -155,18 +155,26 @@ Make referral processing fast, accurate, and trackable.
 
 ---
 
-### Phase 3: Patient Onboarding Experience — `NOT STARTED`
+### Phase 3: Patient Onboarding Experience — `DONE`
 
 Make patient preparation seamless and trackable.
 
-- [ ] Task-driven patient dashboard (replace placeholder)
-  - Shows: outstanding forms, upcoming appointments, preparation instructions, messages
-- [ ] Dynamic onboarding packs (form sets triggered by Treatment Course type)
-- [ ] Readiness scoring (% of required forms completed, medical aid verified, consent signed)
+- [x] Task-driven patient dashboard (replace placeholder)
+  - Shows: outstanding forms with progress bar, upcoming appointments with prep instructions, completion celebration
+  - Refactored into: OnboardingProgress, UpcomingAppointments components
+- [x] Dynamic onboarding packs (form sets triggered by Treatment Course type)
+  - DB trigger `auto_generate_onboarding_checklist()` on treatment_courses INSERT
+  - Automatically creates checklist items based on treatment type + universal templates
+  - Auto-transitions course status from draft → onboarding
+- [x] Readiness scoring (% of required forms completed, visual progress bar)
+  - `useOnboardingReadiness` hook with completion percentage
+  - Progress bar on patient dashboard
+- [x] Patient readiness visible on admin/nurse dashboards
+  - `PatientReadinessBadge` component (shared) with tooltip showing form completion
+  - Added to: Admin PatientDetail header, Nurse Today's Patients list
 - [ ] In-clinic tablet mode for form completion (simplified UI, larger touch targets)
 - [ ] Patient messaging (appointment reminders, preparation instructions, form nudges)
 - [ ] Medical aid verification workflow
-- [ ] Patient readiness visible on admin/nurse dashboards
 
 **Success Criteria:** Admin can see at a glance which patients are "ready" for their appointment. Patient knows exactly what they need to do.
 
