@@ -1,100 +1,42 @@
 
-# Development Principles
 
-## No Hard-Coding — Admin-Configurable First
+# Update `.lovable/plan.md` — Full Development Roadmap
 
-> **Default to admin-configurable, never hard-code.**
->
-> 1. First consider whether it should be an **admin setting**, **lookup table**, or **configurable parameter** rather than a hard-coded value.
-> 2. If the user hasn't explicitly said "make this configurable," proactively suggest: *"This should probably be an admin setting — shall I add it to the Settings page?"*
-> 3. Hard-coding is only acceptable for true constants (e.g., mathematical values, framework config) — not business logic, labels, thresholds, durations, messages, or clinical parameters.
+## What This Is
 
-### Examples of What Should Be Configurable
-- Treatment durations, vitals intervals, alert thresholds
-- Email/SMS/WhatsApp message templates and content
-- Appointment type names, colours, durations (already done)
-- Chair names and capacity (already done)
-- Business hours, clinic contact details, addresses
-- Consent form requirements per treatment type
-- Any text shown to patients (instructions, preparation notes)
-- Feature flags (e.g., enable/disable WhatsApp, Ketamine monitoring)
+Rewrite `.lovable/plan.md` to serve as the single source of truth for the entire project. It will contain the development principles (already there), plus the full phased roadmap from the Master Workflow Map document, with completion status tracking for every phase and deliverable.
 
----
+## File Changed
 
-# Command Centre — Reference Image Rebuild
+### `.lovable/plan.md` — Full rewrite
 
-## Approach
+The new document will be structured as:
 
-Adapt the user-provided reference component code to work with the existing HSL-based design system tokens (`clinical-success`, `clinical-warning`, etc.) rather than adding conflicting RGB tokens. The existing `index.css` and `tailwind.config.ts` already have all needed color tokens.
+1. **Development Principles** — Keep existing "No Hard-Coding" doctrine, add the 5 design rules from the document (workflow-first, episode-based care, SaaS-ready, operational clarity, configuration-first)
 
-## Token Mapping (no file changes needed)
+2. **Domain Model** — List the canonical entities and clarify the chain: `Referral → Treatment Course → Appointment(s) → Visit → Treatment(s)`
 
-The reference code uses `oksoft`, `warnsoft`, etc. These map directly to existing tokens:
+3. **What's Built** — A checklist of completed features with tick marks so we always know what exists:
+   - Role-based auth, Patient CRUD, Doctor referrals, Dynamic forms engine, Appointment scheduling, Command Centre, Job Card stepper, Vitals/IV/Medications/Reactions, Ketamine monitoring, Billable items, Email system, Communication log, Admin settings (chairs, appointment types), Patient onboarding checklists, Patient portal + invites, Session timeout
 
-| Reference Token | Existing Token |
-|---|---|
-| `ok` / `oksoft` | `clinical-success` / `clinical-success-soft` |
-| `warn` / `warnsoft` | `clinical-warning` / `clinical-warning-soft` |
-| `danger` / `dangersoft` | `clinical-danger` / `clinical-danger-soft` |
-| `info` / `infosoft` | `clinical-info` / `clinical-info-soft` |
-| `surface` | `card` (white) |
-| `surface2` | `muted` |
-| `muted` (text) | `muted-foreground` |
-| `text` | `foreground` |
-| `primary` | `primary` |
+4. **Phased Build Roadmap** — Each phase with status (`NOT STARTED` / `IN PROGRESS` / `DONE`), deliverables as a checklist, and success criteria:
 
-No changes to `index.css` or `tailwind.config.ts` required.
+   - **Phase 0: Foundation Alignment** — `IN PROGRESS` — Master workflow map (done), domain glossary, lifecycle/state definitions, anti-hardcoding rules (done), admin config inventory
+   - **Phase 1: Workflow Backbone** — `NOT STARTED` — `treatment_courses` table, status dictionaries, status transition rules, task/queue engine, audit event logging, referral→course→appointment linking
+   - **Phase 2: Referral & Intake Excellence** — `NOT STARTED` — Referral review queue, conversion wizard, document request workflow, patient matching, doctor acknowledgements
+   - **Phase 3: Patient Onboarding Experience** — `NOT STARTED` — Task-driven patient dashboard, dynamic onboarding packs, readiness scoring, tablet mode, patient messaging
+   - **Phase 4: Scheduling & Resource Operations** — `NOT STARTED` — Recurring booking, protocol-driven defaults, chair states (cleaning/blocked/reserved/out_of_service), nurse allocation, delay/reassignment
+   - **Phase 5: Clinical Treatment Engine** — `NOT STARTED` — Configurable protocol steps, monitoring interval engine, assessment packs, discharge criteria engine, treatment summary generation
+   - **Phase 6: Doctor Communication Loop** — `NOT STARTED` — Report templates, milestone-triggered updates, final summary workflow, sent/acknowledged tracking, doctor portal history
+   - **Phase 7: Billing & Revenue Flow** — `NOT STARTED` — Invoice/claim generation, payer mappings, payment status dashboards, billing exception queue
+   - **Phase 8: Admin Configuration Console** — `NOT STARTED` — Workflow config UI, protocol config UI, forms pack config UI, dictionary/status management UI, report template management, pricing config UI
+   - **Phase 9: SaaS Hardening** — `NOT STARTED` — Tenant isolation, tenant-scoped config, branding engine, subscription model
 
-## Files Changed
+5. **State Machines to Formalize** — Reference list of the 8 state machines (referral, onboarding, treatment course, appointment, visit, treatment, billing, doctor report) with their recommended statuses from the document
 
-### 1. `src/pages/nurse/NurseCommandCentre.tsx` — Full rewrite
+6. **Work Queues** — The admin, nurse, clinician, doctor, and patient queues from the document
 
-Replace the entire page with the reference layout structure:
-- Thin header row with "Clinical Operations" title + live clock + active badge
-- 12-column grid (`md:grid-cols-12`): 8-col primary zone + 4-col monitoring sidebar
-- Primary zone contains a Card wrapping the 2-col chair grid, plus a secondary row with "Unassigned Treatments" and "Upcoming Sessions" side by side
-- Monitoring sidebar with Live Alerts, Quick Stats (stacked cards)
-- All data wired from the existing `useCommandCentre` hook
+7. **Current Sprint** — A section that tracks what we're actively working on, updated as we go. Initially: "Phase 0 completion → Phase 1 start"
 
-### 2. `src/components/nurse/command-centre/ChairPanel.tsx` — Rewrite to match reference
-
-Key styling changes:
-- Left accent stripe via CSS `before:` pseudo-element (4px wide, state-colored)
-- Soft tinted gradient background per state (`bg-gradient-to-b from-clinical-success-soft/70 to-card/80`)
-- State badge with border styling (`border border-clinical-success/20`)
-- Chair number + icon in header, state badge right-aligned
-- Patient name 18px semibold, treatment type muted
-- Elapsed timer (reuse existing `ElapsedTimer` component)
-- Duration metadata (expected + remaining)
-- Custom progress bar (styled div, not default shadcn Progress) with state-colored fill
-- Vitals strip row with icon + label + overdue badge
-- "Open Session" button full-width, h-14
-- Available chairs: compact, neutral styling with ghosted icon
-
-### 3. `src/components/nurse/command-centre/MonitoringSidebar.tsx` — Restyle
-
-- Alert rows with colored left dot, title + subtitle, time right-aligned
-- Quick Stats as minimal text rows (active infusions, chairs available, avg duration)
-- Tighter padding (p-4), compact spacing
-
-### 4. `src/components/nurse/command-centre/UpcomingSessions.tsx` — Integrate into primary zone
-
-Move upcoming sessions into the primary zone's secondary row (side by side with unassigned treatments) instead of being a standalone bottom section.
-
-### 5. `src/components/nurse/command-centre/ElapsedTimer.tsx` — No changes needed
-
-Already correctly styled with monospace font.
-
-### 6. `src/components/nurse/command-centre/VitalsCountdown.tsx` — No changes needed
-
-Already works as inline badge.
-
-## Key Visual Details from Reference
-
-- Cards use `rounded-xl` (16px) with `shadow-md` for soft institutional feel
-- Left accent stripe is a `before:` pseudo-element: `before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:rounded-l-xl`
-- State tint backgrounds use gradients: `bg-gradient-to-b from-[state-soft]/70 to-card/80`
-- Progress bar is a custom div (not shadcn Progress) with state-colored fill and rounded corners
-- Sidebar cards have subtle borders and compact internal spacing
-- The entire layout should fit on a single tablet screen without scrolling
+This gives us a living document where each phase can be checked off, and the "Current Sprint" section always tells us where we are.
 
