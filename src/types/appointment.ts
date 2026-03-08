@@ -3,6 +3,7 @@ import { Database } from "@/integrations/supabase/types";
 export type AppointmentStatus = Database["public"]["Enums"]["appointment_status"];
 export type ReminderType = Database["public"]["Enums"]["reminder_type"];
 export type ReminderStatus = Database["public"]["Enums"]["reminder_status"];
+export type ChairStatusType = Database["public"]["Enums"]["chair_status"];
 
 export interface TreatmentChair {
   id: string;
@@ -10,6 +11,7 @@ export interface TreatmentChair {
   is_active: boolean;
   notes: string | null;
   display_order: number;
+  status: ChairStatusType;
   created_at: string;
   updated_at: string;
 }
