@@ -239,18 +239,35 @@ Protocol-driven clinical workflows.
 
 ---
 
-### Phase 6: Doctor Communication Loop — `NOT STARTED`
+### Phase 6: Doctor Communication Loop — `DONE`
 
 Keep referring doctors informed throughout the Treatment Course.
 
-- [ ] Doctor report templates (configurable, per Treatment Course milestone)
-- [ ] Milestone-triggered doctor updates (Treatment Course started, session X completed, course completed)
-- [ ] Final Treatment Course summary report (auto-generated, editable, sendable)
-- [ ] Sent / delivered / acknowledged tracking
-- [ ] Doctor portal — report history view
-- [ ] Doctor portal — patient progress view (read-only Treatment Course status)
+- [x] Doctor report templates (configurable, per Treatment Course milestone)
+  - `doctor_report_templates` table with milestone triggers (course_started, session_completed, course_completed, manual)
+  - Variable substitution engine ({{patient_name}}, {{doctor_name}}, {{treatment_type}}, etc.)
+  - Admin CRUD UI for templates (Settings → Doctor Reports → Templates tab)
+  - Seeded 3 default templates: Course Started, Session Progress, Course Completion Summary
+- [x] Milestone-triggered doctor updates (Treatment Course started, session X completed, course completed)
+  - `doctor_reports` table with full lifecycle tracking (pending → generating → review → sent → acknowledged)
+  - `useGenerateReport` hook: fetches template, substitutes variables, creates report in "review" status
+  - Admin report queue with status filters and preview
+- [x] Final Treatment Course summary report (auto-generated, editable, sendable)
+  - Course Completion template with treatment summary, duration, session count
+  - Preview dialog with HTML rendering, edit capability before sending
+- [x] Sent / delivered / acknowledged tracking
+  - `doctor_report_status` enum: pending, generating, review, sent, acknowledged
+  - `sent_at` and `acknowledged_at` timestamps
+  - Audit trigger on status changes via `log_status_change`
+  - Email delivery tracked via communication_log (send-email edge function integration)
+- [x] Doctor portal — report history view
+  - `/doctor/reports` page with table view, preview dialog, acknowledge button
+  - Unread reports count on Doctor Dashboard
+- [x] Doctor portal — patient progress view (read-only Treatment Course status)
+  - `/doctor/courses/:courseId` page with progress bar, session timeline, course details
+  - Treatment Courses listed on Doctor Dashboard with progress indicators
 
-**Success Criteria:** Doctor receives structured updates without admin effort. Final report is generated and sent when Treatment Course completes.
+**Success Criteria:** Doctor receives structured updates without admin effort. Final report is generated and sent when Treatment Course completes. ✅
 
 ---
 
