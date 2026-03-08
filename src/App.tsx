@@ -60,6 +60,9 @@ import DoctorDashboard from "./pages/doctor/DoctorDashboard";
 import DoctorReferrals from "./pages/doctor/DoctorReferrals";
 import DoctorNewReferral from "./pages/doctor/DoctorNewReferral";
 import DoctorPatientView from "./pages/doctor/DoctorPatientView";
+import DoctorReportsPage from "./pages/doctor/DoctorReports";
+import DoctorPatientProgress from "./pages/doctor/DoctorPatientProgress";
+import AdminDoctorReports from "./pages/admin/AdminDoctorReports";
 
 // Patient pages
 import PatientLayout from "./components/layout/PatientLayout";
