@@ -430,6 +430,11 @@ export default function AppointmentDetail() {
                   Open Job Card
                 </Button>
               )}
+              {(appointment.status === "scheduled" || appointment.status === "confirmed") && (
+                <Button variant="outline" onClick={() => setRescheduleOpen(true)} className="gap-2">
+                  <RefreshCw className="h-4 w-4" /> Reschedule
+                </Button>
+              )}
             </div>
           )}
 
