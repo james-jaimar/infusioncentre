@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,6 +36,22 @@ export default function Login() {
         toast({ variant: "destructive", title: "Account pending approval", description: "Your account is awaiting admin approval. Please contact the clinic." });
         signOut();
         navigate("/pending-approval", { replace: true });
+        return;
+      }
+      if (role === "doctor") {
+        // Check if doctor must change password
+        supabase
+          .from("doctors")
+          .select("must_change_password")
+          .eq("user_id", user.id)
+          .maybeSingle()
+          .then(({ data }) => {
+            if (data?.must_change_password) {
+              navigate("/change-password", { replace: true });
+            } else {
+              navigate(from || "/doctor", { replace: true });
+            }
+          });
         return;
       }
       if (role) {

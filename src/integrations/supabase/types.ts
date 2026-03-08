@@ -925,6 +925,7 @@ export type Database = {
           email: string | null
           id: string
           is_active: boolean
+          must_change_password: boolean
           notification_preferences: Json | null
           phone: string | null
           postal_code: string | null
@@ -943,6 +944,7 @@ export type Database = {
           email?: string | null
           id?: string
           is_active?: boolean
+          must_change_password?: boolean
           notification_preferences?: Json | null
           phone?: string | null
           postal_code?: string | null
@@ -961,6 +963,7 @@ export type Database = {
           email?: string | null
           id?: string
           is_active?: boolean
+          must_change_password?: boolean
           notification_preferences?: Json | null
           phone?: string | null
           postal_code?: string | null

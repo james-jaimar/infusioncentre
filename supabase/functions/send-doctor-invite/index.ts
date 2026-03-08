@@ -47,7 +47,29 @@ async function sendEmailViaSMTP(payload: {
   }
 }
 
-function buildDoctorInviteHtml(doctorName: string, loginUrl: string): string {
+function buildDoctorInviteHtml(doctorName: string, loginUrl: string, email: string, tempPassword?: string): string {
+  const credentialsBlock = tempPassword
+    ? `
+          <div style="background-color:#f0f4f8;border-radius:6px;padding:20px;margin:20px 0;">
+            <p style="color:#1a1a1a;font-size:14px;font-weight:bold;margin:0 0 10px;">Your Login Credentials</p>
+            <table cellpadding="0" cellspacing="0" style="width:100%;">
+              <tr>
+                <td style="color:#4a4a4a;font-size:14px;padding:4px 0;width:120px;"><strong>Email:</strong></td>
+                <td style="color:#1a1a1a;font-size:14px;padding:4px 0;">${email}</td>
+              </tr>
+              <tr>
+                <td style="color:#4a4a4a;font-size:14px;padding:4px 0;width:120px;"><strong>Password:</strong></td>
+                <td style="color:#1a1a1a;font-size:14px;padding:4px 0;font-family:monospace;">${tempPassword}</td>
+              </tr>
+            </table>
+            <p style="color:#999;font-size:12px;margin:10px 0 0;">You will be prompted to change your password on first login.</p>
+          </div>`
+    : `
+          <p style="color:#4a4a4a;font-size:14px;line-height:1.5;">
+            Use your registered email address and the temporary password provided by our administration team to log in. 
+            We recommend changing your password after your first login.
+          </p>`;
+
   return `
 <!DOCTYPE html>
 <html>
@@ -73,15 +95,12 @@ function buildDoctorInviteHtml(doctorName: string, loginUrl: string): string {
             <li><strong>Receive clinical reports</strong> at key treatment milestones</li>
             <li><strong>Manage your profile</strong> and notification preferences</li>
           </ul>
+          ${credentialsBlock}
           <table cellpadding="0" cellspacing="0" style="margin:30px 0;">
             <tr><td style="background-color:#3E5B84;border-radius:6px;padding:14px 32px;">
               <a href="${loginUrl}" style="color:#ffffff;text-decoration:none;font-size:16px;font-weight:bold;">Log in to Doctor Portal</a>
             </td></tr>
           </table>
-          <p style="color:#4a4a4a;font-size:14px;line-height:1.5;">
-            Use your registered email address and the temporary password provided by our administration team to log in. 
-            We recommend changing your password after your first login.
-          </p>
           <p style="color:#999;font-size:12px;margin-top:20px;">
             If the button doesn't work, copy and paste this link:<br/>
             <a href="${loginUrl}" style="color:#3E5B84;">${loginUrl}</a>
@@ -144,7 +163,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { doctor_id, email, doctor_name } = await req.json();
+    const { doctor_id, email, doctor_name, temp_password } = await req.json();
 
     if (!doctor_id || !email) {
       return new Response(
@@ -159,8 +178,8 @@ Deno.serve(async (req) => {
     const emailResult = await sendEmailViaSMTP({
       to: email,
       subject: "Welcome to The Johannesburg Infusion Centre — Doctor Portal",
-      html: buildDoctorInviteHtml(displayName, loginUrl),
-      text: `Welcome Dr. ${displayName}! You've been registered on The Johannesburg Infusion Centre's Doctor Portal. Log in at: ${loginUrl}`,
+      html: buildDoctorInviteHtml(displayName, loginUrl, email, temp_password),
+      text: `Welcome Dr. ${displayName}! You've been registered on The Johannesburg Infusion Centre's Doctor Portal. Log in at: ${loginUrl}${temp_password ? ` Your temporary password is: ${temp_password}` : ""}`,
       related_entity_type: "doctor_invite",
       related_entity_id: doctor_id,
     });

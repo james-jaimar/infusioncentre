@@ -105,6 +105,8 @@ function useDoctorsAdmin() {
         const profile = profileMap[d.user_id];
         return {
           ...d,
+          profile_first_name: profile?.first_name || "",
+          profile_last_name: profile?.last_name || "",
           doctor_name: profile
             ? `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || "Unknown"
             : "Unknown",
@@ -127,6 +129,7 @@ export default function AdminDoctors() {
   const [editDoctor, setEditDoctor] = useState<any>(null);
   const [selectedDoctor, setSelectedDoctor] = useState<any>(null);
   const [saving, setSaving] = useState(false);
+  const [lastCreatedPassword, setLastCreatedPassword] = useState("");
 
   const handleCreate = async () => {
     if (!formData.email || !formData.password) {
@@ -170,6 +173,7 @@ export default function AdminDoctors() {
       }
 
       toast({ title: "Doctor created successfully" });
+      setLastCreatedPassword(formData.password);
       queryClient.invalidateQueries({ queryKey: ["admin-doctors"] });
       setCreateOpen(false);
       setFormData(emptyForm);
@@ -224,6 +228,7 @@ export default function AdminDoctors() {
           doctor_id: selectedDoctor.id,
           email: selectedDoctor.email,
           doctor_name: selectedDoctor.doctor_name,
+          temp_password: lastCreatedPassword || undefined,
         },
       });
       if (res.error || res.data?.error) {
@@ -241,8 +246,8 @@ export default function AdminDoctors() {
   const openEdit = (doc: any) => {
     setEditDoctor({
       ...doc,
-      profile_first_name: doc.profiles?.first_name || "",
-      profile_last_name: doc.profiles?.last_name || "",
+      profile_first_name: doc.profile_first_name || "",
+      profile_last_name: doc.profile_last_name || "",
     });
     setEditOpen(true);
   };
