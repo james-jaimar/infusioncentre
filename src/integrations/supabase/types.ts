@@ -353,6 +353,39 @@ export type Database = {
           },
         ]
       }
+      clinic_settings: {
+        Row: {
+          category: string
+          description: string | null
+          id: string
+          key: string
+          label: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          category?: string
+          description?: string | null
+          id?: string
+          key: string
+          label: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Update: {
+          category?: string
+          description?: string | null
+          id?: string
+          key?: string
+          label?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
       clinical_alerts: {
         Row: {
           acknowledged_at: string | null
@@ -828,6 +861,42 @@ export type Database = {
           text_body?: string | null
           updated_at?: string
           variables?: string[] | null
+        }
+        Relationships: []
+      }
+      feature_flags: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          display_order: number
+          id: string
+          is_enabled: boolean
+          key: string
+          label: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          is_enabled?: boolean
+          key: string
+          label: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          is_enabled?: boolean
+          key?: string
+          label?: string
+          updated_at?: string
         }
         Relationships: []
       }

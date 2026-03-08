@@ -302,20 +302,35 @@ From treatment items to invoice to payment.
 
 ---
 
-### Phase 8: Admin Configuration Console — `NOT STARTED`
+### Phase 8: Admin Configuration Console — `DONE`
 
 Full self-service admin for all configurable aspects.
 
-- [ ] Workflow config UI (status dictionaries, transition rules, prerequisites)
-- [ ] Protocol config UI (treatment protocols, step sequences, monitoring intervals)
-- [ ] Form pack config UI (which forms required for which Treatment Course types)
-- [ ] Dictionary / status management UI (CRUD for all lookup tables)
-- [ ] Report template management (doctor report templates)
-- [ ] Pricing config UI (billable item pricing, medical aid rate mappings)
-- [ ] Feature flags UI (enable/disable WhatsApp, Ketamine monitoring, etc.)
-- [ ] Clinic settings (business hours, contact details, branding basics)
+- [x] Workflow config UI (status dictionaries, transition rules, prerequisites)
+  - Already built in Phase 1 (StatusDictionaryTab), now accessible in consolidated Settings page
+- [x] Protocol config UI (treatment protocols, step sequences, monitoring intervals)
+  - ProtocolConfigTab: accordion view of all protocols with editable monitoring parameters
+  - Inline display of protocol steps and discharge criteria with delete capability
+- [x] Form pack config UI (which forms required for which Treatment Course types)
+  - FormPackConfigTab: matrix UI mapping form templates to treatment types
+  - Checkbox grid with universal/specific assignment, batch save
+- [x] Dictionary / status management UI (CRUD for all lookup tables)
+  - StatusDictionaryTab integrated into Settings tabs
+- [x] Report template management (doctor report templates)
+  - Already built in Phase 6 (AdminDoctorReports templates tab)
+- [x] Pricing config UI (billable item pricing, medical aid rate mappings)
+  - Already built in Phase 7 (AdminBillableItems + Billing payer rates tab)
+- [x] Feature flags UI (enable/disable WhatsApp, Ketamine monitoring, etc.)
+  - `feature_flags` table with seeded flags for 8 features
+  - FeatureFlagsTab: grouped toggle cards by category (clinical, communications, patient, doctor, billing)
+- [x] Clinic settings (business hours, contact details, branding basics)
+  - `clinic_settings` table (key-value with categories)
+  - ClinicSettingsTab: smart field rendering (text, number, address object, business hours grid)
+  - Seeded settings for business info, hours, security, scheduling, billing
+- [x] Consolidated Settings page refactored into 7 tabs: Clinic, Chairs, Appointment Types, Protocols, Form Packs, Statuses, Feature Flags
+  - Original 510-line monolithic AdminSettings.tsx refactored into focused tab components
 
-**Success Criteria:** Admin can configure any business rule without developer involvement.
+**Success Criteria:** Admin can configure any business rule without developer involvement. ✅
 
 ---
 
