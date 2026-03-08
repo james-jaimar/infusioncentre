@@ -39,6 +39,7 @@ const navigation = [
   { name: "Communications", href: "/admin/communications", icon: Mail },
   { name: "Doctor Reports", href: "/admin/doctor-reports", icon: Stethoscope },
   { name: "Billing", href: "/admin/billing", icon: Receipt },
+  { name: "Tenants", href: "/admin/tenants", icon: Building2 },
   { name: "Reports", href: "/admin/reports", icon: BarChart3 },
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
