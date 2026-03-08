@@ -35,6 +35,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Plus, Edit, Trash2, GripVertical } from "lucide-react";
+import StatusDictionaryTab from "@/components/admin/StatusDictionaryTab";
 import {
   useTreatmentChairs,
   useCreateChair,
@@ -61,6 +62,7 @@ export default function AdminSettings() {
         <TabsList>
           <TabsTrigger value="chairs">Treatment Chairs</TabsTrigger>
           <TabsTrigger value="types">Appointment Types</TabsTrigger>
+          <TabsTrigger value="statuses">Status Management</TabsTrigger>
         </TabsList>
 
         <TabsContent value="chairs">
@@ -69,6 +71,10 @@ export default function AdminSettings() {
 
         <TabsContent value="types">
           <AppointmentTypesSettings />
+        </TabsContent>
+
+        <TabsContent value="statuses">
+          <StatusDictionaryTab />
         </TabsContent>
       </Tabs>
     </div>

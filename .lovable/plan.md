@@ -121,11 +121,14 @@ The structural foundation everything else depends on.
 - [x] `useTreatmentCourses` hook (CRUD + convert referral)
 - [x] Admin Treatment Courses page with list view + status filter
 - [x] Convert Referral → Treatment Course dialog
-- [ ] Status dictionaries — replace DB-level enums with configurable lookup tables
+- [x] Status dictionaries — configurable lookup tables for all entity statuses
   - `status_dictionaries` table: entity_type, status_key, display_label, display_order, color, is_terminal, is_default
-  - Entities: referral, treatment_course, appointment, visit, treatment, billing_claim
-- [ ] Status transition rules — define valid state transitions per entity
-  - `status_transitions` table: entity_type, from_status, to_status, required_role, auto_trigger (nullable)
+  - Seeded for: referral, treatment_course, appointment, treatment
+- [x] Status transition rules — valid state transitions per entity
+  - `status_transitions` table: entity_type, from_status, to_status, required_role, auto_trigger, label
+  - Seeded for all entity types with full lifecycle transitions
+- [x] Admin UI for status management (Settings → Status Management tab)
+- [x] `useStatusDictionaries` hook with transition validation helpers
 - [ ] Audit event logging enhancement
   - Structured audit events for all status transitions
 

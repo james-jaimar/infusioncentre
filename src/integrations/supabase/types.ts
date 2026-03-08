@@ -1072,6 +1072,84 @@ export type Database = {
           },
         ]
       }
+      status_dictionaries: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          display_label: string
+          display_order: number
+          entity_type: string
+          id: string
+          is_active: boolean
+          is_default: boolean
+          is_terminal: boolean
+          status_key: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          display_label: string
+          display_order?: number
+          entity_type: string
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          is_terminal?: boolean
+          status_key: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          display_label?: string
+          display_order?: number
+          entity_type?: string
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          is_terminal?: boolean
+          status_key?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      status_transitions: {
+        Row: {
+          auto_trigger: string | null
+          created_at: string
+          entity_type: string
+          from_status: string
+          id: string
+          label: string | null
+          required_role: Database["public"]["Enums"]["app_role"] | null
+          to_status: string
+        }
+        Insert: {
+          auto_trigger?: string | null
+          created_at?: string
+          entity_type: string
+          from_status: string
+          id?: string
+          label?: string | null
+          required_role?: Database["public"]["Enums"]["app_role"] | null
+          to_status: string
+        }
+        Update: {
+          auto_trigger?: string | null
+          created_at?: string
+          entity_type?: string
+          from_status?: string
+          id?: string
+          label?: string | null
+          required_role?: Database["public"]["Enums"]["app_role"] | null
+          to_status?: string
+        }
+        Relationships: []
+      }
       training_courses: {
         Row: {
           created_at: string
