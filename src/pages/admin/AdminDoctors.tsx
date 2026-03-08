@@ -105,6 +105,8 @@ function useDoctorsAdmin() {
         const profile = profileMap[d.user_id];
         return {
           ...d,
+          profile_first_name: profile?.first_name || "",
+          profile_last_name: profile?.last_name || "",
           doctor_name: profile
             ? `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || "Unknown"
             : "Unknown",
