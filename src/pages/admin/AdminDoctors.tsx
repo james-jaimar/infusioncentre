@@ -281,8 +281,19 @@ export default function AdminDoctors() {
     }
   };
 
+  const generatePassword = () => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%";
+    let pw = "";
+    for (let i = 0; i < 12; i++) pw += chars[Math.floor(Math.random() * chars.length)];
+    setInvitePassword(pw);
+  };
+
   const handleSendInvite = async () => {
     if (!selectedDoctor?.email) return;
+    if (!invitePassword) {
+      toast({ title: "Please set a temporary password for the doctor", variant: "destructive" });
+      return;
+    }
     setSaving(true);
     try {
       const res = await supabase.functions.invoke("send-doctor-invite", {
@@ -290,14 +301,16 @@ export default function AdminDoctors() {
           doctor_id: selectedDoctor.id,
           email: selectedDoctor.email,
           doctor_name: selectedDoctor.doctor_name,
-          temp_password: lastCreatedPassword || undefined,
+          temp_password: invitePassword,
+          reset_password: true,
         },
       });
       if (res.error || res.data?.error) {
         throw new Error(res.data?.error || res.error?.message || "Failed to send invite");
       }
-      toast({ title: "Invite email sent successfully" });
+      toast({ title: "Password reset & invite email sent successfully" });
       setInviteOpen(false);
+      setInvitePassword("");
     } catch (e: any) {
       toast({ title: e.message, variant: "destructive" });
     } finally {
