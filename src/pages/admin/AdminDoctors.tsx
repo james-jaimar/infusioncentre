@@ -142,7 +142,7 @@ export default function AdminDoctors() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteDoctor, setDeleteDoctor] = useState<any>(null);
   const [saving, setSaving] = useState(false);
-  const [lastCreatedPassword, setLastCreatedPassword] = useState("");
+  const [invitePassword, setInvitePassword] = useState("");
 
   const handleDelete = async () => {
     if (!deleteDoctor?.user_id) return;
@@ -206,8 +206,36 @@ export default function AdminDoctors() {
         }
       }
 
-      toast({ title: "Doctor created successfully" });
-      setLastCreatedPassword(formData.password);
+      // Auto-send invite with temp password
+      const doctorEmail = formData.email;
+      const doctorName = `${formData.first_name} ${formData.last_name}`.trim() || "Doctor";
+      const tempPassword = formData.password;
+
+      // Find the newly created doctor record
+      const { data: newDoctorForInvite } = await supabase
+        .from("doctors")
+        .select("id")
+        .eq("email", doctorEmail)
+        .maybeSingle();
+
+      if (newDoctorForInvite) {
+        try {
+          await supabase.functions.invoke("send-doctor-invite", {
+            body: {
+              doctor_id: newDoctorForInvite.id,
+              email: doctorEmail,
+              doctor_name: doctorName,
+              temp_password: tempPassword,
+            },
+          });
+          toast({ title: "Doctor created & invite email sent with login credentials" });
+        } catch {
+          toast({ title: "Doctor created but invite email failed — use Re-invite to retry", variant: "destructive" });
+        }
+      } else {
+        toast({ title: "Doctor created successfully" });
+      }
+
       queryClient.invalidateQueries({ queryKey: ["admin-doctors"] });
       setCreateOpen(false);
       setFormData(emptyForm);
@@ -253,8 +281,19 @@ export default function AdminDoctors() {
     }
   };
 
+  const generatePassword = () => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%";
+    let pw = "";
+    for (let i = 0; i < 12; i++) pw += chars[Math.floor(Math.random() * chars.length)];
+    setInvitePassword(pw);
+  };
+
   const handleSendInvite = async () => {
     if (!selectedDoctor?.email) return;
+    if (!invitePassword) {
+      toast({ title: "Please set a temporary password for the doctor", variant: "destructive" });
+      return;
+    }
     setSaving(true);
     try {
       const res = await supabase.functions.invoke("send-doctor-invite", {
@@ -262,14 +301,16 @@ export default function AdminDoctors() {
           doctor_id: selectedDoctor.id,
           email: selectedDoctor.email,
           doctor_name: selectedDoctor.doctor_name,
-          temp_password: lastCreatedPassword || undefined,
+          temp_password: invitePassword,
+          reset_password: true,
         },
       });
       if (res.error || res.data?.error) {
         throw new Error(res.data?.error || res.error?.message || "Failed to send invite");
       }
-      toast({ title: "Invite email sent successfully" });
+      toast({ title: "Password reset & invite email sent successfully" });
       setInviteOpen(false);
+      setInvitePassword("");
     } catch (e: any) {
       toast({ title: e.message, variant: "destructive" });
     } finally {
@@ -577,21 +618,37 @@ export default function AdminDoctors() {
         </DialogContent>
       </Dialog>
 
-      {/* Send Invite Dialog */}
-      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+      {/* Send Invite / Reset Password Dialog */}
+      <Dialog open={inviteOpen} onOpenChange={(open) => { setInviteOpen(open); if (!open) setInvitePassword(""); }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Send Doctor Invite</DialogTitle>
+            <DialogTitle>Reset Password & Re-send Invite</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Send a welcome email to <strong>{selectedDoctor?.doctor_name}</strong> at{" "}
-            <strong>{selectedDoctor?.email}</strong> with their login details and a link to the doctor portal.
-          </p>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Set a new temporary password for <strong>{selectedDoctor?.doctor_name}</strong> and send them a fresh invite email at <strong>{selectedDoctor?.email}</strong>.
+            </p>
+            <div className="space-y-2">
+              <Label>New Temporary Password *</Label>
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  value={invitePassword}
+                  onChange={(e) => setInvitePassword(e.target.value)}
+                  placeholder="Enter or generate a password"
+                />
+                <Button type="button" variant="outline" size="sm" onClick={generatePassword} className="shrink-0">
+                  Generate
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">This password will be included in the invite email. The doctor will be forced to change it on first login.</p>
+            </div>
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button>
-            <Button onClick={handleSendInvite} disabled={saving} className="gap-2">
+            <Button onClick={handleSendInvite} disabled={saving || !invitePassword} className="gap-2">
               <Send className="h-4 w-4" />
-              {saving ? "Sending..." : "Send Invite"}
+              {saving ? "Sending..." : "Reset & Send Invite"}
             </Button>
           </DialogFooter>
         </DialogContent>

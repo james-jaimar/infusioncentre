@@ -163,13 +163,45 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { doctor_id, email, doctor_name, temp_password } = await req.json();
+    const { doctor_id, email, doctor_name, temp_password, reset_password } = await req.json();
 
     if (!doctor_id || !email) {
       return new Response(
         JSON.stringify({ error: "doctor_id and email are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+
+    // If reset_password flag is set and we have a temp_password, reset the auth user's password
+    if (reset_password && temp_password) {
+      // Find the doctor record to get user_id
+      const { data: doctorRecord } = await adminClient
+        .from("doctors")
+        .select("user_id")
+        .eq("id", doctor_id)
+        .single();
+
+      if (doctorRecord?.user_id) {
+        const { error: updateError } = await adminClient.auth.admin.updateUserById(
+          doctorRecord.user_id,
+          { password: temp_password }
+        );
+        if (updateError) {
+          console.error("Password reset error:", updateError);
+          return new Response(
+            JSON.stringify({ error: "Failed to reset password: " + updateError.message }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Set must_change_password back to true
+        await adminClient
+          .from("doctors")
+          .update({ must_change_password: true })
+          .eq("id", doctor_id);
+      }
     }
 
     const loginUrl = `${SITE_URL}/login`;
