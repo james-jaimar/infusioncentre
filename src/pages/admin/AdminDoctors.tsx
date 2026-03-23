@@ -142,7 +142,7 @@ export default function AdminDoctors() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteDoctor, setDeleteDoctor] = useState<any>(null);
   const [saving, setSaving] = useState(false);
-  const [lastCreatedPassword, setLastCreatedPassword] = useState("");
+  const [invitePassword, setInvitePassword] = useState("");
 
   const handleDelete = async () => {
     if (!deleteDoctor?.user_id) return;
