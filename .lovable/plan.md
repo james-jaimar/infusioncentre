@@ -1,30 +1,44 @@
 
 
-## Fix: Doctor Not Redirected After Password Change
+## Plan: Drag-and-Drop File Upload for Referral Form
 
-### Problem
+### What Changes
 
-After setting a new password on `/change-password`:
-1. The `doctors.must_change_password` flag is correctly set to `false` in the database
-2. `navigate("/doctor")` is called
-3. But `AuthContext` still holds `mustChangePassword = true` in React state
-4. `ProtectedRoute` sees the stale flag and redirects back to `/change-password`
+Replace the small "Choose files" button in the Attachments card with a full drag-and-drop zone that also accepts clicks, making it easy for doctors to drag files from WhatsApp Desktop, email, or file explorer.
 
-The auth context never re-fetches the flag after the update.
+### Implementation
 
-### Fix
+**File: `src/pages/doctor/DoctorNewReferral.tsx`**
 
-**In `ChangePassword.tsx`**: After successfully updating the password and clearing the DB flag, update the in-memory auth state so `ProtectedRoute` allows navigation through.
+1. Add `dragging` state (`useState<boolean>(false)`)
+2. Replace the current hidden input + label (lines 287-291) with a large drop zone `div` that:
+   - Has `onDragOver`, `onDragEnter`, `onDragLeave`, `onDrop` handlers
+   - Shows a dashed border area with an upload icon, "Drag & drop files here" text, and a secondary "or click to browse" label
+   - Highlights with a blue/primary border tint when files are dragged over (`dragging` state)
+   - Still contains the hidden `<input>` triggered on click
+   - Accepts `.pdf, .jpg, .jpeg, .png, .doc, .docx, .heic, .webp` (broader format support for WhatsApp exports)
+3. The `onDrop` handler calls `e.preventDefault()`, extracts `e.dataTransfer.files`, and appends them to the `files` state (same as `handleFileAdd`)
+4. Keep the existing file list display below the drop zone unchanged
 
-Two small changes:
+### Visual Design
 
-1. **Expose a `setMustChangePassword` setter from `AuthContext`** (or a `clearMustChangePassword()` helper)
-2. **Call it in `ChangePassword.tsx`** after the DB update succeeds, before navigating
+```text
+┌─────────────────────────────────────────┐
+│                                         │
+│          ↑  Upload icon                 │
+│   Drag & drop files here                │
+│   or click to browse                    │
+│                                         │
+│   PDF, JPG, PNG, DOC up to 10MB         │
+│                                         │
+└─────────────────────────────────────────┘
+  file1.pdf  120 KB  [x]
+  script.jpg  45 KB  [x]
+```
 
 ### Files to Change
 
 | File | Change |
 |------|--------|
-| `src/contexts/AuthContext.tsx` | Export `setMustChangePassword` or a `clearMustChangePassword` function in the context value |
-| `src/pages/ChangePassword.tsx` | Call `clearMustChangePassword()` after the DB update, before `navigate("/doctor")` |
+| `src/pages/doctor/DoctorNewReferral.tsx` | Replace attachment upload area with drag-and-drop zone |
 
