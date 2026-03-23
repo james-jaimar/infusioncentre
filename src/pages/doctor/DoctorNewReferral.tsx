@@ -48,6 +48,7 @@ export default function DoctorNewReferral() {
 
   const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
+  const [dragging, setDragging] = useState(false);
 
   const handleFileAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
