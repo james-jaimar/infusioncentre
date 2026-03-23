@@ -206,8 +206,36 @@ export default function AdminDoctors() {
         }
       }
 
-      toast({ title: "Doctor created successfully" });
-      setLastCreatedPassword(formData.password);
+      // Auto-send invite with temp password
+      const doctorEmail = formData.email;
+      const doctorName = `${formData.first_name} ${formData.last_name}`.trim() || "Doctor";
+      const tempPassword = formData.password;
+
+      // Find the newly created doctor record
+      const { data: newDoctorForInvite } = await supabase
+        .from("doctors")
+        .select("id")
+        .eq("email", doctorEmail)
+        .maybeSingle();
+
+      if (newDoctorForInvite) {
+        try {
+          await supabase.functions.invoke("send-doctor-invite", {
+            body: {
+              doctor_id: newDoctorForInvite.id,
+              email: doctorEmail,
+              doctor_name: doctorName,
+              temp_password: tempPassword,
+            },
+          });
+          toast({ title: "Doctor created & invite email sent with login credentials" });
+        } catch {
+          toast({ title: "Doctor created but invite email failed — use Re-invite to retry", variant: "destructive" });
+        }
+      } else {
+        toast({ title: "Doctor created successfully" });
+      }
+
       queryClient.invalidateQueries({ queryKey: ["admin-doctors"] });
       setCreateOpen(false);
       setFormData(emptyForm);
