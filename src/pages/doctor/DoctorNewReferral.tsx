@@ -290,15 +290,24 @@ export default function DoctorNewReferral() {
             <CardTitle className="text-lg">Attachments</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Upload referral letters, prescriptions, lab results, or other supporting documents.
-            </p>
-            <div>
-              <Label htmlFor="file-upload" className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 border border-dashed border-border rounded-md text-sm text-muted-foreground hover:bg-muted/50 transition-colors">
-                <Upload className="h-4 w-4" /> Choose files
-              </Label>
-              <input id="file-upload" type="file" multiple className="hidden" onChange={handleFileAdd} accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" />
+            <div
+              onClick={() => document.getElementById("file-upload")?.click()}
+              onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+              onDragEnter={() => setDragging(true)}
+              onDragLeave={() => setDragging(false)}
+              onDrop={handleDrop}
+              className={`w-full border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
+                dragging
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:border-primary/40 hover:bg-muted/30"
+              }`}
+            >
+              <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
+              <p className="text-sm font-medium">Drag & drop files here</p>
+              <p className="text-xs text-muted-foreground mt-1">or click to browse</p>
+              <p className="text-xs text-muted-foreground mt-2">PDF, JPG, PNG, DOC, HEIC, WEBP — up to 10MB each</p>
             </div>
+            <input id="file-upload" type="file" multiple className="hidden" onChange={handleFileAdd} accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.heic,.webp" />
             {files.length > 0 && (
               <div className="space-y-2">
                 {files.map((f, i) => (
