@@ -618,21 +618,37 @@ export default function AdminDoctors() {
         </DialogContent>
       </Dialog>
 
-      {/* Send Invite Dialog */}
-      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+      {/* Send Invite / Reset Password Dialog */}
+      <Dialog open={inviteOpen} onOpenChange={(open) => { setInviteOpen(open); if (!open) setInvitePassword(""); }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Send Doctor Invite</DialogTitle>
+            <DialogTitle>Reset Password & Re-send Invite</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Send a welcome email to <strong>{selectedDoctor?.doctor_name}</strong> at{" "}
-            <strong>{selectedDoctor?.email}</strong> with their login details and a link to the doctor portal.
-          </p>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Set a new temporary password for <strong>{selectedDoctor?.doctor_name}</strong> and send them a fresh invite email at <strong>{selectedDoctor?.email}</strong>.
+            </p>
+            <div className="space-y-2">
+              <Label>New Temporary Password *</Label>
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  value={invitePassword}
+                  onChange={(e) => setInvitePassword(e.target.value)}
+                  placeholder="Enter or generate a password"
+                />
+                <Button type="button" variant="outline" size="sm" onClick={generatePassword} className="shrink-0">
+                  Generate
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">This password will be included in the invite email. The doctor will be forced to change it on first login.</p>
+            </div>
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button>
-            <Button onClick={handleSendInvite} disabled={saving} className="gap-2">
+            <Button onClick={handleSendInvite} disabled={saving || !invitePassword} className="gap-2">
               <Send className="h-4 w-4" />
-              {saving ? "Sending..." : "Send Invite"}
+              {saving ? "Sending..." : "Reset & Send Invite"}
             </Button>
           </DialogFooter>
         </DialogContent>
