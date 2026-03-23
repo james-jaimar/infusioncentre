@@ -166,6 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signIn,
     signUp,
     signOut,
+    clearMustChangePassword: () => setMustChangePassword(false),
     isAdmin: role === "admin",
     isNurse: role === "nurse",
     isPatient: role === "patient",

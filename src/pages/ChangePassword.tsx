@@ -44,6 +44,7 @@ export default function ChangePassword() {
           .eq("user_id", user.id);
       }
 
+      clearMustChangePassword();
       toast({ title: "Password updated", description: "Your password has been changed successfully." });
       navigate("/doctor", { replace: true });
     } catch (err: any) {
