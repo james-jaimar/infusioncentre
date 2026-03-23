@@ -13,7 +13,7 @@ export default function ChangePassword() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { user } = useAuth();
+  const { user, clearMustChangePassword } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
