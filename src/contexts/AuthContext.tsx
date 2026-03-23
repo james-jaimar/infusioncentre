@@ -25,6 +25,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, metadata?: { first_name?: string; last_name?: string }) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  clearMustChangePassword: () => void;
   isAdmin: boolean;
   isNurse: boolean;
   isPatient: boolean;
@@ -165,6 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signIn,
     signUp,
     signOut,
+    clearMustChangePassword: () => setMustChangePassword(false),
     isAdmin: role === "admin",
     isNurse: role === "nurse",
     isPatient: role === "patient",
