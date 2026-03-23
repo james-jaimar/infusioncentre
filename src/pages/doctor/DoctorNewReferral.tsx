@@ -50,10 +50,18 @@ export default function DoctorNewReferral() {
   const [saving, setSaving] = useState(false);
   const [dragging, setDragging] = useState(false);
 
+  const addFiles = (newFiles: FileList | File[]) => {
+    setFiles((prev) => [...prev, ...Array.from(newFiles)]);
+  };
+
   const handleFileAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
-    }
+    if (e.target.files) addFiles(e.target.files);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    if (e.dataTransfer.files.length > 0) addFiles(e.dataTransfer.files);
   };
 
   const removeFile = (idx: number) => {
