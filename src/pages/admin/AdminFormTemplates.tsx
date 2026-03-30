@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useFormTemplates, useDeleteFormTemplate, FormTemplate } from "@/hooks/useFormTemplates";
 import { useAppointmentTypes } from "@/hooks/useAppointmentTypes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,6 +54,26 @@ export default function AdminFormTemplates() {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [reimportTemplate, setReimportTemplate] = useState<FormTemplate | null>(null);
 
+  const SESSION_KEY = "pendingFormImport";
+
+  // Restore pending import from sessionStorage on mount
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem(SESSION_KEY);
+      if (stored) {
+        const data = JSON.parse(stored);
+        setImportedSchema(data.schema);
+        setImportedName(data.name);
+        setImportedDescription(data.description);
+        setImportedCategory(data.category);
+        setEditingTemplate(null);
+        setEditorOpen(true);
+      }
+    } catch {
+      sessionStorage.removeItem(SESSION_KEY);
+    }
+  }, []);
+
   const filtered = templates?.filter((t) => {
     const matchesSearch = t.name.toLowerCase().includes(search.toLowerCase());
     const matchesCategory = categoryFilter === "all" || t.category === categoryFilter;
@@ -81,22 +101,35 @@ export default function AdminFormTemplates() {
 
   const handleAIImport = (data: { schema: FormField[]; name: string; description: string; category: FormCategory }) => {
     if (reimportTemplate) {
-      // Re-import: keep existing template metadata, replace schema
       setEditingTemplate(reimportTemplate);
       setImportedSchema(data.schema);
       setImportedName(undefined);
       setImportedDescription(undefined);
       setImportedCategory(undefined);
       setReimportTemplate(null);
+      // Don't persist re-imports (they have an existing template)
     } else {
-      // New import
       setEditingTemplate(null);
       setImportedSchema(data.schema);
       setImportedName(data.name);
       setImportedDescription(data.description);
       setImportedCategory(data.category);
+      // Persist to sessionStorage so navigation doesn't lose it
+      try {
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+          schema: data.schema,
+          name: data.name,
+          description: data.description,
+          category: data.category,
+        }));
+      } catch {}
     }
     setEditorOpen(true);
+  };
+
+  const handleEditorClose = () => {
+    setEditorOpen(false);
+    sessionStorage.removeItem(SESSION_KEY);
   };
 
   return (
@@ -297,7 +330,7 @@ export default function AdminFormTemplates() {
       {/* Editor */}
       <FormTemplateEditor
         open={editorOpen}
-        onClose={() => setEditorOpen(false)}
+        onClose={handleEditorClose}
         template={editingTemplate}
         initialSchema={importedSchema}
         initialName={importedName}

@@ -138,7 +138,7 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
     switch (field.field_type) {
       case "info_text":
         return (
-          <div className="rounded-lg border border-primary/20 bg-primary/[0.04] px-5 py-4 text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+          <div className="rounded-lg border border-primary/20 bg-primary/[0.04] border-l-[3px] border-l-primary/40 px-5 py-4 text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
             {field.content}
           </div>
         );
@@ -496,8 +496,8 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
             {/* Section card */}
             <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
               {section.title && (
-                <div className="px-5 sm:px-7 py-4 bg-primary/[0.06] border-b border-primary/20">
-                  <h3 className="text-base font-semibold text-foreground tracking-tight" style={{ fontSize: '16px', lineHeight: '1.4' }}>
+              <div className="px-5 sm:px-7 py-4 bg-primary/[0.08] border-b border-primary/20 border-l-[3px] border-l-primary">
+                  <h3 className="text-base font-semibold text-primary tracking-tight" style={{ fontSize: '16px', lineHeight: '1.4' }}>
                     {section.title}
                   </h3>
                 </div>
