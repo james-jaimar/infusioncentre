@@ -54,6 +54,26 @@ export default function AdminFormTemplates() {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [reimportTemplate, setReimportTemplate] = useState<FormTemplate | null>(null);
 
+  const SESSION_KEY = "pendingFormImport";
+
+  // Restore pending import from sessionStorage on mount
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem(SESSION_KEY);
+      if (stored) {
+        const data = JSON.parse(stored);
+        setImportedSchema(data.schema);
+        setImportedName(data.name);
+        setImportedDescription(data.description);
+        setImportedCategory(data.category);
+        setEditingTemplate(null);
+        setEditorOpen(true);
+      }
+    } catch {
+      sessionStorage.removeItem(SESSION_KEY);
+    }
+  }, []);
+
   const filtered = templates?.filter((t) => {
     const matchesSearch = t.name.toLowerCase().includes(search.toLowerCase());
     const matchesCategory = categoryFilter === "all" || t.category === categoryFilter;
