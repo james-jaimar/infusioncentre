@@ -28,6 +28,8 @@ export interface FormField {
   max_rows?: number;
   max_length?: number;
   prefill_key?: string;
+  layout_hint?: "inline" | "full";
+  conditional_on?: { field: string; value: string };
 }
 
 interface FormRendererProps {
@@ -74,17 +76,36 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
     return ["text", "number", "date", "select"].includes(field.field_type);
   };
 
+  // Check if a field should be visible based on conditional_on
+  const isFieldVisible = (field: FormField) => {
+    if (!field.conditional_on) return true;
+    const parentValue = values[field.conditional_on.field];
+    return parentValue === field.conditional_on.value;
+  };
+
   // Group consecutive short fields into pairs for 2-col layout
   const renderFieldGroup = (fields: FormField[]) => {
     const elements: React.ReactNode[] = [];
     let i = 0;
 
+    // Filter out conditionally hidden fields for rendering but keep indices
     while (i < fields.length) {
       const field = fields[i];
-      const next = fields[i + 1];
 
-      // Pair consecutive short fields
-      if (isShortField(field) && next && isShortField(next)) {
+      // Skip conditionally hidden fields
+      if (!isFieldVisible(field)) {
+        i += 1;
+        continue;
+      }
+
+      const next = fields[i + 1];
+      const nextVisible = next && isFieldVisible(next);
+
+      // Check if fields should be paired: explicit layout_hint or auto short-field pairing
+      const shouldInline = (f: FormField) => f.layout_hint === "inline" || isShortField(f);
+      const forceFullWidth = field.layout_hint === "full";
+
+      if (!forceFullWidth && shouldInline(field) && nextVisible && next && shouldInline(next)) {
         elements.push(
           <div key={`pair-${field.field_name}`} className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
             {renderField(field)}
