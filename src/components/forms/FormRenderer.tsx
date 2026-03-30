@@ -28,6 +28,8 @@ export interface FormField {
   max_rows?: number;
   max_length?: number;
   prefill_key?: string;
+  layout_hint?: "inline" | "full";
+  conditional_on?: { field: string; value: string };
 }
 
 interface FormRendererProps {

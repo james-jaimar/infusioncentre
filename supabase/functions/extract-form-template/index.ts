@@ -32,7 +32,114 @@ CRITICAL RULES:
 - Use section_header to group related fields.
 - For consent forms: include all terms/conditions as info_text blocks, then a checkbox for acknowledgment, then signature fields.
 - For questionnaires: use appropriate input types (text, checkbox, radio, select) based on the expected answer format.
+
+LAYOUT & UX RULES:
+- When the original document places fields on the same line (e.g., "Name: ___ Age: ___"), add "layout_hint": "inline" to BOTH fields so they render side-by-side.
+- Yes/No questions MUST use "radio" with options ["Yes", "No"], NOT a checkbox. Checkboxes are only for acknowledgment/consent toggles.
+- Conditional follow-ups (e.g., "If yes, describe..." or "If yes, please provide details") → use "textarea" or "text" with a "conditional_on" property referencing the parent field_name and expected value. Example: "conditional_on": { "field": "had_previous_infusion", "value": "Yes" }
+- When the document has a table of conditions with Yes/Details columns, use "substance_table" with rows=condition names and columns=["Yes/No","Details"].
+- Informational headings ("What is an iron infusion?") → section_header, followed by info_text with the FULL verbatim content.
+- Always end clinical questionnaires with a date field and signature field.
+- Group logically: patient demographics first, then clinical questions, then information sections, then consent/signature.
+- For fields like Name, Surname, Age, Weight that naturally sit in rows on paper forms, use layout_hint "inline" so they pair up in the digital form.
 `;
+
+const TOOL_SCHEMA = {
+  type: "function",
+  function: {
+    name: "extract_form_schema",
+    description:
+      "Extract the complete form structure from the document into a form_schema array",
+    parameters: {
+      type: "object",
+      properties: {
+        form_name: {
+          type: "string",
+          description: "The name/title of the form",
+        },
+        form_description: {
+          type: "string",
+          description: "A brief description of the form's purpose",
+        },
+        form_category: {
+          type: "string",
+          enum: ["consent", "medical_questionnaire", "administrative", "monitoring"],
+          description: "The category this form belongs to",
+        },
+        form_schema: {
+          type: "array",
+          description: "The complete array of form fields",
+          items: {
+            type: "object",
+            properties: {
+              field_name: { type: "string" },
+              field_type: {
+                type: "string",
+                enum: [
+                  "section_header",
+                  "info_text",
+                  "text",
+                  "textarea",
+                  "number",
+                  "date",
+                  "select",
+                  "radio",
+                  "checkbox",
+                  "checkbox_group",
+                  "signature",
+                  "medication_table",
+                  "vitals_table",
+                  "vitals_row",
+                  "substance_table",
+                  "family_table",
+                ],
+              },
+              label: { type: "string" },
+              content: { type: "string" },
+              required: { type: "boolean" },
+              placeholder: { type: "string" },
+              options: {
+                type: "array",
+                items: { type: "string" },
+              },
+              columns: {
+                type: "array",
+                items: { type: "string" },
+              },
+              rows: {
+                type: "array",
+                items: { type: "string" },
+              },
+              fields: {
+                type: "array",
+                items: { type: "string" },
+              },
+              max_rows: { type: "number" },
+              max_length: { type: "number" },
+              layout_hint: {
+                type: "string",
+                enum: ["inline", "full"],
+                description: "Layout hint: 'inline' to pair with adjacent field side-by-side, 'full' for full width",
+              },
+              conditional_on: {
+                type: "object",
+                properties: {
+                  field: { type: "string", description: "The field_name of the parent field" },
+                  value: { type: "string", description: "The value that must match to show this field" },
+                },
+                description: "Only show this field when the referenced parent field has the specified value",
+              },
+            },
+            required: ["field_name", "field_type", "label"],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ["form_name", "form_description", "form_category", "form_schema"],
+      additionalProperties: false,
+    },
+  },
+};
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -57,7 +164,6 @@ serve(async (req) => {
     const isImage = mimeType?.startsWith("image/");
     const isPdf = mimeType === "application/pdf";
 
-    // Build the user message with the document
     const userContent: any[] = [];
 
     if (isImage || isPdf) {
@@ -69,14 +175,13 @@ serve(async (req) => {
       });
       userContent.push({
         type: "text",
-        text: `This is a clinical/administrative form document (${fileName}). Extract its COMPLETE content into a structured form_schema JSON array. Preserve ALL text verbatim — every paragraph of terms, side effects, contraindications, instructions, etc. Do not summarize or shorten any content.`,
+        text: `This is a clinical/administrative form document (${fileName}). Extract its COMPLETE content into a structured form_schema JSON array. Preserve ALL text verbatim — every paragraph of terms, side effects, contraindications, instructions, etc. Do not summarize or shorten any content. Pay close attention to the LAYOUT of the original document — fields that appear on the same line should use layout_hint "inline".`,
       });
     } else {
-      // For text-based documents, decode and send as text
       const textContent = atob(fileBase64);
       userContent.push({
         type: "text",
-        text: `This is the text content of a clinical/administrative form document (${fileName}). Extract its COMPLETE content into a structured form_schema JSON array. Preserve ALL text verbatim.\n\n---\n${textContent}`,
+        text: `This is the text content of a clinical/administrative form document (${fileName}). Extract its COMPLETE content into a structured form_schema JSON array. Preserve ALL text verbatim. Pay close attention to the LAYOUT — fields on the same line should use layout_hint "inline". Yes/No questions must be radio buttons. Conditional follow-ups must use conditional_on.\n\n---\n${textContent}`,
       });
     }
 
@@ -93,7 +198,7 @@ serve(async (req) => {
           messages: [
             {
               role: "system",
-              content: `You are a clinical form digitisation expert. You receive scanned or digital documents of medical forms and convert them into structured JSON form schemas.
+              content: `You are a clinical form digitisation expert. You receive scanned or digital documents of medical forms and convert them into structured JSON form schemas that produce beautiful, usable digital forms.
 
 ${FIELD_TYPES_REFERENCE}
 
@@ -104,101 +209,7 @@ Return ONLY the form_schema array using the extract_form_schema tool. Do not inc
               content: userContent,
             },
           ],
-          tools: [
-            {
-              type: "function",
-              function: {
-                name: "extract_form_schema",
-                description:
-                  "Extract the complete form structure from the document into a form_schema array",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    form_name: {
-                      type: "string",
-                      description: "The name/title of the form",
-                    },
-                    form_description: {
-                      type: "string",
-                      description: "A brief description of the form's purpose",
-                    },
-                    form_category: {
-                      type: "string",
-                      enum: [
-                        "consent",
-                        "medical_questionnaire",
-                        "administrative",
-                        "monitoring",
-                      ],
-                      description: "The category this form belongs to",
-                    },
-                    form_schema: {
-                      type: "array",
-                      description: "The complete array of form fields",
-                      items: {
-                        type: "object",
-                        properties: {
-                          field_name: { type: "string" },
-                          field_type: {
-                            type: "string",
-                            enum: [
-                              "section_header",
-                              "info_text",
-                              "text",
-                              "textarea",
-                              "number",
-                              "date",
-                              "select",
-                              "radio",
-                              "checkbox",
-                              "checkbox_group",
-                              "signature",
-                              "medication_table",
-                              "vitals_table",
-                              "vitals_row",
-                              "substance_table",
-                              "family_table",
-                            ],
-                          },
-                          label: { type: "string" },
-                          content: { type: "string" },
-                          required: { type: "boolean" },
-                          placeholder: { type: "string" },
-                          options: {
-                            type: "array",
-                            items: { type: "string" },
-                          },
-                          columns: {
-                            type: "array",
-                            items: { type: "string" },
-                          },
-                          rows: {
-                            type: "array",
-                            items: { type: "string" },
-                          },
-                          fields: {
-                            type: "array",
-                            items: { type: "string" },
-                          },
-                          max_rows: { type: "number" },
-                          max_length: { type: "number" },
-                        },
-                        required: ["field_name", "field_type", "label"],
-                        additionalProperties: false,
-                      },
-                    },
-                  },
-                  required: [
-                    "form_name",
-                    "form_description",
-                    "form_category",
-                    "form_schema",
-                  ],
-                  additionalProperties: false,
-                },
-              },
-            },
-          ],
+          tools: [TOOL_SCHEMA],
           tool_choice: {
             type: "function",
             function: { name: "extract_form_schema" },
