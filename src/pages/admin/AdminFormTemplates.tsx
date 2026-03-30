@@ -101,26 +101,36 @@ export default function AdminFormTemplates() {
 
   const handleAIImport = (data: { schema: FormField[]; name: string; description: string; category: FormCategory }) => {
     if (reimportTemplate) {
-      // Re-import: keep existing template metadata, replace schema
       setEditingTemplate(reimportTemplate);
       setImportedSchema(data.schema);
       setImportedName(undefined);
       setImportedDescription(undefined);
       setImportedCategory(undefined);
       setReimportTemplate(null);
+      // Don't persist re-imports (they have an existing template)
     } else {
-      // New import
       setEditingTemplate(null);
       setImportedSchema(data.schema);
       setImportedName(data.name);
       setImportedDescription(data.description);
       setImportedCategory(data.category);
+      // Persist to sessionStorage so navigation doesn't lose it
+      try {
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+          schema: data.schema,
+          name: data.name,
+          description: data.description,
+          category: data.category,
+        }));
+      } catch {}
     }
     setEditorOpen(true);
   };
 
-  return (
-    <div className="space-y-6">
+  const handleEditorClose = () => {
+    setEditorOpen(false);
+    sessionStorage.removeItem(SESSION_KEY);
+  };
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Form Templates</h1>
