@@ -330,7 +330,7 @@ export default function AdminFormTemplates() {
       {/* Editor */}
       <FormTemplateEditor
         open={editorOpen}
-        onClose={() => setEditorOpen(false)}
+        onClose={handleEditorClose}
         template={editingTemplate}
         initialSchema={importedSchema}
         initialName={importedName}
