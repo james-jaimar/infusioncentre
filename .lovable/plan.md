@@ -1,100 +1,34 @@
 
 
-## Plan: Improve AI Form Extraction Quality
+## Plan: Enhance Form Section Styling + Persist Import Data
 
-### Problem
+### Two Issues
 
-The AI extraction prompt lacks UX/layout guidance. It produces a flat list of fields without understanding the document's visual structure — e.g., fields that belong on the same row (Name + Age), Yes/No questions that should be radio buttons, condition checklists that should be structured tables with a "Details" column, and informational sections that need clear visual hierarchy.
+**1. Sections need more visual punch with the brand blue**
+Currently section headers use `bg-primary/[0.06]` which is very subtle. Info text blocks also lack hierarchy. Need stronger blue accents.
 
-### What the Document Contains
+**2. Navigating away loses imported form data**
+After AI extraction, the imported schema is held in React state (`importedSchema`, `importedName`, etc. in `AdminFormTemplates.tsx`). If the user navigates away before saving, all state is lost. Need to persist to `sessionStorage` so it survives navigation.
 
-The Iron Infusion Pre-Questionnaire has a specific layout pattern:
-1. **Header fields in rows**: Name + Age on one line, Current Weight + Ideal Weight on another, Pregnant (Yes/No) + Gestation + Pre-pregnancy weight
-2. **Simple Yes/No questions** with conditional follow-ups (e.g., "Had iron infusion before?" → if yes, "any reactions?" → if yes, describe)
-3. **A conditions checklist table**: 11 medical conditions, each with a Yes checkbox and a Details text field
-4. **Multiple info sections** with headings: What is an iron infusion, Preparation, During, Side Effects, Rare Side Effects, After Discharge
-5. **Signature + Date** at the end
+### Changes
 
-### Solution
+#### A. `src/components/forms/FormRenderer.tsx` — Stronger section styling
 
-Enhance the system prompt in the Edge Function with detailed UX/layout instructions so the AI produces a well-structured, clinical-quality digital form.
+- Section headers: increase `bg-primary/[0.06]` to `bg-primary/[0.08]`, add a 3px left border in primary color (`border-l-[3px] border-l-primary`), make heading text `text-primary`
+- Info text blocks: add a left blue border accent (`border-l-[3px] border-l-primary/40`) to match the clinical design system
+- Section card wrapper: keep current subtle shadow but slightly increase border definition
 
-### Changes to `supabase/functions/extract-form-template/index.ts`
+#### B. `src/pages/admin/AdminFormTemplates.tsx` — Persist import data in sessionStorage
 
-**1. Add layout hints to the field type reference:**
+- After `handleAIImport` sets the state, also write `{ schema, name, description, category }` to `sessionStorage` under a key like `"pendingFormImport"`
+- On component mount (`useEffect`), check `sessionStorage` for pending import data — if found, restore it into state and open the editor
+- Clear the sessionStorage entry when the editor closes (either after save or cancel)
+- This ensures navigating away and back restores the pending import
 
-Add a new `layout_hint` property to the schema that tells the FormRenderer how to position fields. Values: `"inline"` (pair with next field on same row), `"full"` (take full width). This lets the AI express "Name and Age go side by side."
+### Files
 
-**2. Expand the system prompt with UX rules:**
-
-```
-LAYOUT & UX RULES:
-- When the original document places fields on the same line (e.g., "Name: ___ Age: ___"), 
-  add "layout_hint": "inline" to signal they should render side-by-side.
-- Yes/No questions → use "radio" with options ["Yes", "No"], NOT a checkbox.
-- Conditional follow-ups (e.g., "If yes, describe...") → use "textarea" with a 
-  "conditional_on" property referencing the parent field and expected value.
-- When the document has a table of conditions with Yes/Details columns, use a 
-  "checkbox_group" is WRONG. Instead, create individual fields per condition row: 
-  a radio (Yes/No) + a text field for details, grouped under a section_header.
-  OR better: use "substance_table" field type with rows=conditions and columns=["Yes","Details"].
-- Informational headings ("What is an iron infusion?") → section_header, followed by 
-  info_text with the FULL content.
-- Always end clinical questionnaires with a date field and signature field.
-- Group logically: patient demographics first, then clinical questions, then 
-  information sections, then consent/signature.
-```
-
-**3. Add `layout_hint` and `conditional_on` to the tool schema parameters:**
-
-```json
-"layout_hint": { "type": "string", "enum": ["inline", "full"] },
-"conditional_on": { 
-  "type": "object", 
-  "properties": { 
-    "field": { "type": "string" }, 
-    "value": { "type": "string" } 
-  } 
-}
-```
-
-### Changes to `src/components/forms/FormRenderer.tsx`
-
-**4. Support `layout_hint: "inline"` in the field grouping logic:**
-
-Currently `isShortField` pairs consecutive short fields automatically. Enhance this to also respect explicit `layout_hint: "inline"` — when a field has this hint, always pair it with the next field regardless of type.
-
-**5. Support `conditional_on` for conditional visibility:**
-
-Add logic: if a field has `conditional_on: { field: "x", value: "Yes" }`, only render it when `values["x"] === "Yes"`. This creates the "If yes, describe..." UX pattern naturally.
-
-### Changes to `src/components/forms/FormRenderer.tsx` (FormField interface)
-
-**6. Extend the FormField type:**
-
-```typescript
-export interface FormField {
-  // ...existing
-  layout_hint?: "inline" | "full";
-  conditional_on?: { field: string; value: string };
-}
-```
-
-### Files to Change
-
-| Action | File |
-|--------|------|
-| Edit | `supabase/functions/extract-form-template/index.ts` — Enhanced prompt with UX rules, layout_hint, conditional_on in tool schema |
-| Edit | `src/components/forms/FormRenderer.tsx` — Support layout_hint and conditional_on rendering |
-| Deploy | Edge function after edit |
-
-### Result
-
-After these changes, re-uploading the Iron Infusion questionnaire will produce a form where:
-- Name/Age/Weight fields sit side-by-side
-- Yes/No questions are radio buttons, not checkboxes
-- "If yes, describe" fields only appear when "Yes" is selected
-- The conditions table renders as structured rows
-- Info sections have proper headings and full verbatim content
-- Date + Signature appear at the end
+| File | Change |
+|------|--------|
+| `src/components/forms/FormRenderer.tsx` | Stronger blue accents on section headers and info text |
+| `src/pages/admin/AdminFormTemplates.tsx` | Persist/restore import data via sessionStorage |
 
