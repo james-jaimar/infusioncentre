@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useFormTemplates, useDeleteFormTemplate, FormTemplate } from "@/hooks/useFormTemplates";
 import { useAppointmentTypes } from "@/hooks/useAppointmentTypes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
