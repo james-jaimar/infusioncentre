@@ -57,22 +57,30 @@ export default function AdminFormTemplates() {
   const SESSION_KEY = "pendingFormImport";
 
   // Restore pending import from sessionStorage on mount
+  const [restoredFromStorage, setRestoredFromStorage] = useState(false);
   useEffect(() => {
+    if (restoredFromStorage || editorOpen) return;
     try {
       const stored = sessionStorage.getItem(SESSION_KEY);
       if (stored) {
         const data = JSON.parse(stored);
         setImportedSchema(data.schema);
-        setImportedName(data.name);
-        setImportedDescription(data.description);
-        setImportedCategory(data.category);
-        setEditingTemplate(null);
+        if (data.templateId && templates) {
+          const tpl = templates.find((t) => t.id === data.templateId);
+          if (tpl) setEditingTemplate(tpl);
+        } else {
+          setEditingTemplate(null);
+          setImportedName(data.name);
+          setImportedDescription(data.description);
+          setImportedCategory(data.category);
+        }
         setEditorOpen(true);
+        setRestoredFromStorage(true);
       }
     } catch {
       sessionStorage.removeItem(SESSION_KEY);
     }
-  }, []);
+  }, [templates, restoredFromStorage, editorOpen]);
 
   const filtered = templates?.filter((t) => {
     const matchesSearch = t.name.toLowerCase().includes(search.toLowerCase());
@@ -99,6 +107,10 @@ export default function AdminFormTemplates() {
     setEditorOpen(true);
   };
 
+  const persistImport = (payload: Record<string, unknown>) => {
+    try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(payload)); } catch {}
+  };
+
   const handleAIImport = (data: { schema: FormField[]; name: string; description: string; category: FormCategory }) => {
     if (reimportTemplate) {
       setEditingTemplate(reimportTemplate);
@@ -107,22 +119,15 @@ export default function AdminFormTemplates() {
       setImportedDescription(undefined);
       setImportedCategory(undefined);
       setReimportTemplate(null);
-      // Don't persist re-imports (they have an existing template)
+      // Persist re-imports too (use template id so we can restore)
+      persistImport({ schema: data.schema, templateId: reimportTemplate.id });
     } else {
       setEditingTemplate(null);
       setImportedSchema(data.schema);
       setImportedName(data.name);
       setImportedDescription(data.description);
       setImportedCategory(data.category);
-      // Persist to sessionStorage so navigation doesn't lose it
-      try {
-        sessionStorage.setItem(SESSION_KEY, JSON.stringify({
-          schema: data.schema,
-          name: data.name,
-          description: data.description,
-          category: data.category,
-        }));
-      } catch {}
+      persistImport({ schema: data.schema, name: data.name, description: data.description, category: data.category });
     }
     setEditorOpen(true);
   };
