@@ -48,10 +48,19 @@ export default function SubstanceTable({ label, rows, columns, value = {}, onCha
                         </SelectContent>
                       </Select>
                     ) : (
-                      <Input
-                        className="h-9 text-sm min-w-[80px] rounded-lg border-border/40 bg-background"
+                      <textarea
+                        className="w-full min-h-[36px] text-sm min-w-[80px] rounded-lg border border-border/40 bg-background px-3 py-2 resize-none overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         value={value[row]?.[col] || ""}
-                        onChange={(e) => updateCell(row, col, e.target.value)}
+                        rows={1}
+                        onChange={(e) => {
+                          updateCell(row, col, e.target.value);
+                          e.target.style.height = 'auto';
+                          e.target.style.height = e.target.scrollHeight + 'px';
+                        }}
+                        onFocus={(e) => {
+                          e.target.style.height = 'auto';
+                          e.target.style.height = e.target.scrollHeight + 'px';
+                        }}
                       />
                     )}
                   </td>
