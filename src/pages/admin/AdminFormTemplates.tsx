@@ -63,16 +63,22 @@ export default function AdminFormTemplates() {
       if (stored) {
         const data = JSON.parse(stored);
         setImportedSchema(data.schema);
-        setImportedName(data.name);
-        setImportedDescription(data.description);
-        setImportedCategory(data.category);
-        setEditingTemplate(null);
+        if (data.templateId && templates) {
+          // Re-import: find the existing template
+          const tpl = templates.find((t) => t.id === data.templateId);
+          if (tpl) setEditingTemplate(tpl);
+        } else {
+          setEditingTemplate(null);
+          setImportedName(data.name);
+          setImportedDescription(data.description);
+          setImportedCategory(data.category);
+        }
         setEditorOpen(true);
       }
     } catch {
       sessionStorage.removeItem(SESSION_KEY);
     }
-  }, []);
+  }, [templates]);
 
   const filtered = templates?.filter((t) => {
     const matchesSearch = t.name.toLowerCase().includes(search.toLowerCase());
