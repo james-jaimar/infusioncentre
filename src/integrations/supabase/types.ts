@@ -1163,6 +1163,7 @@ export type Database = {
           is_active: boolean
           name: string
           required_for_treatment_types: string[] | null
+          slug: string | null
           tenant_id: string
           updated_at: string
           version: number
@@ -1178,6 +1179,7 @@ export type Database = {
           is_active?: boolean
           name: string
           required_for_treatment_types?: string[] | null
+          slug?: string | null
           tenant_id?: string
           updated_at?: string
           version?: number
@@ -1193,6 +1195,7 @@ export type Database = {
           is_active?: boolean
           name?: string
           required_for_treatment_types?: string[] | null
+          slug?: string | null
           tenant_id?: string
           updated_at?: string
           version?: number
