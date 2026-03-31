@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { CheckCircle, Loader2, AlertCircle } from "lucide-react";
+import { CheckCircle, Loader2, AlertCircle, Syringe } from "lucide-react";
 
 export default function PublicForm() {
   const { slug } = useParams<{ slug: string }>();
@@ -99,7 +99,7 @@ export default function PublicForm() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[hsl(var(--primary)/0.05)] to-background flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -107,7 +107,7 @@ export default function PublicForm() {
 
   if (error || !template) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[hsl(var(--primary)/0.05)] to-background flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background flex items-center justify-center p-4">
         <Card className="max-w-md w-full">
           <CardContent className="p-8 text-center space-y-4">
             <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
@@ -123,7 +123,7 @@ export default function PublicForm() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[hsl(var(--primary)/0.05)] to-background flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background flex items-center justify-center p-4">
         <Card className="max-w-md w-full">
           <CardContent className="p-8 text-center space-y-4">
             <CheckCircle className="h-14 w-14 text-green-500 mx-auto" />
@@ -141,16 +141,21 @@ export default function PublicForm() {
   const schema = (template.form_schema as unknown as FormField[]) || [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[hsl(var(--primary)/0.05)] to-background">
+    <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background">
       {/* Header */}
-      <header className="bg-primary text-primary-foreground py-5 px-4 shadow-md">
-        <div className="max-w-3xl mx-auto">
-          <h1 className="text-xl font-bold">D.I.S Infusion Centre</h1>
-          <p className="text-sm opacity-90 mt-0.5">Patient Form</p>
+      <header className="bg-primary text-primary-foreground py-5 px-4 sm:px-6 lg:px-8 shadow-lg">
+        <div className="max-w-5xl mx-auto flex items-center gap-3">
+          <div className="flex items-center justify-center h-10 w-10 rounded-full bg-primary-foreground/15">
+            <Syringe className="h-5 w-5" />
+          </div>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">D.I.S Infusion Centre</h1>
+            <p className="text-sm opacity-80 mt-0.5">Patient Form</p>
+          </div>
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {/* Form Title */}
         <div>
           <h2 className="text-2xl font-semibold text-foreground">{template.name}</h2>
