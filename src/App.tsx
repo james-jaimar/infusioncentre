@@ -86,7 +86,6 @@ import PatientDashboard from "./pages/patient/PatientDashboard";
 import InviteLanding from "./pages/InviteLanding";
 import PendingApproval from "./pages/PendingApproval";
 import PublicForm from "./pages/PublicForm";
-import PendingApproval from "./pages/PendingApproval";
 
 const queryClient = new QueryClient();
 
