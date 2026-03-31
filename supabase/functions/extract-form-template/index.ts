@@ -185,7 +185,12 @@ serve(async (req) => {
       });
     }
 
-    const response = await fetch(
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 90_000);
+
+    let response: Response;
+    try {
+    response = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
       {
         method: "POST",
@@ -193,6 +198,7 @@ serve(async (req) => {
           Authorization: `Bearer ${LOVABLE_API_KEY}`,
           "Content-Type": "application/json",
         },
+        signal: controller.signal,
         body: JSON.stringify({
           model: "google/gemini-2.5-pro",
           messages: [
@@ -217,6 +223,9 @@ Return ONLY the form_schema array using the extract_form_schema tool. Do not inc
         }),
       }
     );
+    } finally {
+      clearTimeout(timeout);
+    }
 
     if (!response.ok) {
       if (response.status === 429) {
@@ -266,10 +275,11 @@ Return ONLY the form_schema array using the extract_form_schema tool. Do not inc
     });
   } catch (e) {
     console.error("extract-form-template error:", e);
+    const message = e instanceof Error
+      ? (e.name === "AbortError" ? "The AI took too long to process this document. Please try again." : e.message)
+      : "Unknown error";
     return new Response(
-      JSON.stringify({
-        error: e instanceof Error ? e.message : "Unknown error",
-      }),
+      JSON.stringify({ error: message }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
