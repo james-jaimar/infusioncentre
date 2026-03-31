@@ -236,14 +236,30 @@ Return ONLY the form_schema array using the extract_form_schema tool. Do not inc
       throw new Error(`AI gateway returned ${response.status}`);
     }
 
-    const result = await response.json();
+    const responseText = await response.text();
+    console.log("AI response length:", responseText.length);
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (parseErr) {
+      console.error("Failed to parse AI response. Length:", responseText.length, "First 500 chars:", responseText.substring(0, 500));
+      throw new Error("AI returned an invalid response. The document may be too complex — try a simpler or shorter PDF.");
+    }
+
     const toolCall = result.choices?.[0]?.message?.tool_calls?.[0];
 
     if (!toolCall?.function?.arguments) {
       throw new Error("AI did not return structured output");
     }
 
-    const extracted = JSON.parse(toolCall.function.arguments);
+    const toolArgsRaw = toolCall.function.arguments;
+    let extracted;
+    try {
+      extracted = JSON.parse(toolArgsRaw);
+    } catch (parseErr) {
+      console.error("Failed to parse tool arguments. Length:", toolArgsRaw.length, "First 500 chars:", toolArgsRaw.substring(0, 500));
+      throw new Error("AI returned truncated form data. Try uploading a simpler or shorter document.");
+    }
 
     return new Response(JSON.stringify(extracted), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
