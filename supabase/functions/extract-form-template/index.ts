@@ -29,9 +29,9 @@ Available field_type values and their properties:
 CRITICAL RULES:
 - Every field MUST have a unique "field_name" (use snake_case, e.g. "patient_name", "consent_checkbox").
 - Preserve ALL text content from the document in info_text blocks. Do NOT summarize, truncate, or abbreviate clinical content.
-- Use section_header to group related fields.
-- For consent forms: include all terms/conditions as info_text blocks, then a checkbox for acknowledgment, then signature fields.
-- For questionnaires: use appropriate input types (text, checkbox, radio, select) based on the expected answer format.
+- NEVER add fields, sections, or content that do not exist in the source document. Extract ONLY what is visually present on the page.
+- Preserve the exact order of sections and fields as they appear in the source document. Do NOT reorder.
+- Do NOT add signature fields, date fields, acknowledgment checkboxes, or any other fields unless they explicitly appear in the original document.
 
 LAYOUT & UX RULES:
 - When the original document places fields on the same line (e.g., "Name: ___ Age: ___"), add "layout_hint": "inline" to BOTH fields so they render side-by-side.
@@ -39,8 +39,6 @@ LAYOUT & UX RULES:
 - Conditional follow-ups (e.g., "If yes, describe..." or "If yes, please provide details") → use "textarea" or "text" with a "conditional_on" property referencing the parent field_name and expected value. Example: "conditional_on": { "field": "had_previous_infusion", "value": "Yes" }
 - When the document has a table of conditions with Yes/Details columns, use "substance_table" with rows=condition names and columns=["Yes/No","Details"].
 - Informational headings ("What is an iron infusion?") → section_header, followed by info_text with the FULL verbatim content.
-- Always end clinical questionnaires with a date field and signature field.
-- Group logically: patient demographics first, then clinical questions, then information sections, then consent/signature.
 - For fields like Name, Surname, Age, Weight that naturally sit in rows on paper forms, use layout_hint "inline" so they pair up in the digital form.
 `;
 
