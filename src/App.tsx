@@ -85,6 +85,7 @@ import PatientLayout from "./components/layout/PatientLayout";
 import PatientDashboard from "./pages/patient/PatientDashboard";
 import InviteLanding from "./pages/InviteLanding";
 import PendingApproval from "./pages/PendingApproval";
+import PublicForm from "./pages/PublicForm";
 
 const queryClient = new QueryClient();
 
@@ -108,6 +109,9 @@ const App = () => (
 
             {/* Invite route (public) */}
             <Route path="/invite/:token" element={<InviteLanding />} />
+
+            {/* Public forms (no auth required) */}
+            <Route path="/forms/:slug" element={<PublicForm />} />
 
             {/* Auth routes */}
             <Route path="/login" element={<Login />} />
