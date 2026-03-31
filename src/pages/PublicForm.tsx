@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { CheckCircle, Loader2, AlertCircle, Syringe } from "lucide-react";
+import { CheckCircle, Loader2, AlertCircle } from "lucide-react";
+import logo from "@/assets/logo.png";
 
 export default function PublicForm() {
   const { slug } = useParams<{ slug: string }>();
@@ -129,7 +130,7 @@ export default function PublicForm() {
             <CheckCircle className="h-14 w-14 text-green-500 mx-auto" />
             <h1 className="text-xl font-semibold">Thank You!</h1>
             <p className="text-muted-foreground text-sm">
-              Your form has been submitted successfully. The D.I.S Infusion Centre team will review your information.
+              Your form has been submitted successfully. The Johannesburg Infusion Centre team will review your information.
             </p>
             <p className="text-xs text-muted-foreground">You may now close this page.</p>
           </CardContent>
@@ -143,19 +144,17 @@ export default function PublicForm() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background">
       {/* Header */}
-      <header className="bg-primary text-primary-foreground py-5 px-4 sm:px-6 lg:px-8 shadow-lg">
-        <div className="max-w-5xl mx-auto flex items-center gap-3">
-          <div className="flex items-center justify-center h-10 w-10 rounded-full bg-primary-foreground/15">
-            <Syringe className="h-5 w-5" />
-          </div>
+      <header className="bg-primary text-primary-foreground py-4 px-4 sm:px-6 lg:px-8 shadow-lg">
+        <div className="w-[90%] max-w-[1600px] mx-auto flex items-center gap-4">
+          <img src={logo} alt="Johannesburg Infusion Centre" className="h-12 w-auto" />
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">D.I.S Infusion Centre</h1>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Johannesburg Infusion Centre</h1>
             <p className="text-sm opacity-80 mt-0.5">Patient Form</p>
           </div>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <main className="w-[90%] max-w-[1600px] mx-auto py-8 space-y-6">
         {/* Form Title */}
         <div>
           <h2 className="text-2xl font-semibold text-foreground">{template.name}</h2>
