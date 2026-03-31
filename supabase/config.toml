@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.send-doctor-invite]
 verify_jwt = false
+
+[functions.submit-public-form]
+verify_jwt = false
