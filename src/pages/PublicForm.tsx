@@ -138,7 +138,7 @@ export default function PublicForm() {
     );
   }
 
-  const schema = (template.form_schema as FormField[]) || [];
+  const schema = (template.form_schema as unknown as FormField[]) || [];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[hsl(var(--primary)/0.05)] to-background">
