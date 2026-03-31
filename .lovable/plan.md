@@ -1,40 +1,33 @@
 
 
-## Plan: Fix Extract Form Template Edge Function Error
+## Plan: Fix Intermittent Edge Function Timeout/CORS Failures
 
-### Problem
+### Root Cause
 
-The edge function `extract-form-template` is crashing with `SyntaxError: Unexpected end of JSON input`. This happens when parsing the AI gateway response — for large/complex PDFs, the response body can be truncated or incomplete, causing `response.json()` to fail.
+The `extract-form-template` edge function occasionally times out or crashes when processing large PDFs through the AI gateway. When this happens, Supabase returns a raw error response without the function's CORS headers, causing the browser to report a CORS error. The actual problem is not CORS configuration — it's the function failing to respond.
 
-### Fix
+### Fixes
 
-**File: `supabase/functions/extract-form-template/index.ts`**
+**1. Add a fetch timeout to the AI gateway call** (`extract-form-template/index.ts`)
 
-1. Replace `response.json()` with `response.text()` first, then `JSON.parse()` wrapped in a try/catch — this gives a readable error message instead of a cryptic crash
-2. Add the same safety for `JSON.parse(toolCall.function.arguments)` since large tool call arguments can also be truncated
-3. Add a timeout and response size guard log so we can diagnose future issues
+The AI gateway call for a 187KB PDF can take 30-60+ seconds. Add an `AbortController` with a generous timeout (90s) so the function fails gracefully with a proper error + CORS headers instead of Supabase killing it silently.
 
-### Specific Changes
+**2. Add retry logic on the client side** (`AIImportDialog.tsx`)
 
-Around line 239:
-```typescript
-// Before:
-const result = await response.json();
+If the function call fails with a network error (FunctionsFetchError), retry once automatically before showing an error. This handles transient gateway timeouts.
 
-// After:
-const responseText = await response.text();
-let result;
-try {
-  result = JSON.parse(responseText);
-} catch (parseErr) {
-  console.error("Failed to parse AI response. Length:", responseText.length, "First 500 chars:", responseText.substring(0, 500));
-  throw new Error("AI returned an invalid response. The document may be too complex — try a simpler or shorter PDF.");
-}
-```
+**3. Better error messaging**
 
-Around line 246, same pattern for the tool call arguments parse.
+Show the user a clearer message like "The AI is taking too long to process this document. Please try again." instead of "Failed to send a request to the Edge Function."
 
-### Deployment
+### Files
 
-Redeploy the `extract-form-template` edge function after the fix.
+| File | Change |
+|------|--------|
+| `supabase/functions/extract-form-template/index.ts` | Add AbortController timeout (90s) to the AI gateway fetch; wrap outer handler to guarantee CORS headers on all error paths |
+| `src/components/forms/AIImportDialog.tsx` | Add single retry on network failure; improve error message for timeout/network errors |
+
+### Technical Detail
+
+The edge function will wrap the entire handler in a top-level try/catch that always returns CORS headers, and use `AbortSignal.timeout(90000)` on the AI gateway fetch so it aborts cleanly rather than letting Supabase kill the function without CORS.
 
