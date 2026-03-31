@@ -123,7 +123,7 @@ export default function PublicForm() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[hsl(var(--primary)/0.05)] to-background flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background flex items-center justify-center p-4">
         <Card className="max-w-md w-full">
           <CardContent className="p-8 text-center space-y-4">
             <CheckCircle className="h-14 w-14 text-green-500 mx-auto" />
