@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { CheckCircle, Loader2, AlertCircle, Syringe } from "lucide-react";
+import { CheckCircle, Loader2, AlertCircle } from "lucide-react";
+import logo from "@/assets/logo.png";
 
 export default function PublicForm() {
   const { slug } = useParams<{ slug: string }>();
