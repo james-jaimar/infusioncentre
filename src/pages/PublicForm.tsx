@@ -54,7 +54,7 @@ export default function PublicForm() {
     }
 
     // Check required form fields
-    const schema = (template?.form_schema as FormField[]) || [];
+    const schema = (template?.form_schema as unknown as FormField[]) || [];
     const missingRequired = schema.filter(
       (f) => f.required && f.field_type !== "section_header" && f.field_type !== "info_text"
     ).filter((f) => {
