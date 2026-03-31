@@ -130,7 +130,7 @@ export default function PublicForm() {
             <CheckCircle className="h-14 w-14 text-green-500 mx-auto" />
             <h1 className="text-xl font-semibold">Thank You!</h1>
             <p className="text-muted-foreground text-sm">
-              Your form has been submitted successfully. The D.I.S Infusion Centre team will review your information.
+              Your form has been submitted successfully. The Johannesburg Infusion Centre team will review your information.
             </p>
             <p className="text-xs text-muted-foreground">You may now close this page.</p>
           </CardContent>
