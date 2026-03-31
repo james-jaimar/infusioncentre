@@ -144,13 +144,11 @@ export default function PublicForm() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background">
       {/* Header */}
-      <header className="bg-primary text-primary-foreground py-5 px-4 sm:px-6 lg:px-8 shadow-lg">
-        <div className="max-w-5xl mx-auto flex items-center gap-3">
-          <div className="flex items-center justify-center h-10 w-10 rounded-full bg-primary-foreground/15">
-            <Syringe className="h-5 w-5" />
-          </div>
+      <header className="bg-primary text-primary-foreground py-4 px-4 sm:px-6 lg:px-8 shadow-lg">
+        <div className="w-[90%] max-w-[1600px] mx-auto flex items-center gap-4">
+          <img src={logo} alt="Johannesburg Infusion Centre" className="h-12 w-auto" />
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">D.I.S Infusion Centre</h1>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Johannesburg Infusion Centre</h1>
             <p className="text-sm opacity-80 mt-0.5">Patient Form</p>
           </div>
         </div>
