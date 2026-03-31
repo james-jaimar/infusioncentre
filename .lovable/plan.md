@@ -1,24 +1,40 @@
 
 
-## Plan: Fix Public Form — Correct Branding + Fully Responsive Layout
+## Plan: Make Form Extraction Strictly Verbatim
 
-### Problems
+### Problem
 
-1. **Wrong name** — Header says "D.I.S Infusion Centre" instead of "Johannesburg Infusion Centre"
-2. **No logo** — Uses a Lucide icon instead of the actual logo at `src/assets/logo.png`
-3. **Too narrow** — `max-w-5xl` (1024px) still wastes space; should use ~90% of viewport
+The AI extraction prompt contains instructions that encourage the model to **add content not present in the original document**:
+- "Group logically: patient demographics first, then clinical questions..." (reorders content)
+- "Always end clinical questionnaires with a date field and signature field" (adds fields)
+- "For consent forms: include all terms/conditions as info_text blocks, then a checkbox for acknowledgment, then signature fields" (adds fields)
+- The general tone encourages "beautiful, usable digital forms" which the AI interprets as license to embellish
 
-### Changes
+### Fix
 
-**File: `src/pages/PublicForm.tsx`**
+**File: `supabase/functions/extract-form-template/index.ts`**
 
-1. **Import the real logo** — `import logo from "@/assets/logo.png"` and display it in the header, same as the main site Header component does
-2. **Fix clinic name** — Change "D.I.S Infusion Centre" to "Johannesburg Infusion Centre"
-3. **Remove fixed max-width** — Replace `max-w-5xl` with `w-[90%] max-w-[1600px]` on the header inner div and main content area so it uses ~90% of viewport on any screen size, capping at 1600px for ultra-wide monitors
-4. **Remove the Syringe icon** — Replace with the actual `<img src={logo}>` element
-5. **Responsive form grid** — The FormRenderer already uses `sm:grid-cols-2` which will naturally fill the wider container. The identity fields grid stays the same pattern.
+Update the system prompt and field type reference to enforce strict verbatim extraction:
 
-### Technical Detail
+1. **Remove all "add if missing" instructions** — delete the rules about always ending with date/signature, adding acknowledgment checkboxes, and reordering sections
+2. **Add explicit prohibition** — "Do NOT add any fields, sections, text, or content that is not explicitly present in the source document. Do NOT reorder sections. Maintain the exact order and structure of the original document."
+3. **Change system role description** — from "produce beautiful, usable digital forms" to "produce exact digital replicas of the source document"
+4. **Update user prompt text** — reinforce "Extract ONLY what is in the document. Do not add, infer, or supplement any fields or content."
 
-Single file change: `src/pages/PublicForm.tsx`. Remove the `Syringe` import, add the logo import, update all container widths and the header text. Everything else (FormRenderer, submit logic, DB save) stays unchanged.
+### Specific Prompt Changes
+
+In `FIELD_TYPES_REFERENCE` critical rules section, replace:
+- "For consent forms: include all terms/conditions..." → remove
+- "Always end clinical questionnaires with a date field and signature field" → remove  
+- "Group logically: patient demographics first..." → "Preserve the exact order of sections and fields as they appear in the source document. Do NOT reorder."
+
+Add new rule:
+- "NEVER add fields, sections, or content that do not exist in the source document. Extract ONLY what is visually present on the page."
+
+In system prompt, change:
+- "convert them into structured JSON form schemas that produce beautiful, usable digital forms" → "convert them into structured JSON form schemas that are exact digital replicas of the source document"
+
+### Deployment
+
+Redeploy the `extract-form-template` edge function after changes. The user will need to re-import the PDF to get a clean extraction.
 
