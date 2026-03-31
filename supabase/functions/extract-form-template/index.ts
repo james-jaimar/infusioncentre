@@ -29,9 +29,9 @@ Available field_type values and their properties:
 CRITICAL RULES:
 - Every field MUST have a unique "field_name" (use snake_case, e.g. "patient_name", "consent_checkbox").
 - Preserve ALL text content from the document in info_text blocks. Do NOT summarize, truncate, or abbreviate clinical content.
-- Use section_header to group related fields.
-- For consent forms: include all terms/conditions as info_text blocks, then a checkbox for acknowledgment, then signature fields.
-- For questionnaires: use appropriate input types (text, checkbox, radio, select) based on the expected answer format.
+- NEVER add fields, sections, or content that do not exist in the source document. Extract ONLY what is visually present on the page.
+- Preserve the exact order of sections and fields as they appear in the source document. Do NOT reorder.
+- Do NOT add signature fields, date fields, acknowledgment checkboxes, or any other fields unless they explicitly appear in the original document.
 
 LAYOUT & UX RULES:
 - When the original document places fields on the same line (e.g., "Name: ___ Age: ___"), add "layout_hint": "inline" to BOTH fields so they render side-by-side.
@@ -39,8 +39,6 @@ LAYOUT & UX RULES:
 - Conditional follow-ups (e.g., "If yes, describe..." or "If yes, please provide details") → use "textarea" or "text" with a "conditional_on" property referencing the parent field_name and expected value. Example: "conditional_on": { "field": "had_previous_infusion", "value": "Yes" }
 - When the document has a table of conditions with Yes/Details columns, use "substance_table" with rows=condition names and columns=["Yes/No","Details"].
 - Informational headings ("What is an iron infusion?") → section_header, followed by info_text with the FULL verbatim content.
-- Always end clinical questionnaires with a date field and signature field.
-- Group logically: patient demographics first, then clinical questions, then information sections, then consent/signature.
 - For fields like Name, Surname, Age, Weight that naturally sit in rows on paper forms, use layout_hint "inline" so they pair up in the digital form.
 `;
 
@@ -175,13 +173,13 @@ serve(async (req) => {
       });
       userContent.push({
         type: "text",
-        text: `This is a clinical/administrative form document (${fileName}). Extract its COMPLETE content into a structured form_schema JSON array. Preserve ALL text verbatim — every paragraph of terms, side effects, contraindications, instructions, etc. Do not summarize or shorten any content. Pay close attention to the LAYOUT of the original document — fields that appear on the same line should use layout_hint "inline".`,
+        text: `This is a clinical/administrative form document (${fileName}). Extract its COMPLETE content into a structured form_schema JSON array. Extract ONLY what is in the document — do not add, infer, or supplement any fields or content. Preserve ALL text verbatim. Maintain the exact order of the original document. Pay close attention to the LAYOUT — fields that appear on the same line should use layout_hint "inline".`,
       });
     } else {
       const textContent = atob(fileBase64);
       userContent.push({
         type: "text",
-        text: `This is the text content of a clinical/administrative form document (${fileName}). Extract its COMPLETE content into a structured form_schema JSON array. Preserve ALL text verbatim. Pay close attention to the LAYOUT — fields on the same line should use layout_hint "inline". Yes/No questions must be radio buttons. Conditional follow-ups must use conditional_on.\n\n---\n${textContent}`,
+        text: `This is the text content of a clinical/administrative form document (${fileName}). Extract its COMPLETE content into a structured form_schema JSON array. Extract ONLY what is in the document — do not add, infer, or supplement any fields or content. Preserve ALL text verbatim. Maintain the exact order. Fields on the same line should use layout_hint "inline". Yes/No questions must be radio buttons. Conditional follow-ups must use conditional_on.\n\n---\n${textContent}`,
       });
     }
 
@@ -204,7 +202,13 @@ serve(async (req) => {
           messages: [
             {
               role: "system",
-              content: `You are a clinical form digitisation expert. You receive scanned or digital documents of medical forms and convert them into structured JSON form schemas that produce beautiful, usable digital forms.
+              content: `You are a clinical form digitisation expert. You receive scanned or digital documents of medical forms and convert them into structured JSON form schemas that are exact digital replicas of the source document.
+
+STRICT RULES:
+- Extract ONLY what is explicitly present in the source document.
+- Do NOT add, infer, or supplement any fields, sections, or content.
+- Do NOT reorder sections or fields. Maintain the exact document order.
+- Do NOT add signature fields, date fields, or checkboxes that are not in the original.
 
 ${FIELD_TYPES_REFERENCE}
 
