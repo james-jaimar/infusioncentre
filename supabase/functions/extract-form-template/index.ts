@@ -173,7 +173,7 @@ serve(async (req) => {
       });
       userContent.push({
         type: "text",
-        text: `This is a clinical/administrative form document (${fileName}). Extract its COMPLETE content into a structured form_schema JSON array. Preserve ALL text verbatim — every paragraph of terms, side effects, contraindications, instructions, etc. Do not summarize or shorten any content. Pay close attention to the LAYOUT of the original document — fields that appear on the same line should use layout_hint "inline".`,
+        text: `This is a clinical/administrative form document (${fileName}). Extract its COMPLETE content into a structured form_schema JSON array. Extract ONLY what is in the document — do not add, infer, or supplement any fields or content. Preserve ALL text verbatim. Maintain the exact order of the original document. Pay close attention to the LAYOUT — fields that appear on the same line should use layout_hint "inline".`,
       });
     } else {
       const textContent = atob(fileBase64);
