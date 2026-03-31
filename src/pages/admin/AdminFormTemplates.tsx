@@ -248,6 +248,20 @@ export default function AdminFormTemplates() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
+                          {t.slug && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                const url = `${window.location.origin}/forms/${t.slug}`;
+                                navigator.clipboard.writeText(url);
+                                toast({ title: "Public form link copied!", description: url });
+                              }}
+                              title="Copy public form link"
+                            >
+                              <Link2 className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button variant="ghost" size="sm" onClick={() => openEditor(t)} title="Edit">
                             <Pencil className="h-4 w-4" />
                           </Button>
