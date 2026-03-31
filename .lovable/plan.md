@@ -1,33 +1,27 @@
 
 
-## Plan: Fix Intermittent Edge Function Timeout/CORS Failures
+## Plan: Fix Public Form Responsiveness + Branding
 
-### Root Cause
+### Problems
 
-The `extract-form-template` edge function occasionally times out or crashes when processing large PDFs through the AI gateway. When this happens, Supabase returns a raw error response without the function's CORS headers, causing the browser to report a CORS error. The actual problem is not CORS configuration — it's the function failing to respond.
+1. **Layout too narrow** — `max-w-3xl` (768px) constrains the header, identity card, and form content, wasting most of the screen on laptops/desktops
+2. **Branding is generic** — Header just says "D.I.S Infusion Centre" in plain text with no logo or proper brand styling
 
-### Fixes
+### Changes
 
-**1. Add a fetch timeout to the AI gateway call** (`extract-form-template/index.ts`)
+**File: `src/pages/PublicForm.tsx`**
 
-The AI gateway call for a 187KB PDF can take 30-60+ seconds. Add an `AbortController` with a generous timeout (90s) so the function fails gracefully with a proper error + CORS headers instead of Supabase killing it silently.
+1. **Widen layout** — Change `max-w-3xl` to `max-w-5xl` (1024px) on the header inner div, main content area, and all contained cards. This fills ~80% of a laptop screen while still being comfortable on mobile.
 
-**2. Add retry logic on the client side** (`AIImportDialog.tsx`)
+2. **Responsive header** — Make the header full-width with proper padding that scales: `px-4 sm:px-6 lg:px-8`. Use the brand navy (`bg-primary`) already in place but add a subtle bottom gradient or heavier shadow for depth.
 
-If the function call fails with a network error (FunctionsFetchError), retry once automatically before showing an error. This handles transient gateway timeouts.
+3. **Brand polish** — Update the header to use the clinic's proper name styling with slightly larger text on desktop (`text-xl sm:text-2xl`), and add a subtle clinic icon or medical cross from Lucide if no logo asset is available.
 
-**3. Better error messaging**
+4. **Form content width** — The FormRenderer already handles 2-column grids via `sm:grid-cols-2`. With the wider container, fields will have more breathing room automatically.
 
-Show the user a clearer message like "The AI is taking too long to process this document. Please try again." instead of "Failed to send a request to the Edge Function."
-
-### Files
-
-| File | Change |
-|------|--------|
-| `supabase/functions/extract-form-template/index.ts` | Add AbortController timeout (90s) to the AI gateway fetch; wrap outer handler to guarantee CORS headers on all error paths |
-| `src/components/forms/AIImportDialog.tsx` | Add single retry on network failure; improve error message for timeout/network errors |
+5. **Identity card** — Widen to match the new container. The existing `grid grid-cols-1 sm:grid-cols-2` layout will naturally benefit.
 
 ### Technical Detail
 
-The edge function will wrap the entire handler in a top-level try/catch that always returns CORS headers, and use `AbortSignal.timeout(90000)` on the AI gateway fetch so it aborts cleanly rather than letting Supabase kill the function without CORS.
+Only one file changes: `src/pages/PublicForm.tsx`. All `max-w-3xl` references become `max-w-5xl`. Padding adjusts responsively. No FormRenderer changes needed — it already responds to available width.
 
