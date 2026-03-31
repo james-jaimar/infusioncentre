@@ -179,7 +179,7 @@ serve(async (req) => {
       const textContent = atob(fileBase64);
       userContent.push({
         type: "text",
-        text: `This is the text content of a clinical/administrative form document (${fileName}). Extract its COMPLETE content into a structured form_schema JSON array. Preserve ALL text verbatim. Pay close attention to the LAYOUT — fields on the same line should use layout_hint "inline". Yes/No questions must be radio buttons. Conditional follow-ups must use conditional_on.\n\n---\n${textContent}`,
+        text: `This is the text content of a clinical/administrative form document (${fileName}). Extract its COMPLETE content into a structured form_schema JSON array. Extract ONLY what is in the document — do not add, infer, or supplement any fields or content. Preserve ALL text verbatim. Maintain the exact order. Fields on the same line should use layout_hint "inline". Yes/No questions must be radio buttons. Conditional follow-ups must use conditional_on.\n\n---\n${textContent}`,
       });
     }
 
