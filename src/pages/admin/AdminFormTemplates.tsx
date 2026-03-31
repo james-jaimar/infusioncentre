@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Search, Eye, Trash2, Pencil, Upload } from "lucide-react";
+import { Plus, Search, Eye, Trash2, Pencil, Upload, Link2, Check } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import FullScreenFormDialog from "@/components/forms/FullScreenFormDialog";
 import FormTemplateEditor from "@/components/forms/FormTemplateEditor";
