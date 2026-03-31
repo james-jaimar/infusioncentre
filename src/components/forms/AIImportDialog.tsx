@@ -49,34 +49,49 @@ export default function AIImportDialog({ open, onClose, onImported }: AIImportDi
     setSelectedFile(file);
   };
 
+  const invokeExtract = async (file: File) => {
+    const buffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    const base64 = btoa(binary);
+
+    const { data, error: fnError } = await supabase.functions.invoke(
+      "extract-form-template",
+      {
+        body: {
+          fileBase64: base64,
+          fileName: file.name,
+          mimeType: file.type,
+        },
+      }
+    );
+
+    if (fnError) throw fnError;
+    if (data?.error) throw new Error(data.error);
+    return data;
+  };
+
   const handleImport = async () => {
     if (!selectedFile) return;
     setIsProcessing(true);
     setError(null);
 
     try {
-      // Read file as base64
-      const buffer = await selectedFile.arrayBuffer();
-      const bytes = new Uint8Array(buffer);
-      let binary = "";
-      for (let i = 0; i < bytes.length; i++) {
-        binary += String.fromCharCode(bytes[i]);
-      }
-      const base64 = btoa(binary);
-
-      const { data, error: fnError } = await supabase.functions.invoke(
-        "extract-form-template",
-        {
-          body: {
-            fileBase64: base64,
-            fileName: selectedFile.name,
-            mimeType: selectedFile.type,
-          },
+      let data;
+      try {
+        data = await invokeExtract(selectedFile);
+      } catch (firstErr: any) {
+        // Retry once on network/fetch errors
+        if (firstErr?.name === "FunctionsFetchError" || firstErr?.message?.includes("Failed to send")) {
+          console.warn("First attempt failed, retrying...", firstErr);
+          data = await invokeExtract(selectedFile);
+        } else {
+          throw firstErr;
         }
-      );
-
-      if (fnError) throw fnError;
-      if (data?.error) throw new Error(data.error);
+      }
 
       if (!data?.form_schema || !Array.isArray(data.form_schema)) {
         throw new Error("AI did not return a valid form structure. Please try again.");
@@ -95,7 +110,12 @@ export default function AIImportDialog({ open, onClose, onImported }: AIImportDi
       onClose();
     } catch (e: any) {
       console.error("AI import error:", e);
-      setError(e.message || "Failed to process the document. Please try again.");
+      const msg = e?.message || "";
+      if (msg.includes("Failed to send") || e?.name === "FunctionsFetchError") {
+        setError("Connection to the AI service failed. This can happen with large documents — please try again.");
+      } else {
+        setError(msg || "Failed to process the document. Please try again.");
+      }
     } finally {
       setIsProcessing(false);
     }
