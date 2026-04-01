@@ -148,6 +148,45 @@ const TOOL_SCHEMA = {
   },
 };
 
+function consolidateDateFields(extracted: any) {
+  const fields = extracted?.form_schema;
+  if (!Array.isArray(fields)) return;
+
+  const datePattern = /\b(date|dated|effective.date|agreement.date|date.signed)\b/i;
+  const dateIndices: number[] = [];
+
+  fields.forEach((f: any, i: number) => {
+    if (f.field_type === "date" || datePattern.test(`${f.field_name} ${f.label}`)) {
+      dateIndices.push(i);
+    }
+  });
+
+  if (dateIndices.length <= 1) return;
+
+  const keepIdx = dateIndices[dateIndices.length - 1];
+  const dropNames = new Set<string>();
+
+  dateIndices.forEach((idx) => {
+    if (idx !== keepIdx) dropNames.add(fields[idx].field_name);
+  });
+
+  fields[keepIdx].field_name = "date";
+  fields[keepIdx].label = "Date";
+  if (fields[keepIdx].layout_hint === "inline") delete fields[keepIdx].layout_hint;
+
+  extracted.form_schema = fields.filter((_: any, i: number) =>
+    !dateIndices.includes(i) || i === keepIdx
+  );
+
+  extracted.form_schema.forEach((f: any) => {
+    if (f.field_type === "info_text" && f.content) {
+      for (const name of dropNames) {
+        f.content = f.content.replaceAll(`{{${name}}}`, "{{date}}");
+      }
+    }
+  });
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
