@@ -604,27 +604,34 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
           </div>
         </div>
 
-        {sections.map((section, idx) => (
-          <div
-            key={idx}
-            id={`form-section-${idx}`}
-            className="scroll-mt-6"
-          >
-            {/* Section card */}
-            <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
-              {section.title && (
-              <div className="px-5 sm:px-7 py-4 bg-primary/[0.08] border-b border-primary/20 border-l-[3px] border-l-primary">
-                  <h3 className="text-base font-semibold text-primary tracking-tight" style={{ fontSize: '16px', lineHeight: '1.4' }}>
-                    {section.title}
-                  </h3>
+        {sections.map((section, idx) => {
+          const compact = isCompactCheckboxSection(section.fields);
+          return (
+            <div
+              key={idx}
+              id={`form-section-${idx}`}
+              className="scroll-mt-6"
+            >
+              <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+                {section.title && (
+                  <div className="px-5 sm:px-7 py-4 bg-primary/[0.08] border-b border-primary/20 border-l-[3px] border-l-primary">
+                    <h3 className="text-base font-semibold text-primary tracking-tight" style={{ fontSize: '16px', lineHeight: '1.4' }}>
+                      {section.title}
+                    </h3>
+                  </div>
+                )}
+                <div className={cn(
+                  "space-y-5",
+                  compact
+                    ? "px-4 sm:px-5 py-3 sm:py-4"
+                    : "px-5 sm:px-7 py-5 sm:py-6"
+                )}>
+                  {renderGroupedFields(section.fields, compact)}
                 </div>
-              )}
-              <div className="px-5 sm:px-7 py-5 sm:py-6 space-y-5">
-                {renderGroupedFields(section.fields)}
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
