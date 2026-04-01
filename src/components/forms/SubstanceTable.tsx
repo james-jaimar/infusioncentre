@@ -10,6 +10,9 @@ interface SubstanceTableProps {
   readOnly?: boolean;
 }
 
+const isYesNoColumn = (col: string) =>
+  /^(yes\/?no?|y\/?n|currently still use)$/i.test(col.trim());
+
 export default function SubstanceTable({ label, rows, columns, value = {}, onChange, readOnly }: SubstanceTableProps) {
   const updateCell = (row: string, col: string, val: string) => {
     const updated = { ...value, [row]: { ...(value[row] || {}), [col]: val } };
