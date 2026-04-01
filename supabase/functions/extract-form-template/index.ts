@@ -129,6 +129,10 @@ const TOOL_SCHEMA = {
                 enum: ["inline", "full"],
                 description: "Layout hint: 'inline' to pair with adjacent field side-by-side, 'full' for full width",
               },
+              group: {
+                type: "string",
+                description: "Semantic group identifier. Fields sharing the same group value render together as a visual unit (e.g., 'patient_signature_group').",
+              },
               conditional_on: {
                 type: "object",
                 properties: {
