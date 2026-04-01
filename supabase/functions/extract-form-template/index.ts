@@ -192,7 +192,7 @@ serve(async (req) => {
     }
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 90_000);
+    const timeout = setTimeout(() => controller.abort(), 150_000);
 
     let response: Response;
     try {
