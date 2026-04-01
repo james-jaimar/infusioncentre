@@ -31,6 +31,7 @@ export interface FormField {
   layout_hint?: "inline" | "full";
   conditional_on?: { field: string; value: string };
   group?: string;
+  density?: "compact" | "normal";
 }
 
 interface FormRendererProps {
