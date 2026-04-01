@@ -1,79 +1,61 @@
 
 
-## Plan: Post-Process Date Field Consolidation
+## Plan: Semantic Field Grouping for Signatures + Related Fields
 
 ### Problem
 
-The AI model ignores the prompt instruction to consolidate date fields. It keeps creating "Agreement effective date", "Date signed", "Dated at" as separate fields. Prompt engineering alone cannot reliably fix this.
+The form has two signature blocks (Patient signature + ID number, Representative signature + ID number), but the layout engine pairs fields purely by adjacency and type. This means "ID number" gets paired with another "ID number" or floats separately, rather than sitting directly below its related signature.
 
 ### Solution
 
-Add a **server-side post-processing step** after extraction that programmatically collapses all date-like fields into a single canonical `date` field and rewrites any `{{field_name}}` references in info_text blocks to point to it.
+Introduce a `group` property to the form schema that lets the AI extraction (and the renderer) semantically group related fields into visual blocks.
 
 ### Changes
 
-**File: `supabase/functions/extract-form-template/index.ts`**
+**1. Update FormField interface** (`src/components/forms/FormRenderer.tsx`)
+- Add `group?: string` to the `FormField` interface
 
-Add a `consolidateDateFields` function before the `serve()` call that:
-1. Finds all fields where `field_type === "date"` or the label/field_name matches date-related patterns (agreement date, dated at, date signed, effective date)
-2. If more than one is found, keeps the one nearest the signature (or the last one) as canonical with `field_name: "date"` and `label: "Date"`
-3. Removes the redundant date fields from the schema
-4. Rewrites any `{{old_field_name}}` tokens in info_text content to `{{date}}`
+**2. Update `renderFieldGroup` logic** (`src/components/forms/FormRenderer.tsx`)
+- Before pairing fields, detect consecutive fields sharing the same `group` value
+- Render grouped fields together in a single visual container (e.g., a `div` with subtle styling)
+- Within a group, apply the existing inline/full-width pairing logic
+- Ungrouped fields continue to use the current pairing behaviour
 
-Call this function on line 285, right after `extracted = JSON.parse(toolArgsRaw)`:
-```typescript
-consolidateDateFields(extracted);
+**3. Update extraction prompt** (`supabase/functions/extract-form-template/index.ts`)
+- Add to LAYOUT & UX RULES: "When a signature field has associated fields (e.g., ID number, printed name, date) that belong to the same signatory, assign them the same `group` value (e.g., `group: 'patient_signature_group'`). This ensures they render as a visual unit."
+- Add `group` to the tool schema's field properties
+
+**4. Redeploy edge function**
+
+### Rendering Behaviour
+
+```text
+Before (flat pairs):
+┌──────────────┐ ┌──────────────┐
+│ Date picker  │ │ Patient sig  │
+├──────────────┤ ├──────────────┤
+│ ID number    │ │ Rep sig      │
+├──────────────┤
+│ ID number    │
+└──────────────┘
+
+After (semantic groups):
+┌─────────────────────────────────┐
+│ Date    │ Patient sig           │
+│         │ ID number             │
+└─────────────────────────────────┘
+┌─────────────────────────────────┐
+│ Rep sig           │             │
+│ ID number         │             │
+└─────────────────────────────────┘
 ```
 
-This guarantees exactly one date field regardless of what the AI produces.
+Actually, a simpler and more flexible approach: render each group as a 2-column grid where the fields flow naturally within the group boundary, rather than across groups.
 
 ### Technical Detail
 
-```typescript
-function consolidateDateFields(extracted: any) {
-  const fields = extracted?.form_schema;
-  if (!Array.isArray(fields)) return;
-
-  const datePattern = /\b(date|dated|effective.date|agreement.date|date.signed)\b/i;
-  const dateIndices: number[] = [];
-
-  fields.forEach((f: any, i: number) => {
-    if (f.field_type === "date" || datePattern.test(`${f.field_name} ${f.label}`)) {
-      dateIndices.push(i);
-    }
-  });
-
-  if (dateIndices.length <= 1) return;
-
-  // Keep the last date field (nearest signature), rename to canonical
-  const keepIdx = dateIndices[dateIndices.length - 1];
-  const dropNames = new Set<string>();
-
-  dateIndices.forEach((idx) => {
-    if (idx !== keepIdx) dropNames.add(fields[idx].field_name);
-  });
-
-  fields[keepIdx].field_name = "date";
-  fields[keepIdx].label = "Date";
-  if (fields[keepIdx].layout_hint === "inline") delete fields[keepIdx].layout_hint;
-
-  // Remove redundant fields
-  extracted.form_schema = fields.filter((_: any, i: number) =>
-    !dateIndices.includes(i) || i === keepIdx
-  );
-
-  // Rewrite {{tokens}} in info_text
-  extracted.form_schema.forEach((f: any) => {
-    if (f.field_type === "info_text" && f.content) {
-      for (const name of dropNames) {
-        f.content = f.content.replaceAll(`{{${name}}}`, "{{date}}");
-      }
-    }
-  });
-}
-```
-
-### Deployment
-
-Redeploy the `extract-form-template` edge function. Re-import the PDF to get a clean single-date extraction.
+- `group` is optional; ungrouped fields behave exactly as today
+- The renderer collects consecutive fields with the same `group` into a sub-array, then calls `renderFieldGroup` on each sub-array independently
+- This prevents cross-group pairing (an ID number from one signature block pairing with a field from another)
+- The AI prompt change ensures new extractions produce the `group` metadata; existing forms without `group` are unaffected
 
