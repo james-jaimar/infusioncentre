@@ -30,6 +30,7 @@ export interface FormField {
   prefill_key?: string;
   layout_hint?: "inline" | "full";
   conditional_on?: { field: string; value: string };
+  group?: string;
 }
 
 interface FormRendererProps {
