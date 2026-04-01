@@ -1,25 +1,21 @@
 
 
-## Plan: Fix Edge Function Timeout on Form Extraction
+## Plan: Consolidate to Single Date Field with Dynamic References
 
-### Root Cause
+### Problem
 
-The edge function times out at 90 seconds. The `gemini-2.5-pro` model is taking too long to process the PDF with the expanded prompt (digital upgrade rules, template tokens, layout hints). The logs confirm an `AbortError`.
+The AI extraction creates multiple redundant date fields ("Agreement Effective Date", "Date", "Dated at") when the document only needs one date. The inline text "This agreement will be effective from this ___ day of ___" should dynamically display that single date via a `{{field_name}}` token.
 
-### Fix
+### Changes
 
 **File: `supabase/functions/extract-form-template/index.ts`**
 
-Two changes:
+Update the DIGITAL UPGRADE RULES section (around line 36-42) to add a consolidation rule:
 
-1. **Increase timeout from 90s to 150s** — Supabase edge functions have a max wall-clock of ~150s (paid plan) or ~60s (free). The current 90s is hitting the model's thinking time. Bump to 150s to give the model enough room.
-
-2. **Switch model to `google/gemini-2.5-flash`** — This model is significantly faster while still capable of vision + structured extraction. The pro model is overkill for form extraction and causes timeouts on multi-page PDFs. Flash handles this workload well within 60-90 seconds.
-
-Line ~195: `setTimeout(() => controller.abort(), 90_000)` → `150_000`
-Line ~209: `model: "google/gemini-2.5-pro"` → `model: "google/gemini-2.5-flash"`
+- Add: "When a document contains multiple date-related blanks that all refer to the same event (signing date, agreement date, etc.), consolidate them into a SINGLE date field. Use `{{field_name}}` tokens in any info_text blocks that reference that date. Do NOT create separate 'Agreement Effective Date', 'Date', and 'Dated at' fields — one date field is sufficient. Place it near the signature at the bottom of the form."
+- Clarify: "For forms with a signature section, provide exactly ONE date field alongside the signature. Any inline references to that date in the body text should use `{{date}}` or `{{agreement_date}}` tokens."
 
 ### Deployment
 
-Redeploy the `extract-form-template` edge function and test with the same PDF.
+Redeploy the `extract-form-template` edge function. User will need to re-import the PDF.
 
