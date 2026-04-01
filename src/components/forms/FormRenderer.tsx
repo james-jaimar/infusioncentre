@@ -31,6 +31,7 @@ export interface FormField {
   layout_hint?: "inline" | "full";
   conditional_on?: { field: string; value: string };
   group?: string;
+  density?: "compact" | "normal";
 }
 
 interface FormRendererProps {
@@ -84,8 +85,39 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
     return parentValue === field.conditional_on.value;
   };
 
+  // Detect if a set of fields is checkbox-dense (>70% standalone checkboxes)
+  const isCompactCheckboxSection = (fields: FormField[]) => {
+    const visible = fields.filter(f => isFieldVisible(f));
+    const checkboxCount = visible.filter(f =>
+      f.field_type === "checkbox" && !f.conditional_on
+    ).length;
+    return visible.length >= 4 && checkboxCount / visible.length >= 0.7;
+  };
+
+  // Render a compact checkbox as a minimal label (no border card)
+  const renderCompactCheckbox = (field: FormField) => {
+    const val = values[field.field_name];
+    return (
+      <label
+        key={`compact-${field.field_name}`}
+        className="flex items-center gap-2 py-1 text-sm cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
+      >
+        {readOnly ? (
+          <div className={cn("h-3.5 w-3.5 rounded-sm border flex-shrink-0", val ? "bg-primary border-primary" : "bg-muted/30")} />
+        ) : (
+          <Checkbox
+            checked={!!val}
+            onCheckedChange={(checked) => updateValue(field.field_name, !!checked)}
+            className="h-3.5 w-3.5"
+          />
+        )}
+        <span className="leading-snug">{field.label}</span>
+      </label>
+    );
+  };
+
   // Split fields into consecutive groups sharing the same `group` value
-  const renderGroupedFields = (fields: FormField[]) => {
+  const renderGroupedFields = (fields: FormField[], forceCompact?: boolean) => {
     const chunks: { group: string | undefined; fields: FormField[] }[] = [];
 
     fields.forEach((field) => {
@@ -99,20 +131,59 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
     });
 
     return chunks.map((chunk, idx) => {
+      const compact = forceCompact || isCompactCheckboxSection(chunk.fields);
+
       if (chunk.group) {
-        // Render grouped fields inside a visual container that prevents cross-group pairing
         return (
           <div
             key={`group-${chunk.group}-${idx}`}
             className="rounded-lg border border-border/40 bg-muted/20 p-4 space-y-4"
           >
-            {renderFieldGroup(chunk.fields)}
+            {compact ? renderCompactFieldGroup(chunk.fields) : renderFieldGroup(chunk.fields)}
           </div>
         );
       }
-      // Ungrouped fields render normally
-      return <>{renderFieldGroup(chunk.fields)}</>;
+      return (
+        <div key={`chunk-${idx}`}>
+          {compact ? renderCompactFieldGroup(chunk.fields) : renderFieldGroup(chunk.fields)}
+        </div>
+      );
     });
+  };
+
+  // Render a compact group: checkboxes in a tight grid, non-checkboxes normally
+  const renderCompactFieldGroup = (fields: FormField[]) => {
+    const elements: React.ReactNode[] = [];
+    let compactBatch: FormField[] = [];
+
+    const flushBatch = () => {
+      if (compactBatch.length > 0) {
+        elements.push(
+          <div key={`compact-grid-${compactBatch[0].field_name}`} className="grid grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-0.5">
+            {compactBatch.map(f => renderCompactCheckbox(f))}
+          </div>
+        );
+        compactBatch = [];
+      }
+    };
+
+    fields.forEach(field => {
+      if (!isFieldVisible(field)) return;
+
+      if (field.field_type === "checkbox" && !field.conditional_on) {
+        compactBatch.push(field);
+      } else {
+        flushBatch();
+        // Conditional detail fields render inline after the grid
+        elements.push(
+          <div key={`compact-other-${field.field_name}`}>
+            {renderField(field)}
+          </div>
+        );
+      }
+    });
+    flushBatch();
+    return elements;
   };
 
   // Group consecutive short fields into pairs for 2-col layout
@@ -533,27 +604,34 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
           </div>
         </div>
 
-        {sections.map((section, idx) => (
-          <div
-            key={idx}
-            id={`form-section-${idx}`}
-            className="scroll-mt-6"
-          >
-            {/* Section card */}
-            <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
-              {section.title && (
-              <div className="px-5 sm:px-7 py-4 bg-primary/[0.08] border-b border-primary/20 border-l-[3px] border-l-primary">
-                  <h3 className="text-base font-semibold text-primary tracking-tight" style={{ fontSize: '16px', lineHeight: '1.4' }}>
-                    {section.title}
-                  </h3>
+        {sections.map((section, idx) => {
+          const compact = isCompactCheckboxSection(section.fields);
+          return (
+            <div
+              key={idx}
+              id={`form-section-${idx}`}
+              className="scroll-mt-6"
+            >
+              <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+                {section.title && (
+                  <div className="px-5 sm:px-7 py-4 bg-primary/[0.08] border-b border-primary/20 border-l-[3px] border-l-primary">
+                    <h3 className="text-base font-semibold text-primary tracking-tight" style={{ fontSize: '16px', lineHeight: '1.4' }}>
+                      {section.title}
+                    </h3>
+                  </div>
+                )}
+                <div className={cn(
+                  "space-y-5",
+                  compact
+                    ? "px-4 sm:px-5 py-3 sm:py-4"
+                    : "px-5 sm:px-7 py-5 sm:py-6"
+                )}>
+                  {renderGroupedFields(section.fields, compact)}
                 </div>
-              )}
-              <div className="px-5 sm:px-7 py-5 sm:py-6 space-y-5">
-                {renderGroupedFields(section.fields)}
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
