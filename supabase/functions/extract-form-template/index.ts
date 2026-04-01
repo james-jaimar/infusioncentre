@@ -180,7 +180,7 @@ serve(async (req) => {
       });
       userContent.push({
         type: "text",
-        text: `This is a clinical/administrative form document (${fileName}). Extract its COMPLETE content into a structured form_schema JSON array. Extract ONLY what is in the document — do not add, infer, or supplement any fields or content. Preserve ALL text verbatim. Maintain the exact order of the original document. Pay close attention to the LAYOUT — fields that appear on the same line should use layout_hint "inline".`,
+        text: `This is a clinical/administrative form document (${fileName}). Extract its COMPLETE content into a structured form_schema JSON array. Extract ONLY what is in the document — do not add, infer, or supplement any fields or content. Preserve ALL text verbatim. Maintain the exact order of the original document. Pay close attention to the LAYOUT — fields that appear on the same line should use layout_hint "inline". You MAY upgrade paper-form input patterns (blank lines, underscores, split date fields) into proper digital inputs (date pickers, single text fields, signatures), but all informational and legal text must remain verbatim.`,
       });
     } else {
       const textContent = atob(fileBase64);
