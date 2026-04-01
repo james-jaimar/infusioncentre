@@ -33,6 +33,13 @@ CRITICAL RULES:
 - Preserve the exact order of sections and fields as they appear in the source document. Do NOT reorder.
 - Do NOT add signature fields, date fields, acknowledgment checkboxes, or any other fields unless they explicitly appear in the original document.
 
+DIGITAL UPGRADE RULES (input methods only — never alter text content):
+- When the document uses blank lines, underscores, or split fields to collect a DATE (e.g. "this ___ day of ___ 20___", "Dated at ___ this ___"), replace them with a SINGLE "date" field. Do NOT reproduce the paper layout with multiple text boxes.
+- When the document uses blank lines or underscores for a SIGNATURE, use a single "signature" field.
+- When the document uses blank lines for a NAME, ADDRESS, or other obvious single value, use a single "text" field — not multiple text boxes replicating the paper underscores.
+- When inline text contains fill-in-the-blank slots (e.g. "This agreement will be effective from this ___ day of ___ 20___"), convert the surrounding text to an "info_text" block and place the appropriate input field(s) immediately after it. Do NOT embed blanks as literal text boxes within a sentence.
+- These upgrades apply ONLY to input collection methods. All informational text, legal clauses, terms, bullet points, and clinical content MUST remain verbatim and unmodified.
+
 LAYOUT & UX RULES:
 - When the original document places fields on the same line (e.g., "Name: ___ Age: ___"), add "layout_hint": "inline" to BOTH fields so they render side-by-side.
 - Yes/No questions MUST use "radio" with options ["Yes", "No"], NOT a checkbox. Checkboxes are only for acknowledgment/consent toggles.
