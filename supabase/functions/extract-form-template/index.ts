@@ -317,6 +317,7 @@ Return ONLY the form_schema array using the extract_form_schema tool. Do not inc
     let extracted;
     try {
       extracted = JSON.parse(toolArgsRaw);
+      consolidateDateFields(extracted);
     } catch (parseErr) {
       console.error("Failed to parse tool arguments. Length:", toolArgsRaw.length, "First 500 chars:", toolArgsRaw.substring(0, 500));
       throw new Error("AI returned truncated form data. Try uploading a simpler or shorter document.");
