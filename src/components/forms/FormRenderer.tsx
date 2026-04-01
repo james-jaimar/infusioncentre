@@ -136,12 +136,29 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
     );
 
     switch (field.field_type) {
-      case "info_text":
+      case "info_text": {
+        // Interpolate {{field_name}} tokens with current form values
+        const interpolatedContent = (field.content || "").replace(
+          /\{\{(\w+)\}\}/g,
+          (_match, fieldName) => {
+            const fieldValue = values[fieldName];
+            if (fieldValue) {
+              // Format date values nicely
+              if (/^\d{4}-\d{2}-\d{2}$/.test(fieldValue)) {
+                const d = new Date(fieldValue + "T00:00:00");
+                return d.toLocaleDateString("en-ZA", { day: "numeric", month: "long", year: "numeric" });
+              }
+              return String(fieldValue);
+            }
+            return "________";
+          }
+        );
         return (
           <div className="rounded-lg border border-primary/20 bg-primary/[0.04] border-l-[3px] border-l-primary/40 px-5 py-4 text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-            {field.content}
+            {interpolatedContent}
           </div>
         );
+      }
 
       case "text":
         return (
