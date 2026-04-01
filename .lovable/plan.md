@@ -1,35 +1,37 @@
 
 
-## Plan: Allow Smart UX Upgrades While Keeping Text Verbatim
+## Plan: Dynamic Date References in Text + Truly Responsive Field Layout
 
-### Problem
+### Problem 1: Date Placeholders in Info Text
+The terms section still shows "this ___ day of ___ 20___" as literal text. The AI extraction prompt already has digital upgrade rules, but the info_text content itself needs a mechanism to reference a dynamic date value. Currently there's no way for an info_text block to interpolate form field values.
 
-The extraction prompt is now too restrictive. It faithfully reproduces paper-form artifacts (like "dated at ___ this ___ day of ___ 20___" as four separate text boxes) instead of recognising these as a date and using a proper date picker. The text content is correct, but the **input method** should be modernised.
+**Fix**: Add template variable support to info_text rendering in FormRenderer. When info_text content contains `{{field_name}}`, it renders the current value of that field inline. Update the extraction prompt to instruct the AI to use `{{agreement_date}}` (or similar) placeholders within info_text content when the document has inline fill-in-the-blank date references, and place a date field nearby for the user to fill in.
 
-### Approach
+Changes:
+- **FormRenderer.tsx** — In the `info_text` case, replace `{{field_name}}` tokens with the corresponding value from `values`, or show a placeholder like "[date]" if not yet filled
+- **extract-form-template/index.ts** — Update the DIGITAL UPGRADE RULES to say: "When inline text contains fill-in-the-blank date slots, keep the surrounding text in an info_text block but replace the blanks with `{{field_name}}` template tokens referencing the date field that follows. Example: content becomes 'This agreement will be effective from {{agreement_date}} until treatment is completed.'"
+- Redeploy the edge function
 
-Add a new "DIGITAL UPGRADE RULES" section to the system prompt that explicitly grants permission to convert paper-form input patterns into their proper digital equivalents, while keeping all informational/legal text verbatim.
+### Problem 2: Layout Not Dynamic After Field Removal
+The `renderFieldGroup` function pairs fields at render time based on array order, which is correct. But the issue is that when a field is removed from the schema (via the template editor), the pairing logic doesn't reflow — a remaining field that was paired with the deleted one may render alone in a half-width column.
 
-### Changes
+**Fix**: The current logic already handles this correctly in theory (unpaired fields get full width via the `else` branch). The real issue is likely that `layout_hint: "inline"` is baked into the field, forcing it into a pair even when there's no partner.
 
-**File: `supabase/functions/extract-form-template/index.ts`**
+Changes:
+- **FormRenderer.tsx** — When a field has `layout_hint: "inline"` but the next field is missing/hidden/not-inline, render it full-width instead of in a half-width grid. The fix is in `renderFieldGroup`: only create a 2-col grid when BOTH adjacent fields want to be inline. This is already the intent of the code, so the bug may be that `isShortField` auto-inlines fields (text, number, date, select) even without a partner. Fix: when there's no valid next field, always render full-width regardless of `isShortField`.
 
-Update the system prompt and FIELD_TYPES_REFERENCE to add these rules:
+This is actually already handled by the `if/else` at line 108 — if `nextVisible` is false or `next` doesn't exist, it falls through to single-column. So the layout should already reflow. The issue might be that the removed field is still in the schema array (just empty/hidden). Need to verify how field removal works in the template editor.
 
-**Add after the CRITICAL RULES block (around line 34):**
+- **FormRenderer.tsx** — No change needed if field removal actually removes from the schema array. If fields are just hidden, add a filter step before `renderFieldGroup`.
 
-```
-DIGITAL UPGRADE RULES (input methods only — never alter text content):
-- When the document uses blank lines, underscores, or split fields to collect a DATE (e.g. "this ___ day of ___ 20___", "Dated at ___ this ___"), replace them with a SINGLE "date" field. Do NOT reproduce the paper layout with multiple text boxes.
-- When the document uses blank lines or underscores for a SIGNATURE, use a single "signature" field.
-- When the document uses blank lines for a NAME, ADDRESS, or other obvious single value, use a single "text" field — not multiple text boxes replicating the paper underscores.
-- When inline text contains fill-in-the-blank slots (e.g. "This agreement will be effective from this ___ day of ___ 20___"), convert the surrounding text to an "info_text" block and place the appropriate input field(s) immediately after it. Do NOT embed blanks as literal text boxes within a sentence.
-- These upgrades apply ONLY to input collection methods. All informational text, legal clauses, terms, bullet points, and clinical content MUST remain verbatim and unmodified.
-```
+### Summary of File Changes
 
-**Update user prompt text (lines 176 and 182)** to add: "You MAY upgrade paper-form input patterns (blank lines, underscores, split date fields) into proper digital inputs (date pickers, single text fields, signatures), but all informational and legal text must remain verbatim."
+| File | Change |
+|------|--------|
+| `src/components/forms/FormRenderer.tsx` | Add `{{field_name}}` interpolation in info_text rendering |
+| `supabase/functions/extract-form-template/index.ts` | Update digital upgrade rules to use `{{field_name}}` template tokens in info_text for inline date/name references |
+| Redeploy edge function | Required |
 
-### Deployment
-
-Redeploy the `extract-form-template` edge function. User will need to re-import the PDF to see the improved extraction.
+### Re-import Required
+After these changes, the user will need to re-upload the PDF to get a fresh extraction with the new template token approach. Existing saved form schemas won't automatically update.
 
