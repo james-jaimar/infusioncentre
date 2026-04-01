@@ -10,6 +10,9 @@ interface SubstanceTableProps {
   readOnly?: boolean;
 }
 
+const isYesNoColumn = (col: string) =>
+  /^(yes\/?no?|y\/?n|currently still use)$/i.test(col.trim());
+
 export default function SubstanceTable({ label, rows, columns, value = {}, onChange, readOnly }: SubstanceTableProps) {
   const updateCell = (row: string, col: string, val: string) => {
     const updated = { ...value, [row]: { ...(value[row] || {}), [col]: val } };
@@ -37,7 +40,7 @@ export default function SubstanceTable({ label, rows, columns, value = {}, onCha
                   <td key={col} className="px-2 py-1.5">
                     {readOnly ? (
                       <span className="text-sm">{value[row]?.[col] || "—"}</span>
-                    ) : col === "Currently still use" ? (
+                    ) : isYesNoColumn(col) ? (
                       <Select value={value[row]?.[col] || ""} onValueChange={(v) => updateCell(row, col, v)}>
                         <SelectTrigger className="h-9 text-sm min-w-[70px] rounded-lg border-border/40">
                           <SelectValue placeholder="—" />
