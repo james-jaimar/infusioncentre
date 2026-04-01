@@ -521,7 +521,7 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
                 </div>
               )}
               <div className="px-5 sm:px-7 py-5 sm:py-6 space-y-5">
-                {renderFieldGroup(section.fields)}
+                {renderGroupedFields(section.fields)}
               </div>
             </div>
           </div>
