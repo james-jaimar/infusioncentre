@@ -1,40 +1,35 @@
 
 
-## Plan: Make Form Extraction Strictly Verbatim
+## Plan: Allow Smart UX Upgrades While Keeping Text Verbatim
 
 ### Problem
 
-The AI extraction prompt contains instructions that encourage the model to **add content not present in the original document**:
-- "Group logically: patient demographics first, then clinical questions..." (reorders content)
-- "Always end clinical questionnaires with a date field and signature field" (adds fields)
-- "For consent forms: include all terms/conditions as info_text blocks, then a checkbox for acknowledgment, then signature fields" (adds fields)
-- The general tone encourages "beautiful, usable digital forms" which the AI interprets as license to embellish
+The extraction prompt is now too restrictive. It faithfully reproduces paper-form artifacts (like "dated at ___ this ___ day of ___ 20___" as four separate text boxes) instead of recognising these as a date and using a proper date picker. The text content is correct, but the **input method** should be modernised.
 
-### Fix
+### Approach
+
+Add a new "DIGITAL UPGRADE RULES" section to the system prompt that explicitly grants permission to convert paper-form input patterns into their proper digital equivalents, while keeping all informational/legal text verbatim.
+
+### Changes
 
 **File: `supabase/functions/extract-form-template/index.ts`**
 
-Update the system prompt and field type reference to enforce strict verbatim extraction:
+Update the system prompt and FIELD_TYPES_REFERENCE to add these rules:
 
-1. **Remove all "add if missing" instructions** — delete the rules about always ending with date/signature, adding acknowledgment checkboxes, and reordering sections
-2. **Add explicit prohibition** — "Do NOT add any fields, sections, text, or content that is not explicitly present in the source document. Do NOT reorder sections. Maintain the exact order and structure of the original document."
-3. **Change system role description** — from "produce beautiful, usable digital forms" to "produce exact digital replicas of the source document"
-4. **Update user prompt text** — reinforce "Extract ONLY what is in the document. Do not add, infer, or supplement any fields or content."
+**Add after the CRITICAL RULES block (around line 34):**
 
-### Specific Prompt Changes
+```
+DIGITAL UPGRADE RULES (input methods only — never alter text content):
+- When the document uses blank lines, underscores, or split fields to collect a DATE (e.g. "this ___ day of ___ 20___", "Dated at ___ this ___"), replace them with a SINGLE "date" field. Do NOT reproduce the paper layout with multiple text boxes.
+- When the document uses blank lines or underscores for a SIGNATURE, use a single "signature" field.
+- When the document uses blank lines for a NAME, ADDRESS, or other obvious single value, use a single "text" field — not multiple text boxes replicating the paper underscores.
+- When inline text contains fill-in-the-blank slots (e.g. "This agreement will be effective from this ___ day of ___ 20___"), convert the surrounding text to an "info_text" block and place the appropriate input field(s) immediately after it. Do NOT embed blanks as literal text boxes within a sentence.
+- These upgrades apply ONLY to input collection methods. All informational text, legal clauses, terms, bullet points, and clinical content MUST remain verbatim and unmodified.
+```
 
-In `FIELD_TYPES_REFERENCE` critical rules section, replace:
-- "For consent forms: include all terms/conditions..." → remove
-- "Always end clinical questionnaires with a date field and signature field" → remove  
-- "Group logically: patient demographics first..." → "Preserve the exact order of sections and fields as they appear in the source document. Do NOT reorder."
-
-Add new rule:
-- "NEVER add fields, sections, or content that do not exist in the source document. Extract ONLY what is visually present on the page."
-
-In system prompt, change:
-- "convert them into structured JSON form schemas that produce beautiful, usable digital forms" → "convert them into structured JSON form schemas that are exact digital replicas of the source document"
+**Update user prompt text (lines 176 and 182)** to add: "You MAY upgrade paper-form input patterns (blank lines, underscores, split date fields) into proper digital inputs (date pickers, single text fields, signatures), but all informational and legal text must remain verbatim."
 
 ### Deployment
 
-Redeploy the `extract-form-template` edge function after changes. The user will need to re-import the PDF to get a clean extraction.
+Redeploy the `extract-form-template` edge function. User will need to re-import the PDF to see the improved extraction.
 
