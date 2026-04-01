@@ -192,7 +192,7 @@ serve(async (req) => {
     }
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 90_000);
+    const timeout = setTimeout(() => controller.abort(), 150_000);
 
     let response: Response;
     try {
@@ -206,7 +206,7 @@ serve(async (req) => {
         },
         signal: controller.signal,
         body: JSON.stringify({
-          model: "google/gemini-2.5-pro",
+          model: "google/gemini-2.5-flash",
           messages: [
             {
               role: "system",
