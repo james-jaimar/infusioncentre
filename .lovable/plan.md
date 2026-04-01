@@ -1,61 +1,35 @@
 
 
-## Plan: Semantic Field Grouping for Signatures + Related Fields
+## Plan: Smart Yes/No Column Detection in Condition Tables
 
 ### Problem
 
-The form has two signature blocks (Patient signature + ID number, Representative signature + ID number), but the layout engine pairs fields purely by adjacency and type. This means "ID number" gets paired with another "ID number" or floats separately, rather than sitting directly below its related signature.
+The document has a table of conditions (Asthma, Eczema, etc.) with "Yes" and "Details" columns. The "Yes" column header is just a label — the paper form expects a tick or checkmark — but the current rendering shows it as a plain text input because the `SubstanceTable` component only recognises "Currently still use" as a Yes/No dropdown column.
 
-### Solution
-
-Introduce a `group` property to the form schema that lets the AI extraction (and the renderer) semantically group related fields into visual blocks.
+Two fixes needed:
 
 ### Changes
 
-**1. Update FormField interface** (`src/components/forms/FormRenderer.tsx`)
-- Add `group?: string` to the `FormField` interface
+**1. Update `SubstanceTable` component** (`src/components/forms/SubstanceTable.tsx`)
 
-**2. Update `renderFieldGroup` logic** (`src/components/forms/FormRenderer.tsx`)
-- Before pairing fields, detect consecutive fields sharing the same `group` value
-- Render grouped fields together in a single visual container (e.g., a `div` with subtle styling)
-- Within a group, apply the existing inline/full-width pairing logic
-- Ungrouped fields continue to use the current pairing behaviour
+Change the Yes/No column detection from a hardcoded string match (`col === "Currently still use"`) to a pattern match that also catches columns like "Yes", "Yes/No", "Y/N":
 
-**3. Update extraction prompt** (`supabase/functions/extract-form-template/index.ts`)
-- Add to LAYOUT & UX RULES: "When a signature field has associated fields (e.g., ID number, printed name, date) that belong to the same signatory, assign them the same `group` value (e.g., `group: 'patient_signature_group'`). This ensures they render as a visual unit."
-- Add `group` to the tool schema's field properties
-
-**4. Redeploy edge function**
-
-### Rendering Behaviour
-
-```text
-Before (flat pairs):
-┌──────────────┐ ┌──────────────┐
-│ Date picker  │ │ Patient sig  │
-├──────────────┤ ├──────────────┤
-│ ID number    │ │ Rep sig      │
-├──────────────┤
-│ ID number    │
-└──────────────┘
-
-After (semantic groups):
-┌─────────────────────────────────┐
-│ Date    │ Patient sig           │
-│         │ ID number             │
-└─────────────────────────────────┘
-┌─────────────────────────────────┐
-│ Rep sig           │             │
-│ ID number         │             │
-└─────────────────────────────────┘
+```typescript
+const isYesNoColumn = (col: string) =>
+  /^(yes\/?no?|y\/?n|currently still use)$/i.test(col.trim());
 ```
 
-Actually, a simpler and more flexible approach: render each group as a 2-column grid where the fields flow naturally within the group boundary, rather than across groups.
+Use `isYesNoColumn(col)` instead of `col === "Currently still use"` on line 40.
 
-### Technical Detail
+**2. Strengthen extraction prompt** (`supabase/functions/extract-form-template/index.ts`)
 
-- `group` is optional; ungrouped fields behave exactly as today
-- The renderer collects consecutive fields with the same `group` into a sub-array, then calls `renderFieldGroup` on each sub-array independently
-- This prevents cross-group pairing (an ID number from one signature block pairing with a field from another)
-- The AI prompt change ensures new extractions produce the `group` metadata; existing forms without `group` are unaffected
+Update line 49 to be more explicit about recognising these patterns:
+
+```
+- CONDITION/CHECKLIST TABLES: When the document has a table listing conditions, symptoms, or items with columns for Yes/tick/check and Details/comments, use "substance_table" with rows = the condition names and columns = ["Yes/No", "Details"]. This applies even if the original column header just says "Yes" or uses checkboxes/tick boxes — normalise the column name to "Yes/No". Look for ANY tabular layout where rows are conditions/items and columns collect a boolean answer plus optional free-text details.
+```
+
+### Result
+
+The SubstanceTable will render a proper Yes/No dropdown for any column matching the pattern, and the AI will more reliably detect these table structures from poorly designed paper forms.
 
