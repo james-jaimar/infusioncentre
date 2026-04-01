@@ -49,6 +49,7 @@ LAYOUT & UX RULES:
 - When the document has a table of conditions with Yes/Details columns, use "substance_table" with rows=condition names and columns=["Yes/No","Details"].
 - Informational headings ("What is an iron infusion?") → section_header, followed by info_text with the FULL verbatim content.
 - For fields like Name, Surname, Age, Weight that naturally sit in rows on paper forms, use layout_hint "inline" so they pair up in the digital form.
+- SEMANTIC GROUPING: When a signature field has associated fields (e.g., ID number, printed name, date) that belong to the same signatory, assign them the same "group" value (e.g., "group": "patient_signature_group"). When a document has multiple signature blocks (e.g., Patient and Representative/Witness), each block's signature + related fields must share a distinct group value. This ensures they render as visual units and prevents cross-block field pairing.
 `;
 
 const TOOL_SCHEMA = {
@@ -127,6 +128,10 @@ const TOOL_SCHEMA = {
                 type: "string",
                 enum: ["inline", "full"],
                 description: "Layout hint: 'inline' to pair with adjacent field side-by-side, 'full' for full width",
+              },
+              group: {
+                type: "string",
+                description: "Semantic group identifier. Fields sharing the same group value render together as a visual unit (e.g., 'patient_signature_group').",
               },
               conditional_on: {
                 type: "object",

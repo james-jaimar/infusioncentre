@@ -30,6 +30,7 @@ export interface FormField {
   prefill_key?: string;
   layout_hint?: "inline" | "full";
   conditional_on?: { field: string; value: string };
+  group?: string;
 }
 
 interface FormRendererProps {
@@ -83,16 +84,45 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
     return parentValue === field.conditional_on.value;
   };
 
+  // Split fields into consecutive groups sharing the same `group` value
+  const renderGroupedFields = (fields: FormField[]) => {
+    const chunks: { group: string | undefined; fields: FormField[] }[] = [];
+
+    fields.forEach((field) => {
+      const g = field.group;
+      const last = chunks[chunks.length - 1];
+      if (last && last.group === g) {
+        last.fields.push(field);
+      } else {
+        chunks.push({ group: g, fields: [field] });
+      }
+    });
+
+    return chunks.map((chunk, idx) => {
+      if (chunk.group) {
+        // Render grouped fields inside a visual container that prevents cross-group pairing
+        return (
+          <div
+            key={`group-${chunk.group}-${idx}`}
+            className="rounded-lg border border-border/40 bg-muted/20 p-4 space-y-4"
+          >
+            {renderFieldGroup(chunk.fields)}
+          </div>
+        );
+      }
+      // Ungrouped fields render normally
+      return <>{renderFieldGroup(chunk.fields)}</>;
+    });
+  };
+
   // Group consecutive short fields into pairs for 2-col layout
   const renderFieldGroup = (fields: FormField[]) => {
     const elements: React.ReactNode[] = [];
     let i = 0;
 
-    // Filter out conditionally hidden fields for rendering but keep indices
     while (i < fields.length) {
       const field = fields[i];
 
-      // Skip conditionally hidden fields
       if (!isFieldVisible(field)) {
         i += 1;
         continue;
@@ -101,7 +131,6 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
       const next = fields[i + 1];
       const nextVisible = next && isFieldVisible(next);
 
-      // Check if fields should be paired: explicit layout_hint or auto short-field pairing
       const shouldInline = (f: FormField) => f.layout_hint === "inline" || isShortField(f);
       const forceFullWidth = field.layout_hint === "full";
 
@@ -520,7 +549,7 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
                 </div>
               )}
               <div className="px-5 sm:px-7 py-5 sm:py-6 space-y-5">
-                {renderFieldGroup(section.fields)}
+                {renderGroupedFields(section.fields)}
               </div>
             </div>
           </div>
