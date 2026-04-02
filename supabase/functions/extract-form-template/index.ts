@@ -7,10 +7,16 @@ const corsHeaders = {
 };
 
 const FIELD_TYPES_REFERENCE = `
-Available field_type values and their properties:
+## 1. CORE PRINCIPLES
 
-1. "section_header" — A visual section divider/title. Only uses "label" (the heading text). No field_name needed but include one like "section_1".
-2. "info_text" — A block of read-only informational text (terms, side effects, contraindications, instructions). Uses "content" for the text body and "label" for an optional title. CRITICAL: Preserve ALL original text content verbatim — every paragraph, bullet point, and detail. This is clinical/legal content that must not be summarized or shortened.
+- Extract ONLY what is explicitly present in the source document. Do NOT add, infer, or supplement any fields, sections, or content.
+- Preserve the exact order of sections and fields as they appear in the source document. Do NOT reorder.
+- Preserve ALL text content verbatim — every paragraph, bullet point, and detail. This is clinical/legal content that must not be summarised or shortened.
+
+## 2. FIELD TYPE CATALOGUE
+
+1. "section_header" — Visual section divider/title. Uses "label" (heading text). Include a field_name like "section_1".
+2. "info_text" — Read-only informational text (terms, side effects, contraindications, instructions). Uses "content" for the text body and "label" for an optional title. CRITICAL: Preserve ALL original text content verbatim.
 3. "text" — Single-line text input. Uses "label", "placeholder", "required".
 4. "textarea" — Multi-line text input. Uses "label", "placeholder", "required".
 5. "number" — Numeric input. Uses "label", "required".
@@ -26,34 +32,35 @@ Available field_type values and their properties:
 15. "substance_table" — Table for substance use history. Uses "label", "rows" (string array), "columns" (string array).
 16. "family_table" — Table for family medical history. Uses "label", "rows" (string array), "columns" (string array).
 
-CRITICAL RULES:
-- Every field MUST have a unique "field_name" (use snake_case, e.g. "patient_name", "consent_checkbox").
-- Preserve ALL text content from the document in info_text blocks. Do NOT summarize, truncate, or abbreviate clinical content.
-- NEVER add fields, sections, or content that do not exist in the source document. Extract ONLY what is visually present on the page.
-- Preserve the exact order of sections and fields as they appear in the source document. Do NOT reorder.
-- Do NOT add signature fields, date fields, acknowledgment checkboxes, or any other fields unless they explicitly appear in the original document.
+## 3. FIELD NAMING
 
-DIGITAL UPGRADE RULES (input methods only — never alter text content):
-- When the document uses blank lines, underscores, or split fields to collect a DATE (e.g. "this ___ day of ___ 20___", "Dated at ___ this ___"), replace them with a SINGLE "date" field. Do NOT reproduce the paper layout with multiple text boxes.
-- When the document uses blank lines or underscores for a SIGNATURE, use a single "signature" field.
-- When the document uses blank lines for a NAME, ADDRESS, or other obvious single value, use a single "text" field — not multiple text boxes replicating the paper underscores.
-- When inline text contains fill-in-the-blank slots (e.g. "This agreement will be effective from this ___ day of ___ 20___"), convert the surrounding text to an "info_text" block and place the appropriate input field(s) immediately after it. Do NOT embed blanks as literal text boxes within a sentence.
-- When a fill-in-the-blank slot appears WITHIN a paragraph of legal/informational text and refers to a field that will be collected elsewhere in the form (e.g. a date at the bottom), use a {{field_name}} template token in the info_text content instead of splitting the paragraph. Example: "This agreement will be effective from {{agreement_date}} until treatment is completed." The referenced field_name must match a date/text/signature field defined elsewhere in the form_schema.
-- DATE CONSOLIDATION: When a document contains multiple date-related blanks that all refer to the same signing/agreement event (e.g. "Agreement Effective Date", "Date", "Dated at"), consolidate them into a SINGLE "date" field. Use {{field_name}} tokens in any info_text blocks that reference that date inline. Do NOT create separate date fields for the same event. Place the single date field near the signature at the bottom of the form. For forms with a signature section, provide exactly ONE date field alongside the signature.
-- These upgrades apply ONLY to input collection methods. All informational text, legal clauses, terms, bullet points, and clinical content MUST remain verbatim and unmodified.
+- Every field MUST have a unique "field_name" in snake_case (e.g. "patient_name", "consent_checkbox").
 
-LAYOUT & UX RULES:
-- When the original document places fields on the same line (e.g., "Name: ___ Age: ___"), add "layout_hint": "inline" to BOTH fields so they render side-by-side.
-- Yes/No questions MUST use "radio" with options ["Yes", "No"], NOT a checkbox. Checkboxes are only for acknowledgment/consent toggles.
-- Conditional follow-ups (e.g., "If yes, describe..." or "If yes, please provide details") → use "textarea" or "text" with a "conditional_on" property referencing the parent field_name and expected value. Example: "conditional_on": { "field": "had_previous_infusion", "value": "Yes" }
-- CONDITION/CHECKLIST TABLES: When the document has a table listing conditions, symptoms, or items with columns for Yes/tick/check and Details/comments, use "substance_table" with rows = the condition names and columns = ["Yes/No", "Details"]. This applies even if the original column header just says "Yes" or uses checkboxes/tick boxes — normalise the column name to "Yes/No". Look for ANY tabular layout where rows are conditions/items and columns collect a boolean answer plus optional free-text details.
-- Informational headings ("What is an iron infusion?") → section_header, followed by info_text with the FULL verbatim content.
-- For fields like Name, Surname, Age, Weight that naturally sit in rows on paper forms, use layout_hint "inline" so they pair up in the digital form.
+## 4. DIGITAL UPGRADE RULES
+
+These rules apply ONLY to input collection methods. All informational and legal text MUST remain verbatim and unmodified.
+
+- Blank lines/underscores for a DATE (e.g. "this ___ day of ___ 20___") → replace with a SINGLE "date" field. Do NOT reproduce the paper layout with multiple text boxes.
+- Blank lines/underscores for a SIGNATURE → use a single "signature" field.
+- Blank lines for a NAME, ADDRESS, or other single value → use a single "text" field.
+- Inline fill-in-the-blank slots within a paragraph of informational text → convert surrounding text to "info_text" and place the input field immediately after, OR use a {{field_name}} template token in the info_text content when the value is collected elsewhere in the form. The referenced field_name must match a field defined elsewhere in the form_schema.
+- DATE CONSOLIDATION: When a document contains multiple date-related blanks that all refer to the same signing/agreement event (e.g. "Agreement Effective Date", "Date", "Dated at"), consolidate them into a SINGLE "date" field. Use {{field_name}} tokens in info_text blocks that reference that date inline. Place the single date field near the signature at the bottom. For forms with a signature section, provide exactly ONE date field alongside the signature.
+
+## 5. LAYOUT RULES
+
+- INLINE PAIRING: When the original document places fields on the same line (e.g. "Name: ___ Age: ___"), add "layout_hint": "inline" to BOTH fields so they render side-by-side. Use this for fields like Name, Surname, Age, Weight that naturally sit in rows on paper forms.
 - SECTION SEPARATION: Every visually distinct heading, category label, or bold/underlined group title in the document MUST become its own "section_header" field. Do NOT merge sections. If the document shows "GENERAL" as one heading and "MUSCLE/JOINTS/BONES" as another, those are TWO separate section_headers. When in doubt, create more sections rather than fewer.
-- CHECKBOX WITH DETAIL: When a checkbox item includes a follow-up prompt after a semicolon, comma, or dash (e.g., "Recent weight gain; How much", "Allergies - please list"), split it into TWO fields: (1) a "checkbox" field with the condition name as the label (e.g., "Recent weight gain"), and (2) a "text" field for the detail (e.g., label "How much", with "conditional_on": {"field": "recent_weight_gain", "value": "true"}) and layout_hint "inline". This pattern applies to any checkbox list where some items request additional information when checked.
-- CHECKBOX GRID LAYOUT: When a section contains a list of checkbox items displayed in multiple columns on the document (e.g., symptoms listed in 2-3 columns), use individual "checkbox" fields with layout_hint "inline" so they pair up in a grid. Do NOT use checkbox_group for these — each item needs to be independently checkable with its own field_name.
-- LAYOUT DENSITY: Analyse how the original document uses space. When checkbox lists are packed tightly in multi-column layouts on the source document (e.g., medical history checklists, systems review with 20+ items in 2-3 columns), add "density": "compact" to each checkbox field in those sections. This tells the renderer to use a tight grid layout matching the original's space efficiency.
-- SEMANTIC GROUPING: When a signature field has associated fields (e.g., ID number, printed name, date) that belong to the same signatory, assign them the same "group" value (e.g., "group": "patient_signature_group"). When a document has multiple signature blocks (e.g., Patient and Representative/Witness), each block's signature + related fields must share a distinct group value. This ensures they render as visual units and prevents cross-block field pairing.
+- SEMANTIC GROUPING: When a signature field has associated fields (e.g. ID number, printed name, date) that belong to the same signatory, assign them the same "group" value (e.g. "group": "patient_signature_group"). When a document has multiple signature blocks (e.g. Patient and Representative/Witness), each block's fields must share a distinct group value. This ensures they render as visual units and prevents cross-block field pairing.
+- LAYOUT DENSITY: Analyse how the original document uses space. When checkbox lists are packed tightly in multi-column layouts on the source document (e.g. medical history checklists, systems review with 20+ items in 2-3 columns), add "density": "compact" to each checkbox field in those sections. This tells the renderer to use a tight grid layout matching the original's space efficiency.
+- Informational headings (e.g. "What is an iron infusion?") → section_header, followed by info_text with the FULL verbatim content.
+
+## 6. PATTERN RECOGNITION
+
+- YES/NO QUESTIONS: Must use "radio" with options ["Yes", "No"], NOT a checkbox. Checkboxes are only for acknowledgment/consent toggles.
+- CONDITIONAL FOLLOW-UPS: "If yes, describe..." or "If yes, please provide details" → use "textarea" or "text" with "conditional_on": { "field": "<parent_field_name>", "value": "Yes" }.
+- CHECKBOX WITH DETAIL: When a checkbox item includes a follow-up prompt after a semicolon, comma, or dash (e.g. "Recent weight gain; How much", "Allergies - please list"), split into TWO fields: (1) a "checkbox" with the condition name as label, and (2) a "text" field for the detail with "conditional_on": {"field": "<checkbox_field_name>", "value": "true"} and layout_hint "inline".
+- CHECKBOX GRID LAYOUT: When a section contains a list of checkbox items displayed in multiple columns on the document (e.g. symptoms in 2-3 columns), use individual "checkbox" fields with layout_hint "inline". Do NOT use checkbox_group — each item needs its own field_name for independent checking.
+- CONDITION/CHECKLIST TABLES: When the document has a table listing conditions/symptoms/items with columns for Yes/tick/check and Details/comments, use "substance_table" with rows = condition names and columns = ["Yes/No", "Details"]. Normalise column headers — even if the original just says "Yes" or uses tick boxes, use "Yes/No".
 `;
 
 const TOOL_SCHEMA = {
@@ -235,13 +242,13 @@ serve(async (req) => {
       });
       userContent.push({
         type: "text",
-        text: `This is a clinical/administrative form document (${fileName}). Extract its COMPLETE content into a structured form_schema JSON array. Extract ONLY what is in the document — do not add, infer, or supplement any fields or content. Preserve ALL text verbatim. Maintain the exact order of the original document. Pay close attention to the LAYOUT — fields that appear on the same line should use layout_hint "inline". You MAY upgrade paper-form input patterns (blank lines, underscores, split date fields) into proper digital inputs (date pickers, single text fields, signatures), but all informational and legal text must remain verbatim.`,
+        text: `This is a clinical/administrative form document (${fileName}). Extract its complete content into a structured form_schema using the extract_form_schema tool.`,
       });
     } else {
       const textContent = atob(fileBase64);
       userContent.push({
         type: "text",
-        text: `This is the text content of a clinical/administrative form document (${fileName}). Extract its COMPLETE content into a structured form_schema JSON array. Extract ONLY what is in the document — do not add, infer, or supplement any fields or content. Preserve ALL text verbatim. Maintain the exact order. Fields on the same line should use layout_hint "inline". Yes/No questions must be radio buttons. Conditional follow-ups must use conditional_on. You MAY upgrade paper-form input patterns (blank lines, underscores, split date fields) into proper digital inputs (date pickers, single text fields, signatures), but all informational and legal text must remain verbatim.\n\n---\n${textContent}`,
+        text: `This is the text content of a clinical/administrative form document (${fileName}). Extract its complete content into a structured form_schema using the extract_form_schema tool.\n\n---\n${textContent}`,
       });
     }
 
@@ -264,17 +271,11 @@ serve(async (req) => {
           messages: [
             {
               role: "system",
-              content: `You are a clinical form digitisation expert. You receive scanned or digital documents of medical forms and convert them into structured JSON form schemas that are exact digital replicas of the source document.
-
-STRICT RULES:
-- Extract ONLY what is explicitly present in the source document.
-- Do NOT add, infer, or supplement any fields, sections, or content.
-- Do NOT reorder sections or fields. Maintain the exact document order.
-- Do NOT add signature fields, date fields, or checkboxes that are not in the original.
+              content: `You are a clinical form digitisation expert. Convert medical/administrative documents into structured JSON form schemas that are exact digital replicas of the source. Follow every rule in the reference below.
 
 ${FIELD_TYPES_REFERENCE}
 
-Return ONLY the form_schema array using the extract_form_schema tool. Do not include any other text.`,
+Use the extract_form_schema tool to return the result.`,
             },
             {
               role: "user",
