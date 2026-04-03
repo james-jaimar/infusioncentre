@@ -1,44 +1,46 @@
 
 
-## Plan: Refactor AI Extraction Prompt for Clarity and Coherence
+## Plan: Auto-Generate Slug for New Form Templates
 
 ### Problem
 
-The `FIELD_TYPES_REFERENCE` prompt has grown organically over many iterations. Rules are scattered, duplicated between the system prompt and user message, and organized by "when they were added" rather than by logical concern. This makes it harder for the AI model to follow consistently.
+When a new form template is created, no `slug` is set. The slug was only backfilled once via a migration for existing templates. There is no database trigger or application code that generates a slug on insert, so new templates always have `slug = null` and no public link appears.
 
-### Approach
+### Solution
 
-Restructure the entire `FIELD_TYPES_REFERENCE` constant into a clean, logically grouped document. No new rules — just reorganize and deduplicate what exists. The system message and user message will also be tightened to avoid repeating instructions.
-
-### New Prompt Structure
-
-The `FIELD_TYPES_REFERENCE` will be reorganized into these sections, in this order:
-
-```
-1. CORE PRINCIPLES (3 bullet points — extract only, preserve order, verbatim text)
-2. FIELD TYPE CATALOGUE (the 16 types, unchanged)
-3. FIELD NAMING (unique snake_case rule)
-4. DIGITAL UPGRADE RULES (paper→digital input conversions, template tokens, date consolidation)
-5. LAYOUT RULES (inline pairing, section separation, semantic grouping, density)
-6. PATTERN RECOGNITION (Yes/No→radio, conditional follow-ups, checkbox+detail, checkbox grids, condition/checklist tables, info headings)
-```
-
-Key deduplication:
-- "Extract ONLY what is present" appears 3 times currently (CRITICAL RULES, system message, user message) → once in CORE PRINCIPLES, brief reminder in system message
-- "Preserve ALL text verbatim" appears in CRITICAL RULES, info_text description, digital upgrade rules, and user message → once in CORE PRINCIPLES, kept in info_text description since it's field-specific
-- Date consolidation rule in prompt + `consolidateDateFields` post-processor both stay (belt and braces)
-- User message simplified to just describe the task, not repeat rules
+Add a database trigger that auto-generates a slug from the template name on INSERT (when slug is null). This is more reliable than doing it in the frontend since it catches all creation paths (editor, AI import, etc.).
 
 ### Changes
 
-**File: `supabase/functions/extract-form-template/index.ts`**
+**1. Database migration — auto-slug trigger**
 
-1. Rewrite `FIELD_TYPES_REFERENCE` with the clean structure above
-2. Simplify the system message to: role description + "Follow the rules in the reference below" + `${FIELD_TYPES_REFERENCE}` + "Use the extract_form_schema tool"
-3. Simplify user message text to just describe what the document is and the task — remove duplicated rule reminders
-4. No changes to `TOOL_SCHEMA`, `consolidateDateFields`, error handling, or any other logic
+Create a trigger function that runs BEFORE INSERT on `form_templates`. When `slug` is null, it generates one from the name using `lower(regexp_replace(...))` and appends a short random suffix to avoid collisions.
 
-### Redeploy
+```sql
+CREATE OR REPLACE FUNCTION generate_form_template_slug()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.slug IS NULL OR NEW.slug = '' THEN
+    NEW.slug := lower(regexp_replace(
+      regexp_replace(NEW.name, '[^a-zA-Z0-9\s-]', '', 'g'),
+      '\s+', '-', 'g'
+    ));
+    -- Append short unique suffix to prevent collisions
+    NEW.slug := NEW.slug || '-' || substr(gen_random_uuid()::text, 1, 4);
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
-Redeploy the `extract-form-template` edge function. Re-import a PDF to verify results are equal or better.
+CREATE TRIGGER trg_form_template_slug
+  BEFORE INSERT ON form_templates
+  FOR EACH ROW
+  EXECUTE FUNCTION generate_form_template_slug();
+```
+
+**2. Backfill existing templates missing slugs**
+
+The same migration will update any existing rows that still have null slugs (in case the original backfill missed some).
+
+No frontend changes needed — the link button already checks `t.slug` and shows it when present.
 
