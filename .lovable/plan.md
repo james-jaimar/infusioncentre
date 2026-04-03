@@ -1,46 +1,64 @@
 
 
-## Plan: Auto-Generate Slug for New Form Templates
+## Plan: Smart Identity Section — Skip Fields Already in the Form
 
 ### Problem
 
-When a new form template is created, no `slug` is set. The slug was only backfilled once via a migration for existing templates. There is no database trigger or application code that generates a slug on insert, so new templates always have `slug = null` and no public link appears.
+`PublicForm.tsx` always renders a hardcoded "Your Details" block (First Name, Last Name, Email, Phone, SA ID) above the form. When the form schema already contains equivalent fields (e.g., "Name in full", "ID Number"), the patient sees duplicate inputs.
 
 ### Solution
 
-Add a database trigger that auto-generates a slug from the template name on INSERT (when slug is null). This is more reliable than doing it in the frontend since it catches all creation paths (editor, AI import, etc.).
+Make the identity section **adaptive**: detect which identity-like fields the form schema already contains and only show the ones it doesn't. Email is always shown since it's the primary key for patient matching and forms rarely include it.
 
 ### Changes
 
-**1. Database migration — auto-slug trigger**
+**1. `src/pages/PublicForm.tsx` — Adaptive identity section**
 
-Create a trigger function that runs BEFORE INSERT on `form_templates`. When `slug` is null, it generates one from the name using `lower(regexp_replace(...))` and appends a short random suffix to avoid collisions.
+Add a detection function that scans the form schema for fields whose `field_name` or `label` matches common identity patterns:
 
-```sql
-CREATE OR REPLACE FUNCTION generate_form_template_slug()
-RETURNS TRIGGER AS $$
-BEGIN
-  IF NEW.slug IS NULL OR NEW.slug = '' THEN
-    NEW.slug := lower(regexp_replace(
-      regexp_replace(NEW.name, '[^a-zA-Z0-9\s-]', '', 'g'),
-      '\s+', '-', 'g'
-    ));
-    -- Append short unique suffix to prevent collisions
-    NEW.slug := NEW.slug || '-' || substr(gen_random_uuid()::text, 1, 4);
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trg_form_template_slug
-  BEFORE INSERT ON form_templates
-  FOR EACH ROW
-  EXECUTE FUNCTION generate_form_template_slug();
+```typescript
+const detectIdentityFields = (schema: FormField[]) => {
+  const names = schema.map(f => f.field_name?.toLowerCase() || "");
+  const labels = schema.map(f => f.label?.toLowerCase() || "");
+  const has = (patterns: string[]) => patterns.some(p => 
+    names.some(n => n.includes(p)) || labels.some(l => l.includes(p))
+  );
+  return {
+    hasName: has(["name_in_full", "full_name", "first_name", "patient_name"]),
+    hasEmail: has(["email"]),
+    hasPhone: has(["phone", "cell", "mobile", "contact_number"]),
+    hasIdNumber: has(["id_number", "identity", "sa_id"]),
+  };
+};
 ```
 
-**2. Backfill existing templates missing slugs**
+Based on this detection:
+- **Email**: Always shown (required for patient matching — forms rarely include email)
+- **First/Last Name**: Hidden if form has a name field; extract from form values on submit
+- **Phone**: Hidden if form has a phone field
+- **SA ID**: Hidden if form has an ID number field
 
-The same migration will update any existing rows that still have null slugs (in case the original backfill missed some).
+If ALL identity fields are already in the form, the entire "Your Details" card is hidden (only email remains as a small inline field above the form).
 
-No frontend changes needed — the link button already checks `t.slug` and shows it when present.
+**2. `src/pages/PublicForm.tsx` — Submit logic adaptation**
+
+When identity fields are sourced from the form schema instead of the hardcoded inputs, the submit handler extracts them from `values` before calling the edge function:
+
+- If name is in the form: split `values.name_in_full` into first/last, or use `values.first_name` / `values.last_name` directly
+- If ID is in the form: use `values.id_number`
+- If phone is in the form: use `values.phone` or similar
+
+The edge function payload stays the same — only the source of the data changes.
+
+**3. Minimal email-only mode**
+
+When the form already has name, phone, and ID fields, show just a small email input at the top (not a full card), with a note like "We need your email to link this form to your records."
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `src/pages/PublicForm.tsx` | Add schema detection, conditional rendering of identity fields, adapt submit logic |
+
+No backend changes needed — the edge function interface stays identical.
 
