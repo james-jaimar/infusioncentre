@@ -1,65 +1,84 @@
 
 
-## Plan: Fix Three UI Issues in Form Rendering
+## Plan: Add AI Reasoning Output and Fix Extraction Prompt for Remaining Issues
 
-### Issues Identified
+### Problem Analysis
 
-1. **"List three things" — label runs into numbered inputs**: The question text and the "1." label are combined, so it renders as a long label next to the first text box. The AI prompt needs a rule to handle "List N things" patterns as a numbered list of text fields with a separate question label above them.
+Comparing the five screenshots against the original PDF (page by page), I've identified these issues — all are **extraction prompt failures**, not renderer bugs:
 
-2. **Substance table missing a "tick" column**: The original PDF has a tick/checkmark column (implied by the instruction "Tick each substance used") that wasn't captured by the AI. The SubstanceTable columns likely don't include a Yes/No first column. The AI prompt needs reinforcement that substance use tables with "tick" instructions should always include a "Yes/No" column first.
+### Issue 1: "List three things..." (Image 50)
+**What's wrong**: The question text "List three things you struggle with currently and hope to be able to do after therapy?" appears to be rendering as an unlabelled textarea instead of an info_text label. The numbered fields (1, 2, 3) are rendering correctly side-by-side, but there's a stray empty text box between the textarea and the numbered list.
+**Root cause**: The AI likely merged the question with the textarea for "What are your treatment goals?" or created an extra empty field. The NUMBERED LIST rule says to create a separate info_text, but the AI is likely not distinguishing between "What are your treatment goals?" (a textarea) and "List three things..." (an info_text + 3 text inputs).
 
-3. **Systems review section merging**: Small sub-sections (like "Other problems") get absorbed into the wrong section (e.g., "Heart and Lungs"). This is the existing section separation problem — the AI needs stronger instruction to treat every distinct label/heading as its own section, even when items appear close together on the page.
+### Issue 2: Missing labels for education and marital status (Image 51)
+**What's wrong**: "What is your highest education?" label is missing — just bare checkboxes (High school, College, Degree, Other) with no group label. Same for "Marital status:" — checkboxes with no label. There's also a stray empty text box under "Were there problems with your birth?".
+**Root cause**: On the PDF, these are clearly checkbox groups with a visible question/label: "What is your highest education? □ High school □ College □ Degree □ Other". The AI should be producing a `checkbox_group` with `label: "What is your highest education?"` and `options: ["High school", "College", "Degree", "Other"]` — but instead it seems to be producing individual checkboxes without any parent label. Same for marital status.
 
-### Changes
+### Issue 3: Empty Systems Review sections (Image 52)
+**What's wrong**: GENERAL, NERVOUS SYSTEM, PSYCHIATRIC appear as section headers with a single empty text box each — all the actual checkbox items are missing.
+**Root cause**: The Systems Review page on the PDF is a dense 3-column layout. The AI is creating the section headers but failing to extract the individual checkboxes beneath them. The checkboxes that DO appear (Image 53) are jumbled into the wrong section.
 
-**1. AI Prompt — `extract-form-template/index.ts`**
+### Issue 4: Cross-section checkbox contamination (Image 53)
+**What's wrong**: Under "STOMACH AND INTESTINES" section, checkboxes from GENERAL ("Food cravings"), PSYCHIATRIC ("Frequent crying", "Sensitivity", "Thoughts of suicide/attempts", "Stress Irritability"), and MUSCLE/JOINTS/BONES ("Numbness", "Joint pain", "Muscle weakness", "Joint swelling") are all mixed in. "Where?" text field is correctly there but its context is wrong.
+**Root cause**: The 3-column table layout on page 4 is confusing the AI. It reads across rows instead of down columns, mixing items from different sections.
 
-Add three new rules to `FIELD_TYPES_REFERENCE`:
+### Issue 5: Substance table column order (Image 54)
+**What's wrong**: The tick column (✓) from the original PDF is missing. "Currently still use?" appears as the last column with text inputs instead of Yes/No dropdowns. The original PDF has the tick column FIRST (right after Drug Category), then the detail columns, with "Currently still use?" as Yes/No checkboxes at the END.
+**Root cause**: Despite our SUBSTANCE USE TABLES rule, the AI is reordering columns and dropping the tick/checkmark column. The "Currently still use?" column should render as Yes/No dropdowns (the SubstanceTable component already supports this via `isYesNoColumn`), but it's generating text inputs.
 
-In **PATTERN RECOGNITION** (section 6):
+### Solution: Two-Part Approach
+
+**Part 1: Add reasoning/analysis output from the AI**
+
+Modify the edge function to request the AI also output its reasoning about the document's structure BEFORE extracting, as a separate text field. This will let us see what the AI "sees" and debug future issues. Add a `reasoning` field to the tool schema.
+
+**Part 2: Strengthen the prompt for these specific failure modes**
+
+Add/revise rules in `FIELD_TYPES_REFERENCE`:
 
 ```
-- NUMBERED LIST QUESTIONS: When a question asks the respondent to "list N things" 
-  or provides numbered blanks (1. ___ 2. ___ 3. ___), create a SEPARATE "info_text" 
-  or label field for the question text, then N individual "text" fields labelled 
-  "1.", "2.", "3." etc. with layout_hint "inline" so they can pair up. Do NOT embed 
-  the question text in the label of the first text field.
+## In PATTERN RECOGNITION (section 6):
+
+- LABELLED CHECKBOX GROUPS: When the document shows a question label followed 
+  by a horizontal row of checkbox options on the SAME line (e.g. "What is your 
+  highest education? □ High school □ College □ Degree □ Other"), this is a 
+  "checkbox_group" with the question as "label" and the options as "options". 
+  Do NOT break these into individual checkbox fields. Similarly, "Marital 
+  status: □ Never married □ Married □ Divorced..." is a checkbox_group.
+
+- MULTI-COLUMN SYSTEMS REVIEW / CHECKLIST PAGES: When a page contains a dense 
+  multi-column layout where each COLUMN represents a different body system or 
+  category (e.g. Column 1 = GENERAL, Column 2 = NERVOUS SYSTEM, Column 3 = 
+  PSYCHIATRIC), you MUST read EACH COLUMN INDEPENDENTLY from top to bottom. 
+  Do NOT read across rows. Each column's heading becomes a section_header, and 
+  the items beneath it become checkbox fields belonging to that section. Verify 
+  every checkbox item is placed under its correct column heading.
+
+## In LAYOUT RULES (section 5):
+
+- COLUMN-BASED READING ORDER: For pages with multi-column checkbox grids 
+  (like a Systems Review page), read vertically within each column, not 
+  horizontally across the page. Create section_headers for each column heading 
+  and list ALL items from that column before moving to the next column.
 ```
 
-In **PATTERN RECOGNITION** (section 6), strengthen the substance table tick rule:
-
+Revise the SUBSTANCE USE TABLES rule to be more explicit:
 ```
-- SUBSTANCE USE TABLES: When a substance/drug table has instructions like "Tick each 
-  substance used" or has a column for ticking/marking, ALWAYS include "Yes/No" as the 
-  FIRST column in the columns array. The remaining columns follow (e.g. "Age when first 
-  used?", "How much?", etc.). The "Yes/No" column renders as a dropdown, not free text.
+- SUBSTANCE USE TABLES: Read the column headers from the original table 
+  left-to-right. If there is a tick/checkmark (✓) column, include it as 
+  "Yes/No" in the columns array at the same position. The "Currently still 
+  use?" column should appear in its original position and be named exactly 
+  "Currently still use?" so the renderer recognises it as a Yes/No dropdown. 
+  Preserve the original column ORDER from the document.
 ```
-
-In **LAYOUT RULES** (section 5), reinforce section separation:
-
-```
-- MICRO-SECTION AWARENESS: Standalone items like "Other problems:", "Additional notes:", 
-  or "Comments:" that appear between or after larger sections are their OWN fields — do 
-  NOT merge them into the preceding section_header. If a line appears as a distinct 
-  labelled area with its own input space, it is a separate field, not part of the 
-  section above it.
-```
-
-**2. Redeploy edge function**
-
-Required after prompt changes.
-
-**3. Re-import the PDF**
-
-To get the improved extraction with the new rules.
 
 ### Files Changed
 
 | File | Change |
 |------|--------|
-| `supabase/functions/extract-form-template/index.ts` | Add 3 new rules to FIELD_TYPES_REFERENCE |
+| `supabase/functions/extract-form-template/index.ts` | Add reasoning field to tool schema; add 3 new rules; strengthen substance table rule |
 
-### No renderer changes needed
+### Redeploy + Re-import Required
 
-The `FormRenderer` and `SubstanceTable` already support all the required rendering — the issues are purely in the AI extraction prompt not producing the right schema.
+After deployment, re-upload the PDF to test with the improved prompt. The reasoning output will help diagnose any remaining issues.
 
