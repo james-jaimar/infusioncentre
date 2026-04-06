@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { format } from "date-fns";
 import { useFormTemplates, useDeleteFormTemplate, FormTemplate } from "@/hooks/useFormTemplates";
 import { useAppointmentTypes } from "@/hooks/useAppointmentTypes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -198,11 +199,11 @@ export default function AdminFormTemplates() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
                 </TableRow>
               ) : filtered?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No templates found</TableCell>
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No templates found</TableCell>
                 </TableRow>
               ) : (
                 filtered?.map((t) => {
@@ -242,6 +243,12 @@ export default function AdminFormTemplates() {
                       </TableCell>
                       <TableCell>{fieldCount} fields</TableCell>
                       <TableCell>v{t.version}</TableCell>
+                      <TableCell>
+                        <div className="text-xs">
+                          <p>{format(new Date(t.updated_at), "dd MMM yyyy")}</p>
+                          <p className="text-muted-foreground">{format(new Date(t.updated_at), "HH:mm")}</p>
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <Badge variant={t.is_active ? "default" : "secondary"}>
                           {t.is_active ? "Active" : "Inactive"}
