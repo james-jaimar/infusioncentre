@@ -18,6 +18,9 @@ export interface FormTemplate {
   created_at: string;
   updated_at: string;
   slug: string | null;
+  render_mode: string;
+  pdf_pages: any;
+  overlay_fields: any;
 }
 
 export function useFormTemplates(category?: FormCategory) {
