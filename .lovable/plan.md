@@ -1,64 +1,65 @@
 
 
-## Plan: Smart Identity Section — Skip Fields Already in the Form
+## Plan: Fix Three UI Issues in Form Rendering
 
-### Problem
+### Issues Identified
 
-`PublicForm.tsx` always renders a hardcoded "Your Details" block (First Name, Last Name, Email, Phone, SA ID) above the form. When the form schema already contains equivalent fields (e.g., "Name in full", "ID Number"), the patient sees duplicate inputs.
+1. **"List three things" — label runs into numbered inputs**: The question text and the "1." label are combined, so it renders as a long label next to the first text box. The AI prompt needs a rule to handle "List N things" patterns as a numbered list of text fields with a separate question label above them.
 
-### Solution
+2. **Substance table missing a "tick" column**: The original PDF has a tick/checkmark column (implied by the instruction "Tick each substance used") that wasn't captured by the AI. The SubstanceTable columns likely don't include a Yes/No first column. The AI prompt needs reinforcement that substance use tables with "tick" instructions should always include a "Yes/No" column first.
 
-Make the identity section **adaptive**: detect which identity-like fields the form schema already contains and only show the ones it doesn't. Email is always shown since it's the primary key for patient matching and forms rarely include it.
+3. **Systems review section merging**: Small sub-sections (like "Other problems") get absorbed into the wrong section (e.g., "Heart and Lungs"). This is the existing section separation problem — the AI needs stronger instruction to treat every distinct label/heading as its own section, even when items appear close together on the page.
 
 ### Changes
 
-**1. `src/pages/PublicForm.tsx` — Adaptive identity section**
+**1. AI Prompt — `extract-form-template/index.ts`**
 
-Add a detection function that scans the form schema for fields whose `field_name` or `label` matches common identity patterns:
+Add three new rules to `FIELD_TYPES_REFERENCE`:
 
-```typescript
-const detectIdentityFields = (schema: FormField[]) => {
-  const names = schema.map(f => f.field_name?.toLowerCase() || "");
-  const labels = schema.map(f => f.label?.toLowerCase() || "");
-  const has = (patterns: string[]) => patterns.some(p => 
-    names.some(n => n.includes(p)) || labels.some(l => l.includes(p))
-  );
-  return {
-    hasName: has(["name_in_full", "full_name", "first_name", "patient_name"]),
-    hasEmail: has(["email"]),
-    hasPhone: has(["phone", "cell", "mobile", "contact_number"]),
-    hasIdNumber: has(["id_number", "identity", "sa_id"]),
-  };
-};
+In **PATTERN RECOGNITION** (section 6):
+
+```
+- NUMBERED LIST QUESTIONS: When a question asks the respondent to "list N things" 
+  or provides numbered blanks (1. ___ 2. ___ 3. ___), create a SEPARATE "info_text" 
+  or label field for the question text, then N individual "text" fields labelled 
+  "1.", "2.", "3." etc. with layout_hint "inline" so they can pair up. Do NOT embed 
+  the question text in the label of the first text field.
 ```
 
-Based on this detection:
-- **Email**: Always shown (required for patient matching — forms rarely include email)
-- **First/Last Name**: Hidden if form has a name field; extract from form values on submit
-- **Phone**: Hidden if form has a phone field
-- **SA ID**: Hidden if form has an ID number field
+In **PATTERN RECOGNITION** (section 6), strengthen the substance table tick rule:
 
-If ALL identity fields are already in the form, the entire "Your Details" card is hidden (only email remains as a small inline field above the form).
+```
+- SUBSTANCE USE TABLES: When a substance/drug table has instructions like "Tick each 
+  substance used" or has a column for ticking/marking, ALWAYS include "Yes/No" as the 
+  FIRST column in the columns array. The remaining columns follow (e.g. "Age when first 
+  used?", "How much?", etc.). The "Yes/No" column renders as a dropdown, not free text.
+```
 
-**2. `src/pages/PublicForm.tsx` — Submit logic adaptation**
+In **LAYOUT RULES** (section 5), reinforce section separation:
 
-When identity fields are sourced from the form schema instead of the hardcoded inputs, the submit handler extracts them from `values` before calling the edge function:
+```
+- MICRO-SECTION AWARENESS: Standalone items like "Other problems:", "Additional notes:", 
+  or "Comments:" that appear between or after larger sections are their OWN fields — do 
+  NOT merge them into the preceding section_header. If a line appears as a distinct 
+  labelled area with its own input space, it is a separate field, not part of the 
+  section above it.
+```
 
-- If name is in the form: split `values.name_in_full` into first/last, or use `values.first_name` / `values.last_name` directly
-- If ID is in the form: use `values.id_number`
-- If phone is in the form: use `values.phone` or similar
+**2. Redeploy edge function**
 
-The edge function payload stays the same — only the source of the data changes.
+Required after prompt changes.
 
-**3. Minimal email-only mode**
+**3. Re-import the PDF**
 
-When the form already has name, phone, and ID fields, show just a small email input at the top (not a full card), with a note like "We need your email to link this form to your records."
+To get the improved extraction with the new rules.
 
 ### Files Changed
 
 | File | Change |
 |------|--------|
-| `src/pages/PublicForm.tsx` | Add schema detection, conditional rendering of identity fields, adapt submit logic |
+| `supabase/functions/extract-form-template/index.ts` | Add 3 new rules to FIELD_TYPES_REFERENCE |
 
-No backend changes needed — the edge function interface stays identical.
+### No renderer changes needed
+
+The `FormRenderer` and `SubstanceTable` already support all the required rendering — the issues are purely in the AI extraction prompt not producing the right schema.
 
