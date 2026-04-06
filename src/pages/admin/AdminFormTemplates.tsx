@@ -8,12 +8,17 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Search, Eye, Trash2, Pencil, Upload, Link2, Check } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Plus, Search, Eye, Trash2, Pencil, Upload, Link2, Check, Layers } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import FullScreenFormDialog from "@/components/forms/FullScreenFormDialog";
 import FormTemplateEditor from "@/components/forms/FormTemplateEditor";
 import AIImportDialog from "@/components/forms/AIImportDialog";
+import PdfOverlayEditor from "@/components/forms/PdfOverlayEditor";
+import { usePdfToImages } from "@/hooks/usePdfToImages";
 import type { FormField } from "@/components/forms/FormRenderer";
+import type { OverlayField } from "@/components/forms/PdfOverlayRenderer";
 import type { Database } from "@/integrations/supabase/types";
 
 type FormCategory = Database["public"]["Enums"]["form_category"];
