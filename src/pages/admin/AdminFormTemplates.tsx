@@ -333,6 +333,7 @@ export default function AdminFormTemplates() {
                           )}
                           <Button variant="ghost" size="sm" onClick={() => openOverlayEditor(t)} title="PDF Overlay Editor">
                             <Layers className="h-4 w-4" />
+                          </Button>
                           <Button variant="ghost" size="sm" onClick={() => openEditor(t)} title="Edit">
                             <Pencil className="h-4 w-4" />
                           </Button>
