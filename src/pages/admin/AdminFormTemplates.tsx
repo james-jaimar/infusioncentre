@@ -190,6 +190,7 @@ export default function AdminFormTemplates() {
                 <TableHead>Assigned To</TableHead>
                 <TableHead>Fields</TableHead>
                 <TableHead>Version</TableHead>
+                <TableHead>Updated</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
