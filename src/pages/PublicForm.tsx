@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import FormRenderer, { type FormField } from "@/components/forms/FormRenderer";
+import PdfOverlayRenderer, { type OverlayField } from "@/components/forms/PdfOverlayRenderer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -351,11 +352,20 @@ export default function PublicForm() {
         {/* Form Content */}
         <Card>
           <CardContent className="p-6">
-            <FormRenderer
-              schema={schema}
-              values={values}
-              onChange={setValues}
-            />
+            {template.render_mode === "pdf_overlay" && Array.isArray(template.pdf_pages) && template.pdf_pages.length > 0 ? (
+              <PdfOverlayRenderer
+                pdfPages={template.pdf_pages as string[]}
+                overlayFields={(template.overlay_fields as unknown as OverlayField[]) || []}
+                values={values}
+                onChange={setValues}
+              />
+            ) : (
+              <FormRenderer
+                schema={schema}
+                values={values}
+                onChange={setValues}
+              />
+            )}
           </CardContent>
         </Card>
 
