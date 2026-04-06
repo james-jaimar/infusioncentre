@@ -89,12 +89,22 @@ export default function FullScreenFormDialog({
       {/* Scrollable form body */}
       <main className="flex-1 overflow-y-auto">
         <div className="w-full px-4 sm:px-6 lg:px-10 xl:px-16 py-6 sm:py-8 lg:py-10">
-          <FormRenderer
-            schema={schema}
-            values={values}
-            onChange={onChange}
-            readOnly={readOnly}
-          />
+          {renderMode === "pdf_overlay" && pdfPages && overlayFields ? (
+            <PdfOverlayRenderer
+              pdfPages={pdfPages}
+              overlayFields={overlayFields}
+              values={values}
+              onChange={onChange}
+              readOnly={readOnly}
+            />
+          ) : (
+            <FormRenderer
+              schema={schema}
+              values={values}
+              onChange={onChange}
+              readOnly={readOnly}
+            />
+          )}
         </div>
 
         {/* Bottom submit bar for mobile */}
