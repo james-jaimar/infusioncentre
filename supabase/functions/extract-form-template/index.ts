@@ -54,6 +54,7 @@ These rules apply ONLY to input collection methods. All informational and legal 
 - LAYOUT DENSITY: Analyse how the original document uses space. When checkbox lists are packed tightly in multi-column layouts on the source document (e.g. medical history checklists, systems review with 20+ items in 2-3 columns), add "density": "compact" to each checkbox field in those sections. This tells the renderer to use a tight grid layout matching the original's space efficiency.
 - Informational headings (e.g. "What is an iron infusion?") → section_header, followed by info_text with the FULL verbatim content.
 - MICRO-SECTION AWARENESS: Standalone items like "Other problems:", "Additional notes:", or "Comments:" that appear between or after larger sections are their OWN fields — do NOT merge them into the preceding section_header. If a line appears as a distinct labelled area with its own input space, it is a separate field, not part of the section above it.
+- COLUMN-BASED READING ORDER: For pages with multi-column checkbox grids (like a Systems Review page), read vertically within each column, not horizontally across the page. Create section_headers for each column heading and list ALL items from that column before moving to the next column.
 
 ## 6. PATTERN RECOGNITION
 
@@ -61,9 +62,11 @@ These rules apply ONLY to input collection methods. All informational and legal 
 - CONDITIONAL FOLLOW-UPS: "If yes, describe..." or "If yes, please provide details" → use "textarea" or "text" with "conditional_on": { "field": "<parent_field_name>", "value": "Yes" }.
 - CHECKBOX WITH DETAIL: When a checkbox item includes a follow-up prompt after a semicolon, comma, or dash (e.g. "Recent weight gain; How much", "Allergies - please list"), split into TWO fields: (1) a "checkbox" with the condition name as label, and (2) a "text" field for the detail with "conditional_on": {"field": "<checkbox_field_name>", "value": "true"} and layout_hint "inline".
 - CHECKBOX GRID LAYOUT: When a section contains a list of checkbox items displayed in multiple columns on the document (e.g. symptoms in 2-3 columns), use individual "checkbox" fields with layout_hint "inline". Do NOT use checkbox_group — each item needs its own field_name for independent checking.
+- LABELLED CHECKBOX GROUPS: When the document shows a question label followed by a horizontal row of checkbox options on the SAME line (e.g. "What is your highest education? □ High school □ College □ Degree □ Other"), this is a "checkbox_group" with the question as "label" and the options as "options". Do NOT break these into individual checkbox fields. Similarly, "Marital status: □ Never married □ Married □ Divorced..." is a checkbox_group.
 - CONDITION/CHECKLIST TABLES: When the document has a table listing conditions/symptoms/items with columns for Yes/tick/check and Details/comments, use "substance_table" with rows = condition names and columns = ["Yes/No", "Details"]. Normalise column headers — even if the original just says "Yes" or uses tick boxes, use "Yes/No".
 - NUMBERED LIST QUESTIONS: When a question asks the respondent to "list N things" or provides numbered blanks (1. ___ 2. ___ 3. ___), create a SEPARATE "info_text" or label field for the question text, then N individual "text" fields labelled "1.", "2.", "3." etc. with layout_hint "inline" so they can pair up. Do NOT embed the question text in the label of the first text field.
-- SUBSTANCE USE TABLES: When a substance/drug table has instructions like "Tick each substance used" or has a column for ticking/marking, ALWAYS include "Yes/No" as the FIRST column in the columns array. The remaining columns follow (e.g. "Age when first used?", "How much?", etc.). The "Yes/No" column renders as a dropdown, not free text.
+- SUBSTANCE USE TABLES: Read the column headers from the original table left-to-right. If there is a tick/checkmark (✓) column, include it as "Yes/No" in the columns array at the same position. The "Currently still use?" column should appear in its original position and be named exactly "Currently still use?" so the renderer recognises it as a Yes/No dropdown. Preserve the original column ORDER from the document. When a substance/drug table has instructions like "Tick each substance used" or has a column for ticking/marking, ALWAYS include "Yes/No" as the FIRST column in the columns array.
+- MULTI-COLUMN SYSTEMS REVIEW / CHECKLIST PAGES: When a page contains a dense multi-column layout where each COLUMN represents a different body system or category (e.g. Column 1 = GENERAL, Column 2 = NERVOUS SYSTEM, Column 3 = PSYCHIATRIC), you MUST read EACH COLUMN INDEPENDENTLY from top to bottom. Do NOT read across rows. Each column's heading becomes a section_header, and the items beneath it become checkbox fields belonging to that section. Verify every checkbox item is placed under its correct column heading.
 `;
 
 const TOOL_SCHEMA = {
@@ -71,10 +74,14 @@ const TOOL_SCHEMA = {
   function: {
     name: "extract_form_schema",
     description:
-      "Extract the complete form structure from the document into a form_schema array",
+      "Analyse the document structure first, then extract the complete form into a form_schema array",
     parameters: {
       type: "object",
       properties: {
+        reasoning: {
+          type: "string",
+          description: "Your analysis of the document's structure: how many pages, what sections you identified, how columns are laid out, any ambiguous areas, and how you resolved them. This helps with debugging.",
+        },
         form_name: {
           type: "string",
           description: "The name/title of the form",
@@ -166,7 +173,7 @@ const TOOL_SCHEMA = {
           },
         },
       },
-      required: ["form_name", "form_description", "form_category", "form_schema"],
+      required: ["reasoning", "form_name", "form_description", "form_category", "form_schema"],
       additionalProperties: false,
     },
   },
