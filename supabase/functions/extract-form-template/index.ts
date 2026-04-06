@@ -66,7 +66,36 @@ These rules apply ONLY to input collection methods. All informational and legal 
 - CONDITION/CHECKLIST TABLES: When the document has a table listing conditions/symptoms/items with columns for Yes/tick/check and Details/comments, use "substance_table" with rows = condition names and columns = ["Yes/No", "Details"]. Normalise column headers — even if the original just says "Yes" or uses tick boxes, use "Yes/No".
 - NUMBERED LIST QUESTIONS: When a question asks the respondent to "list N things" or provides numbered blanks (1. ___ 2. ___ 3. ___), create a SEPARATE "info_text" or label field for the question text, then N individual "text" fields labelled "1.", "2.", "3." etc. with layout_hint "inline" so they can pair up. Do NOT embed the question text in the label of the first text field.
 - SUBSTANCE USE TABLES: Read the column headers from the original table left-to-right. If there is a tick/checkmark (✓) column, include it as "Yes/No" in the columns array at the same position. The "Currently still use?" column should appear in its original position and be named exactly "Currently still use?" so the renderer recognises it as a Yes/No dropdown. Preserve the original column ORDER from the document. When a substance/drug table has instructions like "Tick each substance used" or has a column for ticking/marking, ALWAYS include "Yes/No" as the FIRST column in the columns array.
-- MULTI-COLUMN SYSTEMS REVIEW / CHECKLIST PAGES: When a page contains a dense multi-column layout where each COLUMN represents a different body system or category (e.g. Column 1 = GENERAL, Column 2 = NERVOUS SYSTEM, Column 3 = PSYCHIATRIC), you MUST read EACH COLUMN INDEPENDENTLY from top to bottom. Do NOT read across rows. Each column's heading becomes a section_header, and the items beneath it become checkbox fields belonging to that section. Verify every checkbox item is placed under its correct column heading.
+- MULTI-COLUMN SYSTEMS REVIEW / CHECKLIST PAGES: This is the MOST COMMON extraction error. When a page has a table or grid with 2-3 columns of checkboxes, each column headed by a body system or category name, you MUST:
+  Step 1: Identify ALL column headings (e.g. GENERAL, NERVOUS SYSTEM, PSYCHIATRIC)
+  Step 2: For EACH column, read TOP to BOTTOM within that column only
+  Step 3: Create a section_header for each column heading
+  Step 4: List every checkbox item from that column under its section_header
+  Step 5: Only after finishing ALL items in one column, move to the next
+
+  EXAMPLE — if the document shows this 3-column table:
+  | GENERAL              | NERVOUS SYSTEM  | PSYCHIATRIC        |
+  | Recent weight gain   | Headaches       | Depression         |
+  | Fatigue              | Dizziness       | Excessive worries  |
+
+  CORRECT output (read vertically per column):
+  → section_header "GENERAL"
+  → checkbox "Recent weight gain"
+  → checkbox "Fatigue"
+  → section_header "NERVOUS SYSTEM"
+  → checkbox "Headaches"
+  → checkbox "Dizziness"
+  → section_header "PSYCHIATRIC"
+  → checkbox "Depression"
+  → checkbox "Excessive worries"
+
+  WRONG output (reading horizontally across rows):
+  → section_header "GENERAL"
+  → checkbox "Recent weight gain"
+  → checkbox "Headaches"        ← WRONG, this belongs to NERVOUS SYSTEM
+  → checkbox "Depression"        ← WRONG, this belongs to PSYCHIATRIC
+
+  When a column contains a SUB-HEADING mid-way (e.g. MUSCLE/JOINTS/BONES appearing mid-way in the first column), that sub-heading starts a NEW section_header. All items below it in that same column belong to the new section.
 `;
 
 const TOOL_SCHEMA = {
@@ -80,7 +109,7 @@ const TOOL_SCHEMA = {
       properties: {
         reasoning: {
           type: "string",
-          description: "Your analysis of the document's structure: how many pages, what sections you identified, how columns are laid out, any ambiguous areas, and how you resolved them. This helps with debugging.",
+          description: "Your analysis of the document's structure: how many pages, what sections you identified, how columns are laid out, any ambiguous areas, and how you resolved them. For multi-column pages (like Systems Review), you MUST list each column heading and every item beneath it in your reasoning BEFORE extracting. Format: 'Column 1 [GENERAL]: Recent weight gain, Fatigue, ...' etc. This pre-listing step is mandatory for accuracy.",
         },
         form_name: {
           type: "string",
@@ -282,6 +311,8 @@ serve(async (req) => {
             {
               role: "system",
               content: `You are a clinical form digitisation expert. Convert medical/administrative documents into structured JSON form schemas that are exact digital replicas of the source. Follow every rule in the reference below.
+
+CRITICAL: For multi-column checkbox grids (like Systems Review pages), read each column TOP-TO-BOTTOM independently. Never read across rows. List every column and its items in your reasoning before extracting.
 
 ${FIELD_TYPES_REFERENCE}
 
