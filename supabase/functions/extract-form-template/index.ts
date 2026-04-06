@@ -53,6 +53,7 @@ These rules apply ONLY to input collection methods. All informational and legal 
 - SEMANTIC GROUPING: When a signature field has associated fields (e.g. ID number, printed name, date) that belong to the same signatory, assign them the same "group" value (e.g. "group": "patient_signature_group"). When a document has multiple signature blocks (e.g. Patient and Representative/Witness), each block's fields must share a distinct group value. This ensures they render as visual units and prevents cross-block field pairing.
 - LAYOUT DENSITY: Analyse how the original document uses space. When checkbox lists are packed tightly in multi-column layouts on the source document (e.g. medical history checklists, systems review with 20+ items in 2-3 columns), add "density": "compact" to each checkbox field in those sections. This tells the renderer to use a tight grid layout matching the original's space efficiency.
 - Informational headings (e.g. "What is an iron infusion?") → section_header, followed by info_text with the FULL verbatim content.
+- MICRO-SECTION AWARENESS: Standalone items like "Other problems:", "Additional notes:", or "Comments:" that appear between or after larger sections are their OWN fields — do NOT merge them into the preceding section_header. If a line appears as a distinct labelled area with its own input space, it is a separate field, not part of the section above it.
 
 ## 6. PATTERN RECOGNITION
 
@@ -61,6 +62,8 @@ These rules apply ONLY to input collection methods. All informational and legal 
 - CHECKBOX WITH DETAIL: When a checkbox item includes a follow-up prompt after a semicolon, comma, or dash (e.g. "Recent weight gain; How much", "Allergies - please list"), split into TWO fields: (1) a "checkbox" with the condition name as label, and (2) a "text" field for the detail with "conditional_on": {"field": "<checkbox_field_name>", "value": "true"} and layout_hint "inline".
 - CHECKBOX GRID LAYOUT: When a section contains a list of checkbox items displayed in multiple columns on the document (e.g. symptoms in 2-3 columns), use individual "checkbox" fields with layout_hint "inline". Do NOT use checkbox_group — each item needs its own field_name for independent checking.
 - CONDITION/CHECKLIST TABLES: When the document has a table listing conditions/symptoms/items with columns for Yes/tick/check and Details/comments, use "substance_table" with rows = condition names and columns = ["Yes/No", "Details"]. Normalise column headers — even if the original just says "Yes" or uses tick boxes, use "Yes/No".
+- NUMBERED LIST QUESTIONS: When a question asks the respondent to "list N things" or provides numbered blanks (1. ___ 2. ___ 3. ___), create a SEPARATE "info_text" or label field for the question text, then N individual "text" fields labelled "1.", "2.", "3." etc. with layout_hint "inline" so they can pair up. Do NOT embed the question text in the label of the first text field.
+- SUBSTANCE USE TABLES: When a substance/drug table has instructions like "Tick each substance used" or has a column for ticking/marking, ALWAYS include "Yes/No" as the FIRST column in the columns array. The remaining columns follow (e.g. "Age when first used?", "How much?", etc.). The "Yes/No" column renders as a dropdown, not free text.
 `;
 
 const TOOL_SCHEMA = {
