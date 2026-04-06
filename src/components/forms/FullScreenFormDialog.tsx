@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { X, ArrowLeft, Loader2, FileText } from "lucide-react";
 import FormRenderer, { FormField } from "./FormRenderer";
+import PdfOverlayRenderer, { OverlayField } from "./PdfOverlayRenderer";
 
 interface FullScreenFormDialogProps {
   open: boolean;
@@ -15,6 +16,9 @@ interface FullScreenFormDialogProps {
   onSubmit?: () => void;
   isSubmitting?: boolean;
   submitLabel?: string;
+  renderMode?: "schema" | "pdf_overlay";
+  pdfPages?: string[];
+  overlayFields?: OverlayField[];
 }
 
 export default function FullScreenFormDialog({
@@ -29,6 +33,9 @@ export default function FullScreenFormDialog({
   onSubmit,
   isSubmitting,
   submitLabel = "Submit Form",
+  renderMode = "schema",
+  pdfPages,
+  overlayFields,
 }: FullScreenFormDialogProps) {
   // Lock body scroll when open
   useEffect(() => {
