@@ -1162,6 +1162,9 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          overlay_fields: Json | null
+          pdf_pages: Json | null
+          render_mode: string
           required_for_treatment_types: string[] | null
           slug: string | null
           tenant_id: string
@@ -1178,6 +1181,9 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          overlay_fields?: Json | null
+          pdf_pages?: Json | null
+          render_mode?: string
           required_for_treatment_types?: string[] | null
           slug?: string | null
           tenant_id?: string
@@ -1194,6 +1200,9 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          overlay_fields?: Json | null
+          pdf_pages?: Json | null
+          render_mode?: string
           required_for_treatment_types?: string[] | null
           slug?: string | null
           tenant_id?: string
