@@ -342,6 +342,10 @@ Use the extract_form_schema tool to return the result.`,
     let extracted;
     try {
       extracted = JSON.parse(toolArgsRaw);
+      if (extracted.reasoning) {
+        console.log("AI reasoning:", extracted.reasoning);
+        delete extracted.reasoning;
+      }
       consolidateDateFields(extracted);
     } catch (parseErr) {
       console.error("Failed to parse tool arguments. Length:", toolArgsRaw.length, "First 500 chars:", toolArgsRaw.substring(0, 500));
