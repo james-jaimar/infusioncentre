@@ -8,8 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Search, Eye, Trash2, Pencil, Upload, Link2, Check, Layers } from "lucide-react";
+import { Plus, Search, Eye, Trash2, Pencil, Upload, Link2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import FullScreenFormDialog from "@/components/forms/FullScreenFormDialog";
@@ -192,6 +191,7 @@ export default function AdminFormTemplates() {
                 <TableHead>Name</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead>Assigned To</TableHead>
+                <TableHead>Mode</TableHead>
                 <TableHead>Fields</TableHead>
                 <TableHead>Version</TableHead>
                 <TableHead>Updated</TableHead>
@@ -202,11 +202,11 @@ export default function AdminFormTemplates() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
                 </TableRow>
               ) : filtered?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No templates found</TableCell>
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">No templates found</TableCell>
                 </TableRow>
               ) : (
                 filtered?.map((t) => {
@@ -243,6 +243,11 @@ export default function AdminFormTemplates() {
                             })}
                           </div>
                         )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-[10px]">
+                          {t.render_mode === "facsimile" ? "Facsimile" : t.render_mode === "pdf_overlay" ? "PDF Overlay" : "Schema"}
+                        </Badge>
                       </TableCell>
                       <TableCell>{fieldCount} fields</TableCell>
                       <TableCell>v{t.version}</TableCell>
