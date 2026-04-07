@@ -273,9 +273,6 @@ export default function AdminFormTemplates() {
                               <Link2 className="h-4 w-4" />
                             </Button>
                           )}
-                          <Button variant="ghost" size="sm" onClick={() => openOverlayEditor(t)} title="PDF Overlay Editor">
-                            <Layers className="h-4 w-4" />
-                          </Button>
                           <Button variant="ghost" size="sm" onClick={() => openEditor(t)} title="Edit">
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -380,53 +377,6 @@ export default function AdminFormTemplates() {
         }}
         onImported={handleAIImport}
       />
-      {/* Overlay Editor Dialog */}
-      <Dialog open={overlayEditorOpen} onOpenChange={setOverlayEditorOpen}>
-        <DialogContent className="max-w-[95vw] w-[95vw] max-h-[95vh] h-[95vh] p-0 flex flex-col">
-          <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
-            <div className="flex items-center justify-between">
-              <DialogTitle>PDF Overlay Editor — {overlayTemplate?.name}</DialogTitle>
-              <div className="flex items-center gap-2">
-                <label className="cursor-pointer">
-                  <input
-                    type="file"
-                    accept=".pdf"
-                    className="hidden"
-                    onChange={handleOverlayPdfUpload}
-                    disabled={pdfConverting}
-                  />
-                  <Button variant="outline" size="sm" asChild disabled={pdfConverting}>
-                    <span>
-                      <Upload className="h-4 w-4 mr-1" />
-                      {pdfConverting ? `Converting... ${pdfProgress}%` : "Upload PDF"}
-                    </span>
-                  </Button>
-                </label>
-                <Button size="sm" onClick={saveOverlayConfig} disabled={overlaySaving || overlayPdfPages.length === 0}>
-                  {overlaySaving ? "Saving..." : "Save Configuration"}
-                </Button>
-              </div>
-            </div>
-          </DialogHeader>
-          <div className="flex-1 overflow-hidden p-4">
-            {overlayPdfPages.length > 0 ? (
-              <PdfOverlayEditor
-                pdfPages={overlayPdfPages}
-                overlayFields={overlayFields}
-                onFieldsChange={setOverlayFields}
-              />
-            ) : (
-              <div className="flex items-center justify-center h-full text-muted-foreground">
-                <div className="text-center space-y-3">
-                  <Layers className="h-12 w-12 mx-auto opacity-30" />
-                  <p className="text-lg font-medium">Upload a PDF to get started</p>
-                  <p className="text-sm">The PDF pages will be displayed as backgrounds, and you can place interactive fields on top.</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
