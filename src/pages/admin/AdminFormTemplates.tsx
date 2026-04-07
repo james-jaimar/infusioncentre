@@ -15,10 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import FullScreenFormDialog from "@/components/forms/FullScreenFormDialog";
 import FormTemplateEditor from "@/components/forms/FormTemplateEditor";
 import AIImportDialog from "@/components/forms/AIImportDialog";
-import PdfOverlayEditor from "@/components/forms/PdfOverlayEditor";
-import { usePdfToImages } from "@/hooks/usePdfToImages";
 import type { FormField } from "@/components/forms/FormRenderer";
-import type { OverlayField } from "@/components/forms/PdfOverlayRenderer";
 import type { Database } from "@/integrations/supabase/types";
 
 type FormCategory = Database["public"]["Enums"]["form_category"];
@@ -60,61 +57,6 @@ export default function AdminFormTemplates() {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [reimportTemplate, setReimportTemplate] = useState<FormTemplate | null>(null);
 
-  // Overlay editor state
-  const [overlayEditorOpen, setOverlayEditorOpen] = useState(false);
-  const [overlayTemplate, setOverlayTemplate] = useState<FormTemplate | null>(null);
-  const [overlayFields, setOverlayFields] = useState<OverlayField[]>([]);
-  const [overlayPdfPages, setOverlayPdfPages] = useState<string[]>([]);
-  const [overlaySaving, setOverlaySaving] = useState(false);
-  const { convert: convertPdf, converting: pdfConverting, progress: pdfProgress } = usePdfToImages();
-
-  const openOverlayEditor = async (template: FormTemplate) => {
-    setOverlayTemplate(template);
-    setOverlayFields((template.overlay_fields as unknown as OverlayField[]) || []);
-    setOverlayPdfPages((template.pdf_pages as unknown as string[]) || []);
-    setOverlayEditorOpen(true);
-  };
-
-  const handleOverlayPdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !overlayTemplate) return;
-    try {
-      const images = await convertPdf(file);
-      // Upload images to Supabase storage
-      const urls: string[] = [];
-      for (let i = 0; i < images.length; i++) {
-        const blob = await (await fetch(images[i])).blob();
-        const path = `${overlayTemplate.id}/page-${i + 1}.jpg`;
-        const { error } = await supabase.storage.from("form-pdf-pages").upload(path, blob, { contentType: "image/jpeg", upsert: true });
-        if (error) throw error;
-        const { data } = supabase.storage.from("form-pdf-pages").getPublicUrl(path);
-        urls.push(data.publicUrl);
-      }
-      setOverlayPdfPages(urls);
-      toast({ title: `PDF converted to ${urls.length} page(s)` });
-    } catch (err: any) {
-      toast({ title: "PDF conversion failed", description: err.message, variant: "destructive" });
-    }
-  };
-
-  const saveOverlayConfig = async () => {
-    if (!overlayTemplate) return;
-    setOverlaySaving(true);
-    try {
-      const { error } = await supabase.from("form_templates").update({
-        render_mode: "pdf_overlay",
-        pdf_pages: overlayPdfPages as any,
-        overlay_fields: overlayFields as any,
-      }).eq("id", overlayTemplate.id);
-      if (error) throw error;
-      toast({ title: "Overlay configuration saved" });
-      setOverlayEditorOpen(false);
-    } catch (err: any) {
-      toast({ title: "Save failed", description: err.message, variant: "destructive" });
-    } finally {
-      setOverlaySaving(false);
-    }
-  };
 
   const SESSION_KEY = "pendingFormImport";
 
