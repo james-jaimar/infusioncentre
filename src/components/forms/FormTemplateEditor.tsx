@@ -12,6 +12,7 @@ import FieldPalette from "./FieldPalette";
 import FieldEditor from "./FieldEditor";
 import FormRenderer, { type FormField } from "./FormRenderer";
 import AIImportDialog from "./AIImportDialog";
+import { availableFacsimileSlugs } from "./facsimile/registry";
 import { useCreateFormTemplate, useUpdateFormTemplate, type FormTemplate } from "@/hooks/useFormTemplates";
 import { useAppointmentTypes } from "@/hooks/useAppointmentTypes";
 import { toast } from "@/hooks/use-toast";
@@ -91,6 +92,8 @@ export default function FormTemplateEditor({
   const [isActive, setIsActive] = useState(true);
   const [isUniversal, setIsUniversal] = useState(true);
   const [selectedTreatmentTypes, setSelectedTreatmentTypes] = useState<string[]>([]);
+  const [renderMode, setRenderMode] = useState("schema");
+  const [slug, setSlug] = useState("");
   const [showPreview, setShowPreview] = useState(false);
   const [previewValues, setPreviewValues] = useState<Record<string, any>>({});
 
@@ -113,6 +116,8 @@ export default function FormTemplateEditor({
       setIsActive(template.is_active);
       setIsUniversal(!template.required_for_treatment_types);
       setSelectedTreatmentTypes(template.required_for_treatment_types || []);
+      setRenderMode(template.render_mode || "schema");
+      setSlug(template.slug || "");
     } else if (template) {
       setFields((template.form_schema as FormField[]) || []);
       setName(template.name);
@@ -121,6 +126,8 @@ export default function FormTemplateEditor({
       setIsActive(template.is_active);
       setIsUniversal(!template.required_for_treatment_types);
       setSelectedTreatmentTypes(template.required_for_treatment_types || []);
+      setRenderMode(template.render_mode || "schema");
+      setSlug(template.slug || "");
     } else {
       setFields(initialSchema || []);
       setName(initialName || "");
@@ -129,6 +136,8 @@ export default function FormTemplateEditor({
       setIsActive(true);
       setIsUniversal(true);
       setSelectedTreatmentTypes([]);
+      setRenderMode("schema");
+      setSlug("");
     }
     setSelectedIdx(null);
     setShowPreview(false);
@@ -188,6 +197,8 @@ export default function FormTemplateEditor({
           form_schema: fields as any,
           is_active: isActive,
           required_for_treatment_types: treatmentTypes,
+          render_mode: renderMode,
+          slug: slug || null,
           version: template.version + 1,
         });
         toast({ title: "Template updated" });
@@ -199,6 +210,8 @@ export default function FormTemplateEditor({
           form_schema: fields as any,
           is_active: isActive,
           required_for_treatment_types: treatmentTypes,
+          render_mode: renderMode,
+          slug: slug || null,
         });
         toast({ title: "Template created" });
       }
@@ -293,6 +306,36 @@ export default function FormTemplateEditor({
                 <Switch checked={isActive} onCheckedChange={setIsActive} />
                 <Label className="text-xs">Active</Label>
               </div>
+
+              {/* Render Mode */}
+              <div className="space-y-1">
+                <Label className="text-xs">Render Mode</Label>
+                <Select value={renderMode} onValueChange={setRenderMode}>
+                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="schema">Schema (Form Builder)</SelectItem>
+                    <SelectItem value="pdf_overlay">PDF Overlay</SelectItem>
+                    <SelectItem value="facsimile">Facsimile (Custom Layout)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {renderMode === "facsimile" && (
+                <div className="space-y-1">
+                  <Label className="text-xs">Facsimile Slug</Label>
+                  <Input
+                    value={slug}
+                    onChange={(e) => setSlug(e.target.value)}
+                    className="h-9"
+                    placeholder="e.g. monofer-motivation"
+                  />
+                  {availableFacsimileSlugs.length > 0 && (
+                    <p className="text-[10px] text-muted-foreground">
+                      Available: {availableFacsimileSlugs.join(", ")}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Treatment Type Assignment */}
               <div className="space-y-2 sm:col-span-2 border-t pt-3 mt-1">
