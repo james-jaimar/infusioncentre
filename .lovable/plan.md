@@ -1,29 +1,26 @@
 
 
-## Plan: Make Render Mode Editable from the Template List
+## Plan: Fix "Failed to update mode" — Add `facsimile` to CHECK Constraint
 
-### Problem
-The "Render Mode" dropdown is buried inside the full-screen Form Template Editor. The Mode badge shown in the table list is display-only and not clickable, which is confusing.
+### Root Cause
 
-### Solution
-Replace the static Mode badge in the template table with a clickable Select dropdown, allowing admins to change the render mode (and slug for facsimile) directly from the list page without opening the editor.
+The database has a CHECK constraint on `form_templates.render_mode` that only allows `'schema'` and `'pdf_overlay'`. The value `'facsimile'` is rejected by Postgres, causing the "Failed to update mode" error.
 
-### Changes
+### Fix
 
-**File: `src/pages/admin/AdminFormTemplates.tsx`**
+**Database migration**: Drop and recreate the CHECK constraint to include `facsimile`:
 
-1. Import `Select`, `SelectContent`, `SelectItem`, `SelectTrigger`, `SelectValue` and `Input` components
-2. Import `availableFacsimileSlugs` from the facsimile registry
-3. Import `useUpdateFormTemplate` hook
-4. Replace the static `<Badge>` in the Mode column with a small inline `<Select>` dropdown that calls `updateTemplate` on change
-5. When "facsimile" is selected, show a small popover or inline input for the slug assignment
-6. Use `updateTemplate.mutateAsync` to persist the change immediately
+```sql
+ALTER TABLE form_templates DROP CONSTRAINT form_templates_render_mode_check;
+ALTER TABLE form_templates ADD CONSTRAINT form_templates_render_mode_check
+  CHECK (render_mode = ANY (ARRAY['schema', 'pdf_overlay', 'facsimile']));
+```
 
-This gives admins a one-click way to switch any template between Schema, PDF Overlay, and Facsimile modes right from the table view.
+No code changes needed — the UI already works correctly, it's just the database rejecting the value.
 
 ### Files Changed
 
 | File | Change |
 |------|--------|
-| `src/pages/admin/AdminFormTemplates.tsx` | Replace Mode badge with inline Select; add slug input for facsimile |
+| `supabase/migrations/` (new) | Update CHECK constraint to allow `facsimile` |
 
