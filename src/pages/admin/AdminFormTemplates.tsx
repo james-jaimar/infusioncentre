@@ -8,17 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Search, Eye, Trash2, Pencil, Upload, Link2, Check, Layers } from "lucide-react";
+import { Plus, Search, Eye, Trash2, Pencil, Upload, Link2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import FullScreenFormDialog from "@/components/forms/FullScreenFormDialog";
 import FormTemplateEditor from "@/components/forms/FormTemplateEditor";
 import AIImportDialog from "@/components/forms/AIImportDialog";
-import PdfOverlayEditor from "@/components/forms/PdfOverlayEditor";
-import { usePdfToImages } from "@/hooks/usePdfToImages";
 import type { FormField } from "@/components/forms/FormRenderer";
-import type { OverlayField } from "@/components/forms/PdfOverlayRenderer";
 import type { Database } from "@/integrations/supabase/types";
 
 type FormCategory = Database["public"]["Enums"]["form_category"];
@@ -60,61 +56,6 @@ export default function AdminFormTemplates() {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [reimportTemplate, setReimportTemplate] = useState<FormTemplate | null>(null);
 
-  // Overlay editor state
-  const [overlayEditorOpen, setOverlayEditorOpen] = useState(false);
-  const [overlayTemplate, setOverlayTemplate] = useState<FormTemplate | null>(null);
-  const [overlayFields, setOverlayFields] = useState<OverlayField[]>([]);
-  const [overlayPdfPages, setOverlayPdfPages] = useState<string[]>([]);
-  const [overlaySaving, setOverlaySaving] = useState(false);
-  const { convert: convertPdf, converting: pdfConverting, progress: pdfProgress } = usePdfToImages();
-
-  const openOverlayEditor = async (template: FormTemplate) => {
-    setOverlayTemplate(template);
-    setOverlayFields((template.overlay_fields as unknown as OverlayField[]) || []);
-    setOverlayPdfPages((template.pdf_pages as unknown as string[]) || []);
-    setOverlayEditorOpen(true);
-  };
-
-  const handleOverlayPdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !overlayTemplate) return;
-    try {
-      const images = await convertPdf(file);
-      // Upload images to Supabase storage
-      const urls: string[] = [];
-      for (let i = 0; i < images.length; i++) {
-        const blob = await (await fetch(images[i])).blob();
-        const path = `${overlayTemplate.id}/page-${i + 1}.jpg`;
-        const { error } = await supabase.storage.from("form-pdf-pages").upload(path, blob, { contentType: "image/jpeg", upsert: true });
-        if (error) throw error;
-        const { data } = supabase.storage.from("form-pdf-pages").getPublicUrl(path);
-        urls.push(data.publicUrl);
-      }
-      setOverlayPdfPages(urls);
-      toast({ title: `PDF converted to ${urls.length} page(s)` });
-    } catch (err: any) {
-      toast({ title: "PDF conversion failed", description: err.message, variant: "destructive" });
-    }
-  };
-
-  const saveOverlayConfig = async () => {
-    if (!overlayTemplate) return;
-    setOverlaySaving(true);
-    try {
-      const { error } = await supabase.from("form_templates").update({
-        render_mode: "pdf_overlay",
-        pdf_pages: overlayPdfPages as any,
-        overlay_fields: overlayFields as any,
-      }).eq("id", overlayTemplate.id);
-      if (error) throw error;
-      toast({ title: "Overlay configuration saved" });
-      setOverlayEditorOpen(false);
-    } catch (err: any) {
-      toast({ title: "Save failed", description: err.message, variant: "destructive" });
-    } finally {
-      setOverlaySaving(false);
-    }
-  };
 
   const SESSION_KEY = "pendingFormImport";
 
@@ -250,6 +191,7 @@ export default function AdminFormTemplates() {
                 <TableHead>Name</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead>Assigned To</TableHead>
+                <TableHead>Mode</TableHead>
                 <TableHead>Fields</TableHead>
                 <TableHead>Version</TableHead>
                 <TableHead>Updated</TableHead>
@@ -260,11 +202,11 @@ export default function AdminFormTemplates() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
                 </TableRow>
               ) : filtered?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No templates found</TableCell>
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">No templates found</TableCell>
                 </TableRow>
               ) : (
                 filtered?.map((t) => {
@@ -302,6 +244,11 @@ export default function AdminFormTemplates() {
                           </div>
                         )}
                       </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-[10px]">
+                          {t.render_mode === "facsimile" ? "Facsimile" : t.render_mode === "pdf_overlay" ? "PDF Overlay" : "Schema"}
+                        </Badge>
+                      </TableCell>
                       <TableCell>{fieldCount} fields</TableCell>
                       <TableCell>v{t.version}</TableCell>
                       <TableCell>
@@ -331,9 +278,6 @@ export default function AdminFormTemplates() {
                               <Link2 className="h-4 w-4" />
                             </Button>
                           )}
-                          <Button variant="ghost" size="sm" onClick={() => openOverlayEditor(t)} title="PDF Overlay Editor">
-                            <Layers className="h-4 w-4" />
-                          </Button>
                           <Button variant="ghost" size="sm" onClick={() => openEditor(t)} title="Edit">
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -438,53 +382,6 @@ export default function AdminFormTemplates() {
         }}
         onImported={handleAIImport}
       />
-      {/* Overlay Editor Dialog */}
-      <Dialog open={overlayEditorOpen} onOpenChange={setOverlayEditorOpen}>
-        <DialogContent className="max-w-[95vw] w-[95vw] max-h-[95vh] h-[95vh] p-0 flex flex-col">
-          <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
-            <div className="flex items-center justify-between">
-              <DialogTitle>PDF Overlay Editor — {overlayTemplate?.name}</DialogTitle>
-              <div className="flex items-center gap-2">
-                <label className="cursor-pointer">
-                  <input
-                    type="file"
-                    accept=".pdf"
-                    className="hidden"
-                    onChange={handleOverlayPdfUpload}
-                    disabled={pdfConverting}
-                  />
-                  <Button variant="outline" size="sm" asChild disabled={pdfConverting}>
-                    <span>
-                      <Upload className="h-4 w-4 mr-1" />
-                      {pdfConverting ? `Converting... ${pdfProgress}%` : "Upload PDF"}
-                    </span>
-                  </Button>
-                </label>
-                <Button size="sm" onClick={saveOverlayConfig} disabled={overlaySaving || overlayPdfPages.length === 0}>
-                  {overlaySaving ? "Saving..." : "Save Configuration"}
-                </Button>
-              </div>
-            </div>
-          </DialogHeader>
-          <div className="flex-1 overflow-hidden p-4">
-            {overlayPdfPages.length > 0 ? (
-              <PdfOverlayEditor
-                pdfPages={overlayPdfPages}
-                overlayFields={overlayFields}
-                onFieldsChange={setOverlayFields}
-              />
-            ) : (
-              <div className="flex items-center justify-center h-full text-muted-foreground">
-                <div className="text-center space-y-3">
-                  <Layers className="h-12 w-12 mx-auto opacity-30" />
-                  <p className="text-lg font-medium">Upload a PDF to get started</p>
-                  <p className="text-sm">The PDF pages will be displayed as backgrounds, and you can place interactive fields on top.</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
