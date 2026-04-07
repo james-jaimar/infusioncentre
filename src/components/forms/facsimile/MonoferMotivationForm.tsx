@@ -103,8 +103,8 @@ function ConsentPage({ values, onChange, readOnly }: FacsimileProps) {
           <p>In the light of the above, please indicate whether or not you would like to receive the service by ticking the appropriate box below:</p>
 
           <div className="flex items-center gap-8 py-1">
-            <Tick name="consent_yes" label="YES to the Service" values={values} onChange={onChange} readOnly={readOnly} />
-            <Tick name="consent_no" label="NO to the Service" values={values} onChange={onChange} readOnly={readOnly} />
+            <Tick name="consent_yes" label="YES to the Service" values={values} onChange={onChange} readOnly={readOnly} label="Signature" />
+            <Tick name="consent_no" label="NO to the Service" values={values} onChange={onChange} readOnly={readOnly} label="Signature" />
           </div>
 
           <p className="text-[10px]">
@@ -157,28 +157,28 @@ function ConsentPage({ values, onChange, readOnly }: FacsimileProps) {
           </div>
           <div>
             <span className="text-[10px] text-muted-foreground">Patient's Contact Number:</span>
-            <Field name="patient_contact" values={values} onChange={onChange} readOnly={readOnly} />
+            <Field name="patient_contact" values={values} onChange={onChange} readOnly={readOnly} label="Signature" />
           </div>
           <div>
             <span className="text-[10px] text-muted-foreground">Next of Kin's Contact Number:</span>
-            <Field name="nok_contact" values={values} onChange={onChange} readOnly={readOnly} />
+            <Field name="nok_contact" values={values} onChange={onChange} readOnly={readOnly} label="Signature" />
           </div>
         </div>
 
         {/* Nurse Educator Details */}
         <SectionTitle>Nurse Educator Details</SectionTitle>
         <div className="grid grid-cols-2 gap-x-6 gap-y-2 py-2 mb-3">
-          <div><span className="text-[10px] text-muted-foreground">Nurse Educator Name:</span><Field name="nurse_name" values={values} onChange={onChange} readOnly={readOnly} /></div>
+          <div><span className="text-[10px] text-muted-foreground">Nurse Educator Name:</span><Field name="nurse_name" values={values} onChange={onChange} readOnly={readOnly} label="Signature" /></div>
           <div>
             <span className="text-[10px] text-muted-foreground">Signature:</span>
             <div className="border border-border rounded h-14 mt-1">
-              <SignatureCanvas value={values.nurse_signature || ""} onChange={(v) => onChange({ ...values, nurse_signature: v })} readOnly={readOnly} />
+              <SignatureCanvas value={values.nurse_signature || ""} onChange={(v) => onChange({ ...values, nurse_signature: v })} readOnly={readOnly} label="Signature" />
             </div>
           </div>
-          <div><span className="text-[10px] text-muted-foreground">Phone:</span><Field name="nurse_phone" values={values} onChange={onChange} readOnly={readOnly} /></div>
-          <div><span className="text-[10px] text-muted-foreground">Fax:</span><Field name="nurse_fax" values={values} onChange={onChange} readOnly={readOnly} /></div>
-          <div><span className="text-[10px] text-muted-foreground">Mobile:</span><Field name="nurse_mobile" values={values} onChange={onChange} readOnly={readOnly} /></div>
-          <div><span className="text-[10px] text-muted-foreground">Email:</span><Field name="nurse_email" values={values} onChange={onChange} readOnly={readOnly} /></div>
+          <div><span className="text-[10px] text-muted-foreground">Phone:</span><Field name="nurse_phone" values={values} onChange={onChange} readOnly={readOnly} label="Signature" /></div>
+          <div><span className="text-[10px] text-muted-foreground">Fax:</span><Field name="nurse_fax" values={values} onChange={onChange} readOnly={readOnly} label="Signature" /></div>
+          <div><span className="text-[10px] text-muted-foreground">Mobile:</span><Field name="nurse_mobile" values={values} onChange={onChange} readOnly={readOnly} label="Signature" /></div>
+          <div><span className="text-[10px] text-muted-foreground">Email:</span><Field name="nurse_email" values={values} onChange={onChange} readOnly={readOnly} label="Signature" /></div>
         </div>
 
         {/* HCP Consent */}
@@ -195,11 +195,11 @@ function ConsentPage({ values, onChange, readOnly }: FacsimileProps) {
             <div>
               <span className="text-[10px]">Healthcare Professional's Signature:</span>
               <div className="border border-border rounded h-14 mt-1">
-                <SignatureCanvas value={values.hcp_signature || ""} onChange={(v) => onChange({ ...values, hcp_signature: v })} readOnly={readOnly} />
+                <SignatureCanvas value={values.hcp_signature || ""} onChange={(v) => onChange({ ...values, hcp_signature: v })} readOnly={readOnly} label="Signature" />
               </div>
             </div>
             <div><span className="text-[10px]">Date:</span><Field name="hcp_consent_date" values={values} onChange={onChange} readOnly={readOnly} placeholder="DD/MM/YYYY" /></div>
-            <div><span className="text-[10px]">Doctor's Contact Number:</span><Field name="hcp_contact" values={values} onChange={onChange} readOnly={readOnly} /></div>
+            <div><span className="text-[10px]">Doctor's Contact Number:</span><Field name="hcp_contact" values={values} onChange={onChange} readOnly={readOnly} label="Signature" /></div>
           </div>
         </div>
 
@@ -209,12 +209,12 @@ function ConsentPage({ values, onChange, readOnly }: FacsimileProps) {
           Acino warrants and undertakes that it has the skill to provide the Services and that Acino shall at all times use its best endeavours to use, process and keep the Patient's Confidential/Personal Information confidential in accordance with the provisions of the Protection of Personal Information Act No.4 of 2013 and shall use/process same only for the Purpose in this Consent.
         </p>
         <div className="grid grid-cols-2 gap-x-6 gap-y-2 py-2 mb-3">
-          <div><span className="text-[10px] text-muted-foreground">Nurse Educator's Name:</span><Field name="acino_nurse_name" values={values} onChange={onChange} readOnly={readOnly} /></div>
+          <div><span className="text-[10px] text-muted-foreground">Nurse Educator's Name:</span><Field name="acino_nurse_name" values={values} onChange={onChange} readOnly={readOnly} label="Signature" /></div>
           <div><span className="text-[10px] text-muted-foreground">Date:</span><Field name="acino_date" values={values} onChange={onChange} readOnly={readOnly} placeholder="DD/MM/YYYY" /></div>
           <div className="col-span-2">
             <span className="text-[10px] text-muted-foreground">Signature:</span>
             <div className="border border-border rounded h-14 mt-1 max-w-sm">
-              <SignatureCanvas value={values.acino_signature || ""} onChange={(v) => onChange({ ...values, acino_signature: v })} readOnly={readOnly} />
+              <SignatureCanvas value={values.acino_signature || ""} onChange={(v) => onChange({ ...values, acino_signature: v })} readOnly={readOnly} label="Signature" />
             </div>
           </div>
         </div>
@@ -242,10 +242,10 @@ function MotivationPage({ values, onChange, readOnly }: FacsimileProps) {
       {/* Prescribing Practitioner */}
       <SectionTitle>Prescribing Practitioner</SectionTitle>
       <div className="border-b border-border">
-        <FormRow label="Name & Surname" name="dr_name" values={values} onChange={onChange} readOnly={readOnly} />
-        <FormRow label="Name of Facility" name="dr_facility" values={values} onChange={onChange} readOnly={readOnly} />
-        <FormRow label="Speciality" name="dr_speciality" label2="Fax" name2="dr_fax" values={values} onChange={onChange} readOnly={readOnly} />
-        <FormRow label="Address" name="dr_address" label2="Tel" name2="dr_tel" values={values} onChange={onChange} readOnly={readOnly} />
+        <FormRow label="Name & Surname" name="dr_name" values={values} onChange={onChange} readOnly={readOnly} label="Signature" />
+        <FormRow label="Name of Facility" name="dr_facility" values={values} onChange={onChange} readOnly={readOnly} label="Signature" />
+        <FormRow label="Speciality" name="dr_speciality" label2="Fax" name2="dr_fax" values={values} onChange={onChange} readOnly={readOnly} label="Signature" />
+        <FormRow label="Address" name="dr_address" label2="Tel" name2="dr_tel" values={values} onChange={onChange} readOnly={readOnly} label="Signature" />
         <div className="grid grid-cols-2 border-b border-border">
           <div className="border-r border-border" />
           <div className="flex items-center">
@@ -265,19 +265,19 @@ function MotivationPage({ values, onChange, readOnly }: FacsimileProps) {
       {/* Infusion Facility */}
       <SectionTitle>Infusion Facility</SectionTitle>
       <div className="border-b border-border">
-        <FormRow label="Name of Facility" name="facility_name" values={values} onChange={onChange} readOnly={readOnly} />
-        <FormRow label="Address" name="facility_address" values={values} onChange={onChange} readOnly={readOnly} />
-        <FormRow label="Tel" name="facility_tel" values={values} onChange={onChange} readOnly={readOnly} />
-        <FormRow label="Email" name="facility_email" values={values} onChange={onChange} readOnly={readOnly} />
-        <FormRow label="Practice No." name="facility_practice_no" values={values} onChange={onChange} readOnly={readOnly} />
-        <FormRow label="Hospital PR No." name="facility_pr_no" label2="Treatment Date" name2="facility_treatment_date" values={values} onChange={onChange} readOnly={readOnly} />
+        <FormRow label="Name of Facility" name="facility_name" values={values} onChange={onChange} readOnly={readOnly} label="Signature" />
+        <FormRow label="Address" name="facility_address" values={values} onChange={onChange} readOnly={readOnly} label="Signature" />
+        <FormRow label="Tel" name="facility_tel" values={values} onChange={onChange} readOnly={readOnly} label="Signature" />
+        <FormRow label="Email" name="facility_email" values={values} onChange={onChange} readOnly={readOnly} label="Signature" />
+        <FormRow label="Practice No." name="facility_practice_no" values={values} onChange={onChange} readOnly={readOnly} label="Signature" />
+        <FormRow label="Hospital PR No." name="facility_pr_no" label2="Treatment Date" name2="facility_treatment_date" values={values} onChange={onChange} readOnly={readOnly} label="Signature" />
       </div>
 
       {/* Patient Details */}
       <SectionTitle>Patient Details</SectionTitle>
       <div className="border-b border-border">
-        <FormRow label="Name" name="pt_name" label2="Physical Address" name2="pt_address" values={values} onChange={onChange} readOnly={readOnly} />
-        <FormRow label="Surname" name="pt_surname" label2="Initials" name2="pt_initials" values={values} onChange={onChange} readOnly={readOnly} />
+        <FormRow label="Name" name="pt_name" label2="Physical Address" name2="pt_address" values={values} onChange={onChange} readOnly={readOnly} label="Signature" />
+        <FormRow label="Surname" name="pt_surname" label2="Initials" name2="pt_initials" values={values} onChange={onChange} readOnly={readOnly} label="Signature" />
 
         {/* Date of birth + gender */}
         <div className="grid grid-cols-2 border-b border-border">
@@ -286,15 +286,15 @@ function MotivationPage({ values, onChange, readOnly }: FacsimileProps) {
             <Field name="pt_dob" values={values} onChange={onChange} readOnly={readOnly} className="flex-1" placeholder="DD/MM/YYYY" />
           </div>
           <div className="flex items-center gap-4 px-3">
-            <Tick name="pt_gender_m" label="M" values={values} onChange={onChange} readOnly={readOnly} />
-            <Tick name="pt_gender_f" label="F" values={values} onChange={onChange} readOnly={readOnly} />
+            <Tick name="pt_gender_m" label="M" values={values} onChange={onChange} readOnly={readOnly} label="Signature" />
+            <Tick name="pt_gender_f" label="F" values={values} onChange={onChange} readOnly={readOnly} label="Signature" />
           </div>
         </div>
 
-        <FormRow label="ID Number" name="pt_id" label2="Email Address" name2="pt_email" values={values} onChange={onChange} readOnly={readOnly} />
-        <FormRow label="Medical Aid" name="pt_medical_aid" label2="Treatment Date" name2="pt_treatment_date" values={values} onChange={onChange} readOnly={readOnly} />
-        <FormRow label="Membership No." name="pt_membership" label2="Hospital Pr No." name2="pt_hospital_pr" values={values} onChange={onChange} readOnly={readOnly} />
-        <FormRow label="Body Weight" name="pt_weight" label2="Gestational Age" name2="pt_gestational_age" values={values} onChange={onChange} readOnly={readOnly} />
+        <FormRow label="ID Number" name="pt_id" label2="Email Address" name2="pt_email" values={values} onChange={onChange} readOnly={readOnly} label="Signature" />
+        <FormRow label="Medical Aid" name="pt_medical_aid" label2="Treatment Date" name2="pt_treatment_date" values={values} onChange={onChange} readOnly={readOnly} label="Signature" />
+        <FormRow label="Membership No." name="pt_membership" label2="Hospital Pr No." name2="pt_hospital_pr" values={values} onChange={onChange} readOnly={readOnly} label="Signature" />
+        <FormRow label="Body Weight" name="pt_weight" label2="Gestational Age" name2="pt_gestational_age" values={values} onChange={onChange} readOnly={readOnly} label="Signature" />
       </div>
 
       {/* Prescription */}
@@ -306,21 +306,21 @@ function MotivationPage({ values, onChange, readOnly }: FacsimileProps) {
         </div>
         <div className="grid grid-cols-2 border-b border-border">
           <div className="flex items-center gap-2 px-3 py-1 border-r border-border">
-            <Tick name="rx_monofer_1000" label="" values={values} onChange={onChange} readOnly={readOnly} />
+            <Tick name="rx_monofer_1000" label="" values={values} onChange={onChange} readOnly={readOnly} label="Signature" />
             <span className="text-[11px]">NAPPI 722193001 (Monofer 1000 mg / 10 ml vial)</span>
           </div>
           <div className="flex items-center gap-2 px-3 py-1">
-            <Tick name="rx_cosmofer_500" label="" values={values} onChange={onChange} readOnly={readOnly} />
+            <Tick name="rx_cosmofer_500" label="" values={values} onChange={onChange} readOnly={readOnly} label="Signature" />
             <span className="text-[11px]">NAPPI 713080001 (Cosmofer 500 mg / 10 ml)</span>
           </div>
         </div>
         <div className="grid grid-cols-2 border-b border-border">
           <div className="flex items-center gap-2 px-3 py-1 border-r border-border">
-            <Tick name="rx_monofer_500" label="" values={values} onChange={onChange} readOnly={readOnly} />
+            <Tick name="rx_monofer_500" label="" values={values} onChange={onChange} readOnly={readOnly} label="Signature" />
             <span className="text-[11px]">NAPPI 722192001 (Monofer 500 mg / 5 ml vial)</span>
           </div>
           <div className="flex items-center gap-2 px-3 py-1">
-            <Tick name="rx_cosmofer_100" label="" values={values} onChange={onChange} readOnly={readOnly} />
+            <Tick name="rx_cosmofer_100" label="" values={values} onChange={onChange} readOnly={readOnly} label="Signature" />
             <span className="text-[11px]">NAPPI 711596002 (Cosmofer 100 mg / 2 ml)</span>
           </div>
         </div>
@@ -333,9 +333,9 @@ function MotivationPage({ values, onChange, readOnly }: FacsimileProps) {
       {/* Prior Treatment */}
       <SectionTitle>Prior Treatment Including Oral</SectionTitle>
       <div className="grid grid-cols-3 gap-x-4 px-3 py-2 border-b border-border">
-        <div><span className="text-[10px] text-muted-foreground">Medication:</span><Field name="prior_medication" values={values} onChange={onChange} readOnly={readOnly} /></div>
-        <div><span className="text-[10px] text-muted-foreground">Dosage:</span><Field name="prior_dosage" values={values} onChange={onChange} readOnly={readOnly} /></div>
-        <div><span className="text-[10px] text-muted-foreground">Duration:</span><Field name="prior_duration" values={values} onChange={onChange} readOnly={readOnly} /></div>
+        <div><span className="text-[10px] text-muted-foreground">Medication:</span><Field name="prior_medication" values={values} onChange={onChange} readOnly={readOnly} label="Signature" /></div>
+        <div><span className="text-[10px] text-muted-foreground">Dosage:</span><Field name="prior_dosage" values={values} onChange={onChange} readOnly={readOnly} label="Signature" /></div>
+        <div><span className="text-[10px] text-muted-foreground">Duration:</span><Field name="prior_duration" values={values} onChange={onChange} readOnly={readOnly} label="Signature" /></div>
       </div>
 
       {/* Clinical Diagnosis */}
@@ -421,7 +421,7 @@ function MotivationPage({ values, onChange, readOnly }: FacsimileProps) {
         <div>
           <span className="text-[10px] text-muted-foreground">Dr's Signature:</span>
           <div className="border border-border rounded h-16 mt-1">
-            <SignatureCanvas value={values.dr_motivation_signature || ""} onChange={(v) => onChange({ ...values, dr_motivation_signature: v })} readOnly={readOnly} />
+            <SignatureCanvas value={values.dr_motivation_signature || ""} onChange={(v) => onChange({ ...values, dr_motivation_signature: v })} readOnly={readOnly} label="Signature" />
           </div>
         </div>
         <div>
@@ -451,8 +451,8 @@ function MotivationPage({ values, onChange, readOnly }: FacsimileProps) {
 export default function MonoferMotivationForm({ values, onChange, readOnly }: FacsimileProps) {
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
-      <ConsentPage values={values} onChange={onChange} readOnly={readOnly} />
-      <MotivationPage values={values} onChange={onChange} readOnly={readOnly} />
+      <ConsentPage values={values} onChange={onChange} readOnly={readOnly} label="Signature" />
+      <MotivationPage values={values} onChange={onChange} readOnly={readOnly} label="Signature" />
     </div>
   );
 }
