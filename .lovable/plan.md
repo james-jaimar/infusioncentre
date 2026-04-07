@@ -1,119 +1,76 @@
 
-## Plan: PDF Overlay Form Mode — Pixel-Perfect Interactive Forms
 
-### Problem
+## Plan: "Facsimile" Render Mode — Pixel-Perfect Forms Built in Pure React/CSS
 
-Some forms (like this Monofer/CosmoFer motivation form) have very specific layouts: branded headers, two-column prescription tables with tick boxes, ICD-10 code grids, pre-filled facility details, footer disclaimers, etc. Our generic FormRenderer can't replicate this level of layout fidelity. These forms need to look and feel exactly like the original PDF, with interactive fields overlaid on top.
+### Idea
 
-### Solution: "PDF Overlay" Render Mode
-
-Render the original PDF pages as background images, then overlay transparent interactive form fields (text inputs, checkboxes, signatures) at precise positions on top. The patient sees the exact original form and fills it in as if using a real PDF.
+Instead of overlaying fields on PDF images (fragile, alignment issues), introduce a third `render_mode` called `"facsimile"`. This is a **custom React component per form template** that recreates the document's exact visual layout using CSS Grid, borders, and typography — like a digital carbon copy. The patient fills in a form that *looks* like the original PDF but is built entirely with HTML/CSS.
 
 ### How It Works
 
 ```text
-┌──────────────────────────────────┐
-│  Original PDF page (as image)    │
-│  ┌────────────────────┐          │
-│  │ [transparent input] │ ← Name  │
-│  └────────────────────┘          │
-│  ☐ ← tick checkbox              │
-│  ┌──────┐                        │
-│  │[sign]│ ← signature pad        │
-│  └──────┘                        │
-└──────────────────────────────────┘
+┌─────────────────────────────────────────────────┐
+│  PHARMACHEM (logo area)          MOTIVATION FOR │
+│  Monofer®/CosmoFer® Iron IV Infusion           │
+├───────────────┬─────────────────────────────────┤
+│ Patient Name  │ [___________________________]   │
+├───────────────┼─────────────────────────────────┤
+│ Date of Birth │ [__________]  │ Weight │ [____] │
+├───────────────┴─────────────────────────────────┤
+│ Product:  ☐ Monofer 1000mg   ☐ CosmoFer 500mg  │
+├─────────────────────────────────────────────────┤
+│ ICD 10 Code:                                    │
+│ ☐ D50.0  ☐ D50.8  ☐ D50.9  ☐ D63.0  ☐ D63.8  │
+├─────────────────────────────────────────────────┤
+│ Signature: [signature pad]    Date: [________]  │
+└─────────────────────────────────────────────────┘
 ```
 
-### Implementation Steps
+All built with `<div>`, `<table>`, borders, and the existing form input components. No images needed.
 
-**1. Database: Add PDF overlay columns to `form_templates`**
+### Implementation
 
-New migration adding:
-- `render_mode` enum: `'schema'` (default, current behaviour) or `'pdf_overlay'`
-- `pdf_pages` JSONB: array of Supabase Storage URLs for each page image
-- `overlay_fields` JSONB: array of positioned field definitions
+**1. New component: `MonoferFacsimileForm.tsx`**
 
-```json
-// overlay_fields example
-[
-  { "field_name": "patient_name", "field_type": "text", "page": 1,
-    "x": 32, "y": 45, "width": 28, "height": 3 },
-  { "field_name": "monofer_1000", "field_type": "checkbox", "page": 1,
-    "x": 5, "y": 62, "width": 2, "height": 2 },
-  { "field_name": "dr_signature", "field_type": "signature", "page": 1,
-    "x": 10, "y": 88, "width": 30, "height": 6 }
-]
-```
+A dedicated React component that:
+- Uses CSS Grid / HTML tables with thin borders to replicate the exact row-by-row layout of the Monofer PDF
+- Embeds existing `<Input>`, `<Checkbox>`, `<SignatureCanvas>` components in the correct cells
+- Accepts the same `values` / `onChange` / `readOnly` props as `FormRenderer`
+- Styled to look like a printed form: white background, thin black borders, small font sizes, tight spacing
 
-Coordinates are percentages of the page dimensions, so they scale to any screen size.
+**2. Registry pattern for facsimile forms**
 
-**2. Edge function: Detect complex forms and suggest PDF overlay mode**
+Create a `facsimileRegistry` map: `{ [templateSlug]: ReactComponent }`. When `render_mode === "facsimile"`, look up the component by slug. This allows adding more facsimile forms later without changing routing logic.
 
-Update `extract-form-template` to return a `suggested_render_mode: "pdf_overlay"` flag when it detects the form is too layout-dense for schema rendering (branded headers, multi-column prescription grids, ICD code tables, etc.). The AI's reasoning would note this.
+**3. Route the renderer**
 
-**3. PDF-to-image conversion (edge function)**
+Update `FullScreenFormDialog` and `PublicForm` to handle `render_mode === "facsimile"`:
+- `"schema"` → `FormRenderer` (existing)
+- `"pdf_overlay"` → `PdfOverlayRenderer` (existing)
+- `"facsimile"` → look up from registry, render with same props
 
-New edge function `pdf-to-images` that:
-- Receives the uploaded PDF
-- Converts each page to a high-res PNG/JPG
-- Uploads images to Supabase Storage (`form-pdf-pages` bucket)
-- Returns the public URLs
+**4. Database**
 
-**4. Overlay Field Editor (admin UI)**
-
-New component `PdfOverlayEditor` on the admin form template page:
-- Displays each PDF page image at full width
-- Admin clicks to place fields, drags to resize
-- Field palette on the side (text, checkbox, signature, date, select)
-- Each field gets a name, type, and position (x, y, width, height as % of page)
-- Save writes `overlay_fields` and `pdf_pages` to the template
-
-**5. PDF Overlay Renderer (patient-facing)**
-
-New component `PdfOverlayRenderer`:
-- Renders each page image as a background
-- Overlays transparent interactive fields at the stored positions
-- Text inputs: borderless, transparent background, matching font size
-- Checkboxes: small tick overlays at exact positions
-- Signatures: signature pad at the designated area
-- Scales responsively using percentage-based positioning
-
-**6. Route the correct renderer**
-
-Update `FullScreenFormDialog` and `PublicForm` to check `render_mode`:
-- `'schema'` → existing `FormRenderer` (no change)
-- `'pdf_overlay'` → new `PdfOverlayRenderer`
-
-**7. Submission**
-
-The overlay form collects values in the same `Record<string, any>` format as schema forms. The existing submission pipeline (edge function, PDF generation, email) works unchanged.
+Set the Monofer template's `render_mode` to `"facsimile"` and its `slug` to `"monofer-motivation"`. No migration needed — `render_mode` column already exists as text.
 
 ### Files Changed
 
 | File | Change |
 |------|--------|
-| `supabase/migrations/xxx_add_pdf_overlay.sql` | Add `render_mode`, `pdf_pages`, `overlay_fields` columns |
-| `supabase/functions/pdf-to-images/index.ts` | New edge function: PDF → page images → Storage |
-| `supabase/functions/extract-form-template/index.ts` | Add complexity detection, suggest overlay mode |
-| `src/components/forms/PdfOverlayRenderer.tsx` | New: renders PDF pages with interactive overlay fields |
-| `src/components/forms/PdfOverlayEditor.tsx` | New: admin drag-and-drop field placement on PDF pages |
-| `src/components/forms/FullScreenFormDialog.tsx` | Route to correct renderer based on `render_mode` |
-| `src/pages/PublicForm.tsx` | Route to correct renderer based on `render_mode` |
-| `src/pages/admin/AdminFormTemplates.tsx` | Add overlay editor option for PDF overlay templates |
-
-### Phased Delivery
-
-This is a large feature. Recommended build order:
-
-1. **Phase 1**: Database migration + `PdfOverlayRenderer` component + manual JSON field placement (admin pastes overlay config)
-2. **Phase 2**: `pdf-to-images` edge function + visual drag-and-drop `PdfOverlayEditor`
-3. **Phase 3**: AI auto-detection of complex forms + suggested field positions
+| `src/components/forms/facsimile/MonoferMotivationForm.tsx` | New: pixel-perfect React/CSS recreation of the Monofer PDF |
+| `src/components/forms/facsimile/registry.ts` | New: slug-to-component map |
+| `src/components/forms/FullScreenFormDialog.tsx` | Add facsimile renderer branch |
+| `src/pages/PublicForm.tsx` | Add facsimile renderer branch |
 
 ### Trade-offs
 
-- **Pro**: Pixel-perfect fidelity for complex branded forms
-- **Pro**: Patients see the exact form they'd get on paper
-- **Pro**: Existing schema forms are completely unaffected
-- **Con**: Requires manual field placement by admin (until Phase 3)
-- **Con**: PDF page images need storage (~200-500KB per page)
-- **Con**: Larger feature scope than schema-only approach
+- **Pro**: Perfect fidelity, fully responsive, no PDF images needed, no alignment drift
+- **Pro**: Uses existing input components — same validation, same submission pipeline
+- **Pro**: Fast to load, accessible, works on all devices
+- **Con**: Each unique form layout needs its own component (not auto-generated)
+- **Con**: Layout changes to the original form require manual code updates
+
+### Future Enhancement
+
+Once this pattern works well, the AI extraction could generate the facsimile JSX automatically for dense forms — but for now, hand-crafting the Monofer form component gets us a perfect result immediately.
+
