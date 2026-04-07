@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { useFormTemplates, useDeleteFormTemplate, FormTemplate } from "@/hooks/useFormTemplates";
+import { useFormTemplates, useDeleteFormTemplate, useUpdateFormTemplate, FormTemplate } from "@/hooks/useFormTemplates";
+import { availableFacsimileSlugs } from "@/components/forms/facsimile/registry";
 import { useAppointmentTypes } from "@/hooks/useAppointmentTypes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,7 @@ export default function AdminFormTemplates() {
   const { data: templates, isLoading } = useFormTemplates();
   const { data: appointmentTypes } = useAppointmentTypes();
   const deleteTemplate = useDeleteFormTemplate();
+  const updateTemplate = useUpdateFormTemplate();
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
@@ -245,9 +247,50 @@ export default function AdminFormTemplates() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="text-[10px]">
-                          {t.render_mode === "facsimile" ? "Facsimile" : t.render_mode === "pdf_overlay" ? "PDF Overlay" : "Schema"}
-                        </Badge>
+                        <div className="space-y-1">
+                          <Select
+                            value={t.render_mode}
+                            onValueChange={async (val) => {
+                              try {
+                                await updateTemplate.mutateAsync({ id: t.id, render_mode: val, ...(val !== "facsimile" ? { slug: null } : {}) });
+                                toast({ title: `Mode changed to ${val === "facsimile" ? "Facsimile" : val === "pdf_overlay" ? "PDF Overlay" : "Schema"}` });
+                              } catch {
+                                toast({ title: "Failed to update mode", variant: "destructive" });
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="h-7 w-[120px] text-[11px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="schema">Schema</SelectItem>
+                              <SelectItem value="pdf_overlay">PDF Overlay</SelectItem>
+                              <SelectItem value="facsimile">Facsimile</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {t.render_mode === "facsimile" && (
+                            <Select
+                              value={t.slug || ""}
+                              onValueChange={async (val) => {
+                                try {
+                                  await updateTemplate.mutateAsync({ id: t.id, slug: val });
+                                  toast({ title: `Slug set to "${val}"` });
+                                } catch {
+                                  toast({ title: "Failed to update slug", variant: "destructive" });
+                                }
+                              }}
+                            >
+                              <SelectTrigger className="h-7 w-[120px] text-[11px]">
+                                <SelectValue placeholder="Select slug…" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {availableFacsimileSlugs.map((s) => (
+                                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>{fieldCount} fields</TableCell>
                       <TableCell>v{t.version}</TableCell>
