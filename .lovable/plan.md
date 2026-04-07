@@ -1,23 +1,29 @@
 
 
-## Plan: Add Render Mode & Slug Controls to Form Template Editor
+## Plan: Make Render Mode Editable from the Template List
 
 ### Problem
-The `render_mode` and `slug` fields exist in the database but can only be changed via direct DB edits. Admins need UI controls in the Form Template Editor to set a template to "facsimile" mode and assign the correct slug.
+The "Render Mode" dropdown is buried inside the full-screen Form Template Editor. The Mode badge shown in the table list is display-only and not clickable, which is confusing.
+
+### Solution
+Replace the static Mode badge in the template table with a clickable Select dropdown, allowing admins to change the render mode (and slug for facsimile) directly from the list page without opening the editor.
 
 ### Changes
 
-**File: `src/components/forms/FormTemplateEditor.tsx`**
+**File: `src/pages/admin/AdminFormTemplates.tsx`**
 
-1. Add two new state variables: `renderMode` (default `"schema"`) and `slug` (default `""`)
-2. Initialize them from the template on open (lines ~106-136)
-3. Include them in the save payload (lines ~182-208)
-4. Add a "Render Mode" select dropdown and a "Slug" text input to the settings panel, near the existing Category/Status controls. Options: Schema (default form builder), PDF Overlay, Facsimile (pixel-perfect custom layout)
-5. Show the slug input only when render mode is "facsimile" — with a helper note listing available slugs from the registry
+1. Import `Select`, `SelectContent`, `SelectItem`, `SelectTrigger`, `SelectValue` and `Input` components
+2. Import `availableFacsimileSlugs` from the facsimile registry
+3. Import `useUpdateFormTemplate` hook
+4. Replace the static `<Badge>` in the Mode column with a small inline `<Select>` dropdown that calls `updateTemplate` on change
+5. When "facsimile" is selected, show a small popover or inline input for the slug assignment
+6. Use `updateTemplate.mutateAsync` to persist the change immediately
 
-**File: `src/components/forms/facsimile/registry.ts`**
-- Export the available slug keys so the editor can display them as guidance
+This gives admins a one-click way to switch any template between Schema, PDF Overlay, and Facsimile modes right from the table view.
 
-### No database or backend changes needed
-The columns already exist.
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `src/pages/admin/AdminFormTemplates.tsx` | Replace Mode badge with inline Select; add slug input for facsimile |
 
