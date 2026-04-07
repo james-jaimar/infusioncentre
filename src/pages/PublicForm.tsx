@@ -1,9 +1,10 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, Suspense } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import FormRenderer, { type FormField } from "@/components/forms/FormRenderer";
 import PdfOverlayRenderer, { type OverlayField } from "@/components/forms/PdfOverlayRenderer";
+import { facsimileRegistry } from "@/components/forms/facsimile/registry";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -352,7 +353,11 @@ export default function PublicForm() {
         {/* Form Content */}
         <Card>
           <CardContent className="p-6">
-            {template.render_mode === "pdf_overlay" && Array.isArray(template.pdf_pages) && template.pdf_pages.length > 0 ? (
+            {template.render_mode === "facsimile" && template.slug && facsimileRegistry[template.slug] ? (
+              <Suspense fallback={<Loader2 className="h-6 w-6 animate-spin mx-auto py-8" />}>
+                {(() => { const Comp = facsimileRegistry[template.slug!]; return <Comp values={values} onChange={setValues} />; })()}
+              </Suspense>
+            ) : template.render_mode === "pdf_overlay" && Array.isArray(template.pdf_pages) && template.pdf_pages.length > 0 ? (
               <PdfOverlayRenderer
                 pdfPages={template.pdf_pages as string[]}
                 overlayFields={(template.overlay_fields as unknown as OverlayField[]) || []}

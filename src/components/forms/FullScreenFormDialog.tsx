@@ -1,8 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { X, ArrowLeft, Loader2, FileText } from "lucide-react";
 import FormRenderer, { FormField } from "./FormRenderer";
 import PdfOverlayRenderer, { OverlayField } from "./PdfOverlayRenderer";
+import { facsimileRegistry } from "./facsimile/registry";
 
 interface FullScreenFormDialogProps {
   open: boolean;
@@ -16,9 +17,10 @@ interface FullScreenFormDialogProps {
   onSubmit?: () => void;
   isSubmitting?: boolean;
   submitLabel?: string;
-  renderMode?: "schema" | "pdf_overlay";
+  renderMode?: "schema" | "pdf_overlay" | "facsimile";
   pdfPages?: string[];
   overlayFields?: OverlayField[];
+  slug?: string;
 }
 
 export default function FullScreenFormDialog({
@@ -36,6 +38,7 @@ export default function FullScreenFormDialog({
   renderMode = "schema",
   pdfPages,
   overlayFields,
+  slug,
 }: FullScreenFormDialogProps) {
   // Lock body scroll when open
   useEffect(() => {
@@ -89,7 +92,11 @@ export default function FullScreenFormDialog({
       {/* Scrollable form body */}
       <main className="flex-1 overflow-y-auto">
         <div className="w-full px-4 sm:px-6 lg:px-10 xl:px-16 py-6 sm:py-8 lg:py-10">
-          {renderMode === "pdf_overlay" && pdfPages && overlayFields ? (
+          {renderMode === "facsimile" && slug && facsimileRegistry[slug] ? (
+            <Suspense fallback={<Loader2 className="h-6 w-6 animate-spin mx-auto mt-8" />}>
+              {(() => { const Comp = facsimileRegistry[slug]; return <Comp values={values} onChange={onChange} readOnly={readOnly} />; })()}
+            </Suspense>
+          ) : renderMode === "pdf_overlay" && pdfPages && overlayFields ? (
             <PdfOverlayRenderer
               pdfPages={pdfPages}
               overlayFields={overlayFields}
