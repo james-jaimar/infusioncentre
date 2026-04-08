@@ -1,26 +1,25 @@
 
 
-## Plan: Fix "Failed to update mode" — Add `facsimile` to CHECK Constraint
+## Plan: Wire Up Facsimile Rendering in Preview and Editor
 
-### Root Cause
+### Problem
+The preview and editor always render the old schema-based form because neither passes `renderMode` nor `slug` from the template to `FullScreenFormDialog`. The facsimile component exists but is never invoked.
 
-The database has a CHECK constraint on `form_templates.render_mode` that only allows `'schema'` and `'pdf_overlay'`. The value `'facsimile'` is rejected by Postgres, causing the "Failed to update mode" error.
+### Changes
 
-### Fix
+**File: `src/pages/admin/AdminFormTemplates.tsx`**
 
-**Database migration**: Drop and recreate the CHECK constraint to include `facsimile`:
-
-```sql
-ALTER TABLE form_templates DROP CONSTRAINT form_templates_render_mode_check;
-ALTER TABLE form_templates ADD CONSTRAINT form_templates_render_mode_check
-  CHECK (render_mode = ANY (ARRAY['schema', 'pdf_overlay', 'facsimile']));
+1. Add `renderMode` and `slug` props to the `FullScreenFormDialog` preview call (~line 397):
+```tsx
+<FullScreenFormDialog
+  ...
+  renderMode={previewTemplate?.render_mode as any}
+  slug={previewTemplate?.slug || undefined}
+/>
 ```
 
-No code changes needed — the UI already works correctly, it's just the database rejecting the value.
+This single change means when a template has `render_mode: "facsimile"` and `slug: "monofer-motivation"`, the preview dialog will look up the slug in the facsimile registry and render the custom MonoferMotivationForm component instead of the generic schema renderer.
 
-### Files Changed
-
-| File | Change |
-|------|--------|
-| `supabase/migrations/` (new) | Update CHECK constraint to allow `facsimile` |
+### Result
+Clicking the preview (eye icon) on the Monofer form will show the pixel-perfect facsimile layout instead of the generic schema view.
 
