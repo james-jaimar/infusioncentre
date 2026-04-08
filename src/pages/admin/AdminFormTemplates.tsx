@@ -403,6 +403,8 @@ export default function AdminFormTemplates() {
         values={previewValues}
         onChange={setPreviewValues}
         readOnly={false}
+        renderMode={(previewTemplate?.render_mode as "schema" | "pdf_overlay" | "facsimile") || "schema"}
+        slug={previewTemplate?.slug || undefined}
       />
 
       {/* Editor */}
