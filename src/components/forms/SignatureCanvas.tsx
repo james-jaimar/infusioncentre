@@ -7,9 +7,10 @@ interface SignatureCanvasProps {
   value?: string;
   onChange: (data: string) => void;
   readOnly?: boolean;
+  compact?: boolean;
 }
 
-export default function SignatureCanvas({ label, value, onChange, readOnly }: SignatureCanvasProps) {
+export default function SignatureCanvas({ label, value, onChange, readOnly, compact }: SignatureCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(!!value);
@@ -90,8 +91,8 @@ export default function SignatureCanvas({ label, value, onChange, readOnly }: Si
   };
 
   return (
-    <div className="space-y-2">
-      <label className="text-sm font-medium text-foreground">{label}</label>
+    <div className={compact ? "" : "space-y-2"}>
+      {!compact && <label className="text-sm font-medium text-foreground">{label}</label>}
       <div className="relative rounded-xl border-2 border-dashed border-border/60 bg-muted/20 overflow-hidden transition-colors hover:border-primary/30">
         {/* Signature line */}
         <div className="absolute bottom-8 left-6 right-6 border-b border-muted-foreground/20" />
