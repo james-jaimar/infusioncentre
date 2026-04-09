@@ -344,6 +344,9 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
+                    captionLayout="dropdown-buttons"
+                    fromYear={1920}
+                    toYear={new Date().getFullYear() + 5}
                     selected={isValidDate ? dateVal : undefined}
                     onSelect={(d) => updateValue(field.field_name, d ? format(d, "yyyy-MM-dd") : "")}
                     initialFocus
