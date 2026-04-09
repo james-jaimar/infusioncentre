@@ -1,10 +1,15 @@
 import { useState, useMemo } from "react";
+import { format, parse } from "date-fns";
+import { CalendarIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import SignatureCanvas from "./SignatureCanvas";
 import MedicationTable from "./MedicationTable";
 import VitalsTable from "./VitalsTable";
@@ -312,22 +317,44 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
           </div>
         );
 
-      case "date":
+      case "date": {
+        const dateVal = val ? parse(val, "yyyy-MM-dd", new Date()) : undefined;
+        const isValidDate = dateVal && !isNaN(dateVal.getTime());
         return (
           <div className="space-y-1.5">
             {fieldLabel}
             {readOnly ? (
-              <p className="text-sm px-3 py-2.5 bg-muted/40 rounded-lg border border-border/50 min-h-[40px]">{val || "—"}</p>
+              <p className="text-sm px-3 py-2.5 bg-muted/40 rounded-lg border border-border/50 min-h-[40px]">
+                {isValidDate ? format(dateVal, "dd/MM/yyyy") : val || "—"}
+              </p>
             ) : (
-              <Input
-                type="date"
-                value={val || ""}
-                onChange={(e) => updateValue(field.field_name, e.target.value)}
-                className="h-11 rounded-lg border-border bg-background focus-visible:ring-primary/30 transition-shadow"
-              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full h-11 justify-start text-left font-normal rounded-lg border-border",
+                      !val && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {isValidDate ? format(dateVal, "dd/MM/yyyy") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={isValidDate ? dateVal : undefined}
+                    onSelect={(d) => updateValue(field.field_name, d ? format(d, "yyyy-MM-dd") : "")}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
             )}
           </div>
         );
+      }
 
       case "select":
         return (
