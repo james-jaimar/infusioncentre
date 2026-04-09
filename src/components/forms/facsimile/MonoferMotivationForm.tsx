@@ -91,6 +91,9 @@ function DateField({ name, values, onChange, readOnly, className = "" }: {
       <PopoverContent className="w-auto p-0" align="start">
         <Calendar
           mode="single"
+          captionLayout="dropdown-buttons"
+          fromYear={1920}
+          toYear={new Date().getFullYear() + 5}
           selected={isValid ? dateVal : undefined}
           onSelect={(d) => onChange({ ...values, [name]: d ? format(d, "yyyy-MM-dd") : "" })}
           initialFocus
