@@ -1,41 +1,35 @@
 
 
-## Plan: Fix Email Rendering for Facsimile Form Submissions
+## Plan: Fix Name Resolution for Facsimile Form Submissions
 
 ### Problem
-The `submit-public-form` Edge Function builds its email HTML by iterating over `template.form_schema` — the JSON field definitions. For facsimile templates, this schema is empty or minimal because all fields are defined in the React component code. The result: the notification email either shows nothing or dumps raw key names like `pt_name`, `icd_d508`, `consent_yes`.
+When submitting the Monofer facsimile form, it always errors with "Please fill in your name" because:
+
+1. The template's `form_schema` is empty (facsimile fields live in React code, not JSON schema)
+2. `detectIdentityFields` scans the empty schema, finds nothing, so it shows the hardcoded First/Last name inputs at the top
+3. Users fill in the facsimile form fields (`patient_full_name`, `pt_name`, `pt_surname`) but skip or miss the separate identity card
+4. Even if users do fill the identity card, the `extractFromValues` function also searches the empty schema and finds nothing
 
 ### Solution
-Add a **facsimile field map** to the Edge Function that provides human-readable labels for each field key used by facsimile forms. When `render_mode === "facsimile"`, skip the schema-based rendering and instead use this map to produce a well-structured email.
+For facsimile templates, bypass the schema-based identity detection entirely. Instead, extract name/phone/ID directly from `values` using known facsimile field keys.
 
 ### Changes
 
-**File: `supabase/functions/submit-public-form/index.ts`**
+**File: `src/pages/PublicForm.tsx`**
 
-1. Add a `FACSIMILE_FIELD_LABELS` constant — a record mapping every field name from MonoferMotivationForm to its display label, grouped by section:
-   - Consent section: `patient_full_name` → "Patient Full Name", `consent_yes` → "Consents to Service", etc.
-   - Nurse Educator: `nurse_name` → "Nurse Educator Name", etc.
-   - HCP Consent: `hcp_consent_name` → "HCP Name", etc.
-   - Prescribing Practitioner: `dr_name` → "Doctor Name & Surname", etc.
-   - Patient Details: `pt_name` → "Patient Name", `pt_dob` → "Date of Birth", etc.
-   - Prescription checkboxes: `rx_monofer_1000` → "Monofer 1000mg", etc.
-   - ICD codes: `icd_d508` → "D50.8 — Iron deficiency anaemia", etc.
-   - Procedure codes, signatures, dates
-
-2. Add a new function `renderFacsimileToHtml(formName, data, respondent, fieldLabels)` that:
-   - Groups fields by section prefix (consent, nurse, hcp, dr, pt, rx, icd, proc)
-   - Renders checkboxes as "Yes/No" instead of "true/false"
-   - Renders signature fields as embedded `<img>` tags (base64 data URIs)
-   - Skips empty/null fields
-   - Uses the same branded HTML wrapper (header, footer) as the existing renderer
-
-3. In the main handler, check `template.render_mode`:
-   - If `"facsimile"`: call `renderFacsimileToHtml` instead of `renderFormToPdfHtml`
-   - Otherwise: use existing `renderFormToPdfHtml` (no change to schema-based forms)
-
-### No other files change
-The React components and database are untouched — this is purely an Edge Function improvement for email output quality.
+1. Detect when the template is facsimile mode: `template.render_mode === "facsimile"`
+2. When facsimile:
+   - Hide the identity card entirely (no duplicate name/phone/ID fields) — only show the email input since the form itself captures everything else
+   - In `handleSubmit`, resolve name from `values.patient_full_name` or `values.pt_name` + `values.pt_surname` directly (not via schema scanning)
+   - Resolve phone from `values.pt_tel` and ID from `values.patient_id_number` or `values.pt_id`
+3. Keep the email field always visible since no facsimile form captures email
 
 ### Result
-When a Monofer facsimile form is submitted, Gayle receives a properly formatted email with section headers, human-readable field labels, checkbox values shown as Yes/No, and signature images embedded inline.
+Users fill in just the email and the facsimile form itself. The submit handler pulls name, phone, and ID directly from the facsimile field values. No more false "Please fill in your name" error.
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `src/pages/PublicForm.tsx` | Add facsimile-aware identity resolution; hide identity card for facsimile forms |
 
