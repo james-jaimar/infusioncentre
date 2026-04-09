@@ -1,5 +1,11 @@
+import { format, parse } from "date-fns";
+import { CalendarIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import SignatureCanvas from "@/components/forms/SignatureCanvas";
 
 interface FacsimileProps {
@@ -52,6 +58,46 @@ function Sig({ name, label, values, onChange, readOnly }: {
       readOnly={readOnly}
       compact
     />
+  );
+}
+
+function DateField({ name, values, onChange, readOnly, className = "" }: {
+  name: string; values: Record<string, any>; onChange: (v: Record<string, any>) => void;
+  readOnly?: boolean; className?: string;
+}) {
+  const raw = values[name] || "";
+  const dateVal = raw ? parse(raw, "yyyy-MM-dd", new Date()) : undefined;
+  const isValid = dateVal && !isNaN(dateVal.getTime());
+
+  if (readOnly) {
+    return <span className={`text-xs ${className}`}>{isValid ? format(dateVal, "dd/MM/yyyy") : raw || "—"}</span>;
+  }
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className={cn(
+            "border-0 border-b border-border rounded-none h-7 text-xs px-1 bg-transparent justify-start font-normal hover:bg-muted/20 w-full",
+            !raw && "text-muted-foreground",
+            className
+          )}
+        >
+          <CalendarIcon className="mr-1.5 h-3 w-3 shrink-0" />
+          {isValid ? format(dateVal, "dd/MM/yyyy") : <span>DD/MM/YYYY</span>}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={isValid ? dateVal : undefined}
+          onSelect={(d) => onChange({ ...values, [name]: d ? format(d, "yyyy-MM-dd") : "" })}
+          initialFocus
+          className={cn("p-3 pointer-events-auto")}
+        />
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -144,7 +190,7 @@ function ConsentPage({ values, onChange, readOnly }: FacsimileProps) {
           </div>
           <div>
             <span className="text-[10px] text-muted-foreground">Date:</span>
-            <Field name="patient_consent_date" values={values} onChange={onChange} readOnly={readOnly} placeholder="DD/MM/YYYY" />
+            <DateField name="patient_consent_date" values={values} onChange={onChange} readOnly={readOnly} />
           </div>
           <div>
             <span className="text-[10px] text-muted-foreground">Patient's Contact Number:</span>
@@ -187,7 +233,7 @@ function ConsentPage({ values, onChange, readOnly }: FacsimileProps) {
                 <Sig name="hcp_signature" label="HCP Signature" values={values} onChange={onChange} readOnly={readOnly} />
               </div>
             </div>
-            <div><span className="text-[10px]">Date:</span><Field name="hcp_consent_date" values={values} onChange={onChange} readOnly={readOnly} placeholder="DD/MM/YYYY" /></div>
+            <div><span className="text-[10px]">Date:</span><DateField name="hcp_consent_date" values={values} onChange={onChange} readOnly={readOnly} /></div>
             <div><span className="text-[10px]">Doctor's Contact Number:</span><Field name="hcp_contact" values={values} onChange={onChange} readOnly={readOnly} /></div>
           </div>
         </div>
@@ -196,7 +242,7 @@ function ConsentPage({ values, onChange, readOnly }: FacsimileProps) {
         <p className="text-[10px] text-muted-foreground py-2 leading-relaxed">Acino warrants and undertakes that it has the skill to provide the Services and that Acino shall at all times use its best endeavours to use, process and keep the Patient's Confidential/Personal Information confidential in accordance with the provisions of the Protection of Personal Information Act No.4 of 2013 and shall use/process same only for the Purpose in this Consent.</p>
         <div className="grid grid-cols-2 gap-x-6 gap-y-2 py-2 mb-3">
           <div><span className="text-[10px] text-muted-foreground">Nurse Educator's Name:</span><Field name="acino_nurse_name" values={values} onChange={onChange} readOnly={readOnly} /></div>
-          <div><span className="text-[10px] text-muted-foreground">Date:</span><Field name="acino_date" values={values} onChange={onChange} readOnly={readOnly} placeholder="DD/MM/YYYY" /></div>
+          <div><span className="text-[10px] text-muted-foreground">Date:</span><DateField name="acino_date" values={values} onChange={onChange} readOnly={readOnly} /></div>
           <div className="col-span-2">
             <span className="text-[10px] text-muted-foreground">Signature:</span>
             <div className="border border-border rounded min-h-[140px] mt-1 max-w-sm">
@@ -252,7 +298,16 @@ function MotivationPage({ values, onChange, readOnly }: FacsimileProps) {
         <FormRow label="Tel" name="facility_tel" values={values} onChange={onChange} readOnly={readOnly} />
         <FormRow label="Email" name="facility_email" values={values} onChange={onChange} readOnly={readOnly} />
         <FormRow label="Practice No." name="facility_practice_no" values={values} onChange={onChange} readOnly={readOnly} />
-        <FormRow label="Hospital PR No." name="facility_pr_no" label2="Treatment Date" name2="facility_treatment_date" values={values} onChange={onChange} readOnly={readOnly} />
+        <div className="grid grid-cols-2 border-b border-border">
+          <div className="flex items-center border-r border-border">
+            <span className="text-xs text-muted-foreground w-32 shrink-0 px-2 py-1 bg-muted/20 border-r border-border self-stretch flex items-center">Hospital PR No.</span>
+            <Field name="facility_pr_no" values={values} onChange={onChange} readOnly={readOnly} className="flex-1" />
+          </div>
+          <div className="flex items-center">
+            <span className="text-xs text-muted-foreground w-32 shrink-0 px-2 py-1 bg-muted/20 border-r border-border self-stretch flex items-center">Treatment Date</span>
+            <DateField name="facility_treatment_date" values={values} onChange={onChange} readOnly={readOnly} className="flex-1" />
+          </div>
+        </div>
       </div>
 
       <SectionTitle>Patient Details</SectionTitle>
@@ -262,7 +317,7 @@ function MotivationPage({ values, onChange, readOnly }: FacsimileProps) {
         <div className="grid grid-cols-2 border-b border-border">
           <div className="flex items-center border-r border-border">
             <span className="text-xs text-muted-foreground w-32 shrink-0 px-2 py-1 bg-muted/20 border-r border-border self-stretch flex items-center">Date of birth</span>
-            <Field name="pt_dob" values={values} onChange={onChange} readOnly={readOnly} className="flex-1" placeholder="DD/MM/YYYY" />
+            <DateField name="pt_dob" values={values} onChange={onChange} readOnly={readOnly} className="flex-1" />
           </div>
           <div className="flex items-center gap-4 px-3">
             <Tick name="pt_gender_m" label="M" values={values} onChange={onChange} readOnly={readOnly} />
@@ -270,7 +325,16 @@ function MotivationPage({ values, onChange, readOnly }: FacsimileProps) {
           </div>
         </div>
         <FormRow label="ID Number" name="pt_id" label2="Email Address" name2="pt_email" values={values} onChange={onChange} readOnly={readOnly} />
-        <FormRow label="Medical Aid" name="pt_medical_aid" label2="Treatment Date" name2="pt_treatment_date" values={values} onChange={onChange} readOnly={readOnly} />
+        <div className="grid grid-cols-2 border-b border-border">
+          <div className="flex items-center border-r border-border">
+            <span className="text-xs text-muted-foreground w-32 shrink-0 px-2 py-1 bg-muted/20 border-r border-border self-stretch flex items-center">Medical Aid</span>
+            <Field name="pt_medical_aid" values={values} onChange={onChange} readOnly={readOnly} className="flex-1" />
+          </div>
+          <div className="flex items-center">
+            <span className="text-xs text-muted-foreground w-32 shrink-0 px-2 py-1 bg-muted/20 border-r border-border self-stretch flex items-center">Treatment Date</span>
+            <DateField name="pt_treatment_date" values={values} onChange={onChange} readOnly={readOnly} className="flex-1" />
+          </div>
+        </div>
         <FormRow label="Membership No." name="pt_membership" label2="Hospital Pr No." name2="pt_hospital_pr" values={values} onChange={onChange} readOnly={readOnly} />
         <FormRow label="Body Weight" name="pt_weight" label2="Gestational Age" name2="pt_gestational_age" values={values} onChange={onChange} readOnly={readOnly} />
       </div>
@@ -374,7 +438,7 @@ function MotivationPage({ values, onChange, readOnly }: FacsimileProps) {
         </div>
         <div>
           <span className="text-[10px] text-muted-foreground">Date:</span>
-          <Field name="dr_motivation_date" values={values} onChange={onChange} readOnly={readOnly} placeholder="DD/MM/YYYY" />
+          <DateField name="dr_motivation_date" values={values} onChange={onChange} readOnly={readOnly} />
         </div>
       </div>
 
