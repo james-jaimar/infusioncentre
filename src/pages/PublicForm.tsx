@@ -117,7 +117,7 @@ export default function PublicForm() {
         resolvedLast = parts.slice(1).join(" ") || "";
       }
 
-      resolvedPhone = (values.pt_tel || values.patient_phone || "").toString().trim();
+      resolvedPhone = (values.patient_contact || values.pt_tel || values.patient_phone || "").toString().trim();
       resolvedId = (values.patient_id_number || values.pt_id || "").toString().trim();
     } else {
       if (identity.hasName) {
@@ -164,27 +164,29 @@ export default function PublicForm() {
       return;
     }
 
-    // Check required form fields
-    const missingRequired = schema
-      .filter(
-        (f) =>
-          f.required &&
-          f.field_type !== "section_header" &&
-          f.field_type !== "info_text"
-      )
-      .filter((f) => {
-        const v = values[f.field_name];
-        if (Array.isArray(v)) return v.length === 0;
-        return v === undefined || v === null || v === "";
-      });
+    // Check required form fields (skip for facsimile — fields are managed by the React component)
+    if (!isFacsimile) {
+      const missingRequired = schema
+        .filter(
+          (f) =>
+            f.required &&
+            f.field_type !== "section_header" &&
+            f.field_type !== "info_text"
+        )
+        .filter((f) => {
+          const v = values[f.field_name];
+          if (Array.isArray(v)) return v.length === 0;
+          return v === undefined || v === null || v === "";
+        });
 
-    if (missingRequired.length > 0) {
-      toast({
-        title: "Please complete all required fields",
-        description: `Missing: ${missingRequired.map((f) => f.label).join(", ")}`,
-        variant: "destructive",
-      });
-      return;
+      if (missingRequired.length > 0) {
+        toast({
+          title: "Please complete all required fields",
+          description: `Missing: ${missingRequired.map((f) => f.label).join(", ")}`,
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     setSubmitting(true);
