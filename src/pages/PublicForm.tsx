@@ -79,6 +79,8 @@ export default function PublicForm() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
+  const isFacsimile = template?.render_mode === "facsimile";
+
   const schema = useMemo(
     () => (template?.form_schema as unknown as FormField[]) || [],
     [template]
@@ -86,10 +88,10 @@ export default function PublicForm() {
 
   const identity = useMemo(() => detectIdentityFields(schema), [schema]);
 
-  // Determine what to show
-  const showNameFields = !identity.hasName;
-  const showPhoneField = !identity.hasPhone;
-  const showIdField = !identity.hasIdNumber;
+  // For facsimile forms, hide the identity card entirely — the form itself captures name/phone/ID
+  const showNameFields = !isFacsimile && !identity.hasName;
+  const showPhoneField = !isFacsimile && !identity.hasPhone;
+  const showIdField = !isFacsimile && !identity.hasIdNumber;
   const showIdentityCard = showNameFields || showPhoneField || showIdField;
 
   const handleSubmit = async () => {
