@@ -95,19 +95,18 @@ export default function PublicForm() {
   const showIdentityCard = showNameFields || showPhoneField || showIdField;
 
   const handleSubmit = async () => {
-    // Resolve identity data — either from hardcoded inputs or form values
+    // Resolve identity data — either from facsimile values, hardcoded inputs, or form values
     let resolvedFirst = firstName.trim();
     let resolvedLast = lastName.trim();
     let resolvedEmail = email.trim();
     let resolvedPhone = phone.trim();
     let resolvedId = idNumber.trim();
 
-    if (identity.hasName) {
-      const fullName = extractFromValues(values, schema, [
-        "name_in_full", "full_name", "patient_name",
-      ]);
-      const fName = extractFromValues(values, schema, ["first_name"]);
-      const lName = extractFromValues(values, schema, ["surname", "last_name"]);
+    if (isFacsimile) {
+      // For facsimile forms, pull identity directly from form values
+      const fullName = (values.patient_full_name || "").toString().trim();
+      const fName = (values.pt_name || "").toString().trim();
+      const lName = (values.pt_surname || "").toString().trim();
 
       if (fName || lName) {
         resolvedFirst = fName;
@@ -117,18 +116,38 @@ export default function PublicForm() {
         resolvedFirst = parts[0] || "";
         resolvedLast = parts.slice(1).join(" ") || "";
       }
-    }
 
-    if (identity.hasPhone) {
-      resolvedPhone = extractFromValues(values, schema, [
-        "phone", "cell", "mobile", "contact_number", "tel",
-      ]);
-    }
+      resolvedPhone = (values.pt_tel || values.patient_phone || "").toString().trim();
+      resolvedId = (values.patient_id_number || values.pt_id || "").toString().trim();
+    } else {
+      if (identity.hasName) {
+        const fullName = extractFromValues(values, schema, [
+          "name_in_full", "full_name", "patient_name",
+        ]);
+        const fName = extractFromValues(values, schema, ["first_name"]);
+        const lName = extractFromValues(values, schema, ["surname", "last_name"]);
 
-    if (identity.hasIdNumber) {
-      resolvedId = extractFromValues(values, schema, [
-        "id_number", "identity", "sa_id", "id no",
-      ]);
+        if (fName || lName) {
+          resolvedFirst = fName;
+          resolvedLast = lName;
+        } else if (fullName) {
+          const parts = fullName.split(/\s+/);
+          resolvedFirst = parts[0] || "";
+          resolvedLast = parts.slice(1).join(" ") || "";
+        }
+      }
+
+      if (identity.hasPhone) {
+        resolvedPhone = extractFromValues(values, schema, [
+          "phone", "cell", "mobile", "contact_number", "tel",
+        ]);
+      }
+
+      if (identity.hasIdNumber) {
+        resolvedId = extractFromValues(values, schema, [
+          "id_number", "identity", "sa_id", "id no",
+        ]);
+      }
     }
 
     // Validation
