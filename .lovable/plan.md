@@ -1,31 +1,37 @@
 
 
-## Plan: Fix Facsimile Form Validation and Identity Resolution
+## Plan: Fix Calendar Year/Month Dropdown Styling
 
 ### Problem
-Two issues with facsimile form submission:
+The Calendar component uses `react-day-picker` v8's `captionLayout="dropdown-buttons"` feature, but the `classNames` object in `calendar.tsx` has zero styles for the dropdown elements. The dropdowns render with browser-default `<select>` styling, stacked awkwardly, producing the mess visible in the screenshot.
 
-1. **"Missing: Service Consent" error**: The required-field validation (lines 168-179 of `PublicForm.tsx`) scans `template.form_schema` for required fields. For facsimile forms, this schema contains legacy extracted fields (like "Service Consent") that the facsimile React component doesn't use. These will never be populated, so validation always fails.
-
-2. **Identity resolution uses wrong field names**: The facsimile handler looks for `pt_tel` and `patient_phone` for phone, but the Monofer form actually uses `patient_contact` (line 197). Similarly, the form has both `patient_full_name` (consent page) AND `pt_name`/`pt_surname` (motivation page) — both should be checked.
+### Solution
+Add proper Tailwind classes for the dropdown elements to `src/components/ui/calendar.tsx`. This is a single-file fix.
 
 ### Changes
 
-**File: `src/pages/PublicForm.tsx`**
+**File: `src/components/ui/calendar.tsx`**
 
-1. **Skip schema-based required-field validation for facsimile forms**: When `isFacsimile` is true, skip the `missingRequired` check entirely — facsimile forms manage their own layout and required fields are implicit in the document structure.
+Add these classNames to the existing `classNames` object:
 
-2. **Fix identity field name resolution for facsimile**:
-   - Phone: add `patient_contact` to the lookup chain: `values.patient_contact || values.pt_tel || values.patient_phone`
-   - ID: already correct (`patient_id_number`, `pt_id`)
-   - Name: already correct (checks `pt_name`/`pt_surname` first, falls back to `patient_full_name`)
+| Key | Style | Purpose |
+|-----|-------|---------|
+| `caption` | Update to `flex justify-center pt-1 relative items-center gap-1` | Add gap for dropdowns |
+| `caption_label` | `hidden` when dropdowns present (handled by DayPicker automatically) | Hides label when using dropdown layout |
+| `caption_dropdowns` | `flex items-center gap-2` | Side-by-side month/year dropdowns |
+| `dropdown` | Styled select: rounded border, small text, padding, background | Clean dropdown appearance |
+| `dropdown_month` | `relative` | Positioning |
+| `dropdown_year` | `relative` | Positioning |
+| `vhidden` | `hidden` | Hide the visually-hidden accessibility labels that DayPicker adds (they cause layout issues) |
+
+The dropdown `<select>` elements will get compact, clean styling matching the rest of the UI -- proper border, rounded corners, consistent font size. Month and year sit side-by-side in one row.
 
 ### Result
-Facsimile forms submit without false required-field errors. Phone number is correctly extracted from the consent page's `patient_contact` field.
+All date pickers across the app (facsimile and schema-based) will show clean, properly styled month and year dropdowns. Users can jump to any year instantly. One file changed, zero logic changes.
 
 ### Files Changed
 
 | File | Change |
 |------|--------|
-| `src/pages/PublicForm.tsx` | Skip schema required-field check for facsimile; fix phone field name |
+| `src/components/ui/calendar.tsx` | Add dropdown-related classNames for styled month/year selectors |
 
