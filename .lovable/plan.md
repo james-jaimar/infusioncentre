@@ -1,25 +1,35 @@
 
 
-## Plan: Wire Up Facsimile Rendering in Preview and Editor
+## Plan: Fix Signature Box Spacing in Monofer Facsimile Form
 
 ### Problem
-The preview and editor always render the old schema-based form because neither passes `renderMode` nor `slug` from the template to `FullScreenFormDialog`. The facsimile component exists but is never invoked.
+The signature boxes are cramped because the `SignatureCanvas` component has its own label, dashed borders, padding, and a fixed `h-32` canvas height — but in the facsimile form, each signature is wrapped in a tiny `h-14` or `h-16` container. This causes clipping and visual breakage.
 
-### Changes
+### Solution
+Two changes:
 
-**File: `src/pages/admin/AdminFormTemplates.tsx`**
+**File: `src/components/forms/facsimile/MonoferMotivationForm.tsx`**
 
-1. Add `renderMode` and `slug` props to the `FullScreenFormDialog` preview call (~line 397):
-```tsx
-<FullScreenFormDialog
-  ...
-  renderMode={previewTemplate?.render_mode as any}
-  slug={previewTemplate?.slug || undefined}
-/>
-```
+1. Remove the tight `h-14`/`h-16` wrapper divs around each `<Sig>` call — let the SignatureCanvas render at its natural height
+2. Give each signature area proper spacing with adequate height (`min-h-[140px]`) so the canvas, label, hint text, and clear button all fit comfortably
+3. Applies to all 5 signature locations:
+   - Patient signature (line ~140)
+   - Nurse signature (line ~163)
+   - HCP signature (line ~185)
+   - Acino/undertaking signature (line ~201)
+   - Dr motivation signature (line ~370)
 
-This single change means when a template has `render_mode: "facsimile"` and `slug: "monofer-motivation"`, the preview dialog will look up the slug in the facsimile registry and render the custom MonoferMotivationForm component instead of the generic schema renderer.
+**File: `src/components/forms/SignatureCanvas.tsx`** (minor)
+
+4. When used inside the facsimile context, the component's own outer `space-y-2` and label are redundant since the facsimile already provides its own label. Add an optional `compact` prop that hides the built-in label and reduces outer padding, so it fits cleanly inside the facsimile layout without double-labeling or wasted space.
 
 ### Result
-Clicking the preview (eye icon) on the Monofer form will show the pixel-perfect facsimile layout instead of the generic schema view.
+Signature boxes will have proper room to draw, the form will extend naturally to accommodate them, and the overall facsimile layout stays clean and document-like.
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `src/components/forms/facsimile/MonoferMotivationForm.tsx` | Remove constrained height wrappers on all 5 signature areas; give them breathing room |
+| `src/components/forms/SignatureCanvas.tsx` | Add optional `compact` prop to hide built-in label and reduce padding for facsimile use |
 
