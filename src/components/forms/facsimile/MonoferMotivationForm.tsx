@@ -298,7 +298,16 @@ function MotivationPage({ values, onChange, readOnly }: FacsimileProps) {
         <FormRow label="Tel" name="facility_tel" values={values} onChange={onChange} readOnly={readOnly} />
         <FormRow label="Email" name="facility_email" values={values} onChange={onChange} readOnly={readOnly} />
         <FormRow label="Practice No." name="facility_practice_no" values={values} onChange={onChange} readOnly={readOnly} />
-        <FormRow label="Hospital PR No." name="facility_pr_no" label2="Treatment Date" name2="facility_treatment_date" values={values} onChange={onChange} readOnly={readOnly} />
+        <div className="grid grid-cols-2 border-b border-border">
+          <div className="flex items-center border-r border-border">
+            <span className="text-xs text-muted-foreground w-32 shrink-0 px-2 py-1 bg-muted/20 border-r border-border self-stretch flex items-center">Hospital PR No.</span>
+            <Field name="facility_pr_no" values={values} onChange={onChange} readOnly={readOnly} className="flex-1" />
+          </div>
+          <div className="flex items-center">
+            <span className="text-xs text-muted-foreground w-32 shrink-0 px-2 py-1 bg-muted/20 border-r border-border self-stretch flex items-center">Treatment Date</span>
+            <DateField name="facility_treatment_date" values={values} onChange={onChange} readOnly={readOnly} className="flex-1" />
+          </div>
+        </div>
       </div>
 
       <SectionTitle>Patient Details</SectionTitle>
@@ -316,7 +325,16 @@ function MotivationPage({ values, onChange, readOnly }: FacsimileProps) {
           </div>
         </div>
         <FormRow label="ID Number" name="pt_id" label2="Email Address" name2="pt_email" values={values} onChange={onChange} readOnly={readOnly} />
-        <FormRow label="Medical Aid" name="pt_medical_aid" label2="Treatment Date" name2="pt_treatment_date" values={values} onChange={onChange} readOnly={readOnly} />
+        <div className="grid grid-cols-2 border-b border-border">
+          <div className="flex items-center border-r border-border">
+            <span className="text-xs text-muted-foreground w-32 shrink-0 px-2 py-1 bg-muted/20 border-r border-border self-stretch flex items-center">Medical Aid</span>
+            <Field name="pt_medical_aid" values={values} onChange={onChange} readOnly={readOnly} className="flex-1" />
+          </div>
+          <div className="flex items-center">
+            <span className="text-xs text-muted-foreground w-32 shrink-0 px-2 py-1 bg-muted/20 border-r border-border self-stretch flex items-center">Treatment Date</span>
+            <DateField name="pt_treatment_date" values={values} onChange={onChange} readOnly={readOnly} className="flex-1" />
+          </div>
+        </div>
         <FormRow label="Membership No." name="pt_membership" label2="Hospital Pr No." name2="pt_hospital_pr" values={values} onChange={onChange} readOnly={readOnly} />
         <FormRow label="Body Weight" name="pt_weight" label2="Gestational Age" name2="pt_gestational_age" values={values} onChange={onChange} readOnly={readOnly} />
       </div>
