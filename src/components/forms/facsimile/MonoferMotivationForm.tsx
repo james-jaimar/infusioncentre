@@ -190,7 +190,7 @@ function ConsentPage({ values, onChange, readOnly }: FacsimileProps) {
           </div>
           <div>
             <span className="text-[10px] text-muted-foreground">Date:</span>
-            <Field name="patient_consent_date" values={values} onChange={onChange} readOnly={readOnly} placeholder="DD/MM/YYYY" />
+            <DateField name="patient_consent_date" values={values} onChange={onChange} readOnly={readOnly} />
           </div>
           <div>
             <span className="text-[10px] text-muted-foreground">Patient's Contact Number:</span>
@@ -233,7 +233,7 @@ function ConsentPage({ values, onChange, readOnly }: FacsimileProps) {
                 <Sig name="hcp_signature" label="HCP Signature" values={values} onChange={onChange} readOnly={readOnly} />
               </div>
             </div>
-            <div><span className="text-[10px]">Date:</span><Field name="hcp_consent_date" values={values} onChange={onChange} readOnly={readOnly} placeholder="DD/MM/YYYY" /></div>
+            <div><span className="text-[10px]">Date:</span><DateField name="hcp_consent_date" values={values} onChange={onChange} readOnly={readOnly} /></div>
             <div><span className="text-[10px]">Doctor's Contact Number:</span><Field name="hcp_contact" values={values} onChange={onChange} readOnly={readOnly} /></div>
           </div>
         </div>
@@ -242,7 +242,7 @@ function ConsentPage({ values, onChange, readOnly }: FacsimileProps) {
         <p className="text-[10px] text-muted-foreground py-2 leading-relaxed">Acino warrants and undertakes that it has the skill to provide the Services and that Acino shall at all times use its best endeavours to use, process and keep the Patient's Confidential/Personal Information confidential in accordance with the provisions of the Protection of Personal Information Act No.4 of 2013 and shall use/process same only for the Purpose in this Consent.</p>
         <div className="grid grid-cols-2 gap-x-6 gap-y-2 py-2 mb-3">
           <div><span className="text-[10px] text-muted-foreground">Nurse Educator's Name:</span><Field name="acino_nurse_name" values={values} onChange={onChange} readOnly={readOnly} /></div>
-          <div><span className="text-[10px] text-muted-foreground">Date:</span><Field name="acino_date" values={values} onChange={onChange} readOnly={readOnly} placeholder="DD/MM/YYYY" /></div>
+          <div><span className="text-[10px] text-muted-foreground">Date:</span><DateField name="acino_date" values={values} onChange={onChange} readOnly={readOnly} /></div>
           <div className="col-span-2">
             <span className="text-[10px] text-muted-foreground">Signature:</span>
             <div className="border border-border rounded min-h-[140px] mt-1 max-w-sm">
@@ -308,7 +308,7 @@ function MotivationPage({ values, onChange, readOnly }: FacsimileProps) {
         <div className="grid grid-cols-2 border-b border-border">
           <div className="flex items-center border-r border-border">
             <span className="text-xs text-muted-foreground w-32 shrink-0 px-2 py-1 bg-muted/20 border-r border-border self-stretch flex items-center">Date of birth</span>
-            <Field name="pt_dob" values={values} onChange={onChange} readOnly={readOnly} className="flex-1" placeholder="DD/MM/YYYY" />
+            <DateField name="pt_dob" values={values} onChange={onChange} readOnly={readOnly} className="flex-1" />
           </div>
           <div className="flex items-center gap-4 px-3">
             <Tick name="pt_gender_m" label="M" values={values} onChange={onChange} readOnly={readOnly} />
@@ -420,7 +420,7 @@ function MotivationPage({ values, onChange, readOnly }: FacsimileProps) {
         </div>
         <div>
           <span className="text-[10px] text-muted-foreground">Date:</span>
-          <Field name="dr_motivation_date" values={values} onChange={onChange} readOnly={readOnly} placeholder="DD/MM/YYYY" />
+          <DateField name="dr_motivation_date" values={values} onChange={onChange} readOnly={readOnly} />
         </div>
       </div>
 
