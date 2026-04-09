@@ -61,6 +61,46 @@ function Sig({ name, label, values, onChange, readOnly }: {
   );
 }
 
+function DateField({ name, values, onChange, readOnly, className = "" }: {
+  name: string; values: Record<string, any>; onChange: (v: Record<string, any>) => void;
+  readOnly?: boolean; className?: string;
+}) {
+  const raw = values[name] || "";
+  const dateVal = raw ? parse(raw, "yyyy-MM-dd", new Date()) : undefined;
+  const isValid = dateVal && !isNaN(dateVal.getTime());
+
+  if (readOnly) {
+    return <span className={`text-xs ${className}`}>{isValid ? format(dateVal, "dd/MM/yyyy") : raw || "—"}</span>;
+  }
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className={cn(
+            "border-0 border-b border-border rounded-none h-7 text-xs px-1 bg-transparent justify-start font-normal hover:bg-muted/20 w-full",
+            !raw && "text-muted-foreground",
+            className
+          )}
+        >
+          <CalendarIcon className="mr-1.5 h-3 w-3 shrink-0" />
+          {isValid ? format(dateVal, "dd/MM/yyyy") : <span>DD/MM/YYYY</span>}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={isValid ? dateVal : undefined}
+          onSelect={(d) => onChange({ ...values, [name]: d ? format(d, "yyyy-MM-dd") : "" })}
+          initialFocus
+          className={cn("p-3 pointer-events-auto")}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function PageHeader({ title }: { title: string }) {
   return (
     <div className="flex items-stretch border-b-2 border-foreground">
