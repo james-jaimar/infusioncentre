@@ -1,35 +1,31 @@
 
 
-## Plan: Fix Name Resolution for Facsimile Form Submissions
+## Plan: Fix Facsimile Form Validation and Identity Resolution
 
 ### Problem
-When submitting the Monofer facsimile form, it always errors with "Please fill in your name" because:
+Two issues with facsimile form submission:
 
-1. The template's `form_schema` is empty (facsimile fields live in React code, not JSON schema)
-2. `detectIdentityFields` scans the empty schema, finds nothing, so it shows the hardcoded First/Last name inputs at the top
-3. Users fill in the facsimile form fields (`patient_full_name`, `pt_name`, `pt_surname`) but skip or miss the separate identity card
-4. Even if users do fill the identity card, the `extractFromValues` function also searches the empty schema and finds nothing
+1. **"Missing: Service Consent" error**: The required-field validation (lines 168-179 of `PublicForm.tsx`) scans `template.form_schema` for required fields. For facsimile forms, this schema contains legacy extracted fields (like "Service Consent") that the facsimile React component doesn't use. These will never be populated, so validation always fails.
 
-### Solution
-For facsimile templates, bypass the schema-based identity detection entirely. Instead, extract name/phone/ID directly from `values` using known facsimile field keys.
+2. **Identity resolution uses wrong field names**: The facsimile handler looks for `pt_tel` and `patient_phone` for phone, but the Monofer form actually uses `patient_contact` (line 197). Similarly, the form has both `patient_full_name` (consent page) AND `pt_name`/`pt_surname` (motivation page) — both should be checked.
 
 ### Changes
 
 **File: `src/pages/PublicForm.tsx`**
 
-1. Detect when the template is facsimile mode: `template.render_mode === "facsimile"`
-2. When facsimile:
-   - Hide the identity card entirely (no duplicate name/phone/ID fields) — only show the email input since the form itself captures everything else
-   - In `handleSubmit`, resolve name from `values.patient_full_name` or `values.pt_name` + `values.pt_surname` directly (not via schema scanning)
-   - Resolve phone from `values.pt_tel` and ID from `values.patient_id_number` or `values.pt_id`
-3. Keep the email field always visible since no facsimile form captures email
+1. **Skip schema-based required-field validation for facsimile forms**: When `isFacsimile` is true, skip the `missingRequired` check entirely — facsimile forms manage their own layout and required fields are implicit in the document structure.
+
+2. **Fix identity field name resolution for facsimile**:
+   - Phone: add `patient_contact` to the lookup chain: `values.patient_contact || values.pt_tel || values.patient_phone`
+   - ID: already correct (`patient_id_number`, `pt_id`)
+   - Name: already correct (checks `pt_name`/`pt_surname` first, falls back to `patient_full_name`)
 
 ### Result
-Users fill in just the email and the facsimile form itself. The submit handler pulls name, phone, and ID directly from the facsimile field values. No more false "Please fill in your name" error.
+Facsimile forms submit without false required-field errors. Phone number is correctly extracted from the consent page's `patient_contact` field.
 
 ### Files Changed
 
 | File | Change |
 |------|--------|
-| `src/pages/PublicForm.tsx` | Add facsimile-aware identity resolution; hide identity card for facsimile forms |
+| `src/pages/PublicForm.tsx` | Skip schema required-field check for facsimile; fix phone field name |
 
