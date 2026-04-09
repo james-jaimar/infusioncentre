@@ -50,6 +50,7 @@ function Sig({ name, label, values, onChange, readOnly }: {
       value={values[name] || ""}
       onChange={(v) => onChange({ ...values, [name]: v })}
       readOnly={readOnly}
+      compact
     />
   );
 }
@@ -137,7 +138,7 @@ function ConsentPage({ values, onChange, readOnly }: FacsimileProps) {
         <div className="grid grid-cols-2 gap-x-6 gap-y-3 mb-4">
           <div>
             <span className="text-[10px] text-muted-foreground">Patient's / Guardian's Signature:</span>
-            <div className="border border-border rounded h-16 mt-1">
+            <div className="border border-border rounded min-h-[140px] mt-1">
               <Sig name="patient_signature" label="Patient Signature" values={values} onChange={onChange} readOnly={readOnly} />
             </div>
           </div>
@@ -160,7 +161,7 @@ function ConsentPage({ values, onChange, readOnly }: FacsimileProps) {
           <div><span className="text-[10px] text-muted-foreground">Nurse Educator Name:</span><Field name="nurse_name" values={values} onChange={onChange} readOnly={readOnly} /></div>
           <div>
             <span className="text-[10px] text-muted-foreground">Signature:</span>
-            <div className="border border-border rounded h-14 mt-1">
+            <div className="border border-border rounded min-h-[140px] mt-1">
               <Sig name="nurse_signature" label="Nurse Signature" values={values} onChange={onChange} readOnly={readOnly} />
             </div>
           </div>
@@ -182,7 +183,7 @@ function ConsentPage({ values, onChange, readOnly }: FacsimileProps) {
           <div className="grid grid-cols-2 gap-x-6 gap-y-2">
             <div>
               <span className="text-[10px]">Healthcare Professional's Signature:</span>
-              <div className="border border-border rounded h-14 mt-1">
+              <div className="border border-border rounded min-h-[140px] mt-1">
                 <Sig name="hcp_signature" label="HCP Signature" values={values} onChange={onChange} readOnly={readOnly} />
               </div>
             </div>
@@ -198,7 +199,7 @@ function ConsentPage({ values, onChange, readOnly }: FacsimileProps) {
           <div><span className="text-[10px] text-muted-foreground">Date:</span><Field name="acino_date" values={values} onChange={onChange} readOnly={readOnly} placeholder="DD/MM/YYYY" /></div>
           <div className="col-span-2">
             <span className="text-[10px] text-muted-foreground">Signature:</span>
-            <div className="border border-border rounded h-14 mt-1 max-w-sm">
+            <div className="border border-border rounded min-h-[140px] mt-1 max-w-sm">
               <Sig name="acino_signature" label="Acino Signature" values={values} onChange={onChange} readOnly={readOnly} />
             </div>
           </div>
@@ -367,7 +368,7 @@ function MotivationPage({ values, onChange, readOnly }: FacsimileProps) {
       <div className="grid grid-cols-2 gap-x-6 px-3 py-3 border-b border-border">
         <div>
           <span className="text-[10px] text-muted-foreground">Dr's Signature:</span>
-          <div className="border border-border rounded h-16 mt-1">
+          <div className="border border-border rounded min-h-[140px] mt-1">
             <Sig name="dr_motivation_signature" label="Dr Signature" values={values} onChange={onChange} readOnly={readOnly} />
           </div>
         </div>
