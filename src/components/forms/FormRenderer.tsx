@@ -296,7 +296,7 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
 
       case "textarea":
         return (
-          <div className="space-y-1.5">
+          <div id={`field-${field.field_name}`} className="space-y-1.5">
             {fieldLabel}
             {readOnly ? (
               <p className="text-sm px-3 py-2.5 bg-muted/40 rounded-lg border border-border/50 whitespace-pre-wrap min-h-[60px]">{val || "—"}</p>
@@ -305,15 +305,16 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
                 value={val || ""}
                 placeholder={field.placeholder}
                 onChange={(e) => updateValue(field.field_name, e.target.value)}
-                className="min-h-[100px] rounded-lg border-border bg-background focus-visible:ring-primary/30 transition-shadow resize-y"
+                className={cn("min-h-[100px] rounded-lg border-border bg-background focus-visible:ring-primary/30 transition-shadow resize-y", errorInputClass)}
               />
             )}
+            {errorMsg}
           </div>
         );
 
       case "number":
         return (
-          <div className="space-y-1.5">
+          <div id={`field-${field.field_name}`} className="space-y-1.5">
             {fieldLabel}
             {readOnly ? (
               <p className="text-sm px-3 py-2.5 bg-muted/40 rounded-lg border border-border/50 min-h-[40px]">{val ?? "—"}</p>
@@ -322,9 +323,10 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
                 type="number"
                 value={val ?? ""}
                 onChange={(e) => updateValue(field.field_name, e.target.value ? Number(e.target.value) : "")}
-                className="h-11 rounded-lg border-border bg-background focus-visible:ring-primary/30 transition-shadow"
+                className={cn("h-11 rounded-lg border-border bg-background focus-visible:ring-primary/30 transition-shadow", errorInputClass)}
               />
             )}
+            {errorMsg}
           </div>
         );
 
@@ -332,7 +334,7 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
         const dateVal = val ? parse(val, "yyyy-MM-dd", new Date()) : undefined;
         const isValidDate = dateVal && !isNaN(dateVal.getTime());
         return (
-          <div className="space-y-1.5">
+          <div id={`field-${field.field_name}`} className="space-y-1.5">
             {fieldLabel}
             {readOnly ? (
               <p className="text-sm px-3 py-2.5 bg-muted/40 rounded-lg border border-border/50 min-h-[40px]">
@@ -345,7 +347,8 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
                     variant="outline"
                     className={cn(
                       "w-full h-11 justify-start text-left font-normal rounded-lg border-border",
-                      !val && "text-muted-foreground"
+                      !val && "text-muted-foreground",
+                      errorInputClass
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
@@ -366,19 +369,20 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
                 </PopoverContent>
               </Popover>
             )}
+            {errorMsg}
           </div>
         );
       }
 
       case "select":
         return (
-          <div className="space-y-1.5">
+          <div id={`field-${field.field_name}`} className="space-y-1.5">
             {fieldLabel}
             {readOnly ? (
               <p className="text-sm px-3 py-2.5 bg-muted/40 rounded-lg border border-border/50 min-h-[40px]">{val || "—"}</p>
             ) : (
               <Select value={val || ""} onValueChange={(v) => updateValue(field.field_name, v)}>
-                <SelectTrigger className="h-11 rounded-lg border-border">
+                <SelectTrigger className={cn("h-11 rounded-lg border-border", errorInputClass)}>
                   <SelectValue placeholder="Select..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -388,12 +392,13 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
                 </SelectContent>
               </Select>
             )}
+            {errorMsg}
           </div>
         );
 
       case "radio":
         return (
-          <div className="space-y-2.5">
+          <div id={`field-${field.field_name}`} className="space-y-2.5">
             {fieldLabel}
             {readOnly ? (
               <p className="text-sm px-3 py-2.5 bg-muted/40 rounded-lg border border-border/50">{val || "—"}</p>
@@ -415,31 +420,37 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
                 ))}
               </RadioGroup>
             )}
+            {errorMsg}
           </div>
         );
 
       case "checkbox":
         return (
-          <label className={cn(
-            "flex items-start gap-3 py-3 px-4 rounded-lg border transition-all cursor-pointer",
-            val
-              ? "border-primary/30 bg-primary/[0.03]"
-              : "border-border/40 hover:border-border/60"
-          )}>
-            {readOnly ? (
-              <div className={cn("mt-0.5 h-4 w-4 rounded border flex-shrink-0", val ? "bg-primary border-primary" : "bg-muted/30")} />
-            ) : (
-              <Checkbox
-                checked={!!val}
-                onCheckedChange={(checked) => updateValue(field.field_name, !!checked)}
-                className="mt-0.5"
-              />
-            )}
-            <span className="text-sm leading-snug">
-              {field.label}
-              {field.required && <span className="text-destructive ml-0.5">*</span>}
-            </span>
-          </label>
+          <div id={`field-${field.field_name}`}>
+            <label className={cn(
+              "flex items-start gap-3 py-3 px-4 rounded-lg border transition-all cursor-pointer",
+              hasError
+                ? "border-destructive/60 bg-destructive/5"
+                : val
+                  ? "border-primary/30 bg-primary/[0.03]"
+                  : "border-border/40 hover:border-border/60"
+            )}>
+              {readOnly ? (
+                <div className={cn("mt-0.5 h-4 w-4 rounded border flex-shrink-0", val ? "bg-primary border-primary" : "bg-muted/30")} />
+              ) : (
+                <Checkbox
+                  checked={!!val}
+                  onCheckedChange={(checked) => updateValue(field.field_name, !!checked)}
+                  className="mt-0.5"
+                />
+              )}
+              <span className="text-sm leading-snug">
+                {field.label}
+                {field.required && <span className="text-destructive ml-0.5">*</span>}
+              </span>
+            </label>
+            {errorMsg}
+          </div>
         );
 
       case "checkbox_group":
