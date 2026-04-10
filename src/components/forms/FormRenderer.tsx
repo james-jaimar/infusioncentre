@@ -576,11 +576,12 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
     }
   };
 
-  // Calculate progress
-  const fillableFields = schema.filter(f => f.required && f.field_type !== "section_header" && f.field_type !== "info_text");
+  // Calculate progress — only count visible required fields
+  const fillableFields = schema.filter(f => f.required && f.field_type !== "section_header" && f.field_type !== "info_text" && isFieldVisible(f));
   const filledCount = fillableFields.filter(f => {
     const v = values[f.field_name];
     if (Array.isArray(v)) return v.length > 0;
+    if (typeof v === "boolean") return true; // false is a valid answer
     return v !== undefined && v !== null && v !== "";
   }).length;
   const progress = fillableFields.length > 0 ? Math.round((filledCount / fillableFields.length) * 100) : 100;
