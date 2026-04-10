@@ -268,7 +268,7 @@ export default function AdminFormTemplates() {
                               <SelectItem value="facsimile">Facsimile</SelectItem>
                             </SelectContent>
                           </Select>
-                          {t.render_mode === "facsimile" && (
+                          {t.render_mode === "facsimile" ? (
                             <Select
                               value={t.slug || ""}
                               onValueChange={async (val) => {
@@ -289,6 +289,24 @@ export default function AdminFormTemplates() {
                                 ))}
                               </SelectContent>
                             </Select>
+                          ) : (
+                            <div className="flex items-center gap-1">
+                              <Input
+                                className="h-7 w-[120px] text-[11px]"
+                                defaultValue={t.slug || ""}
+                                placeholder="slug…"
+                                onBlur={async (e) => {
+                                  const val = e.target.value.trim();
+                                  if (val === (t.slug || "")) return;
+                                  try {
+                                    await updateTemplate.mutateAsync({ id: t.id, slug: val || null });
+                                    toast({ title: val ? `Slug set to "${val}"` : "Slug cleared" });
+                                  } catch {
+                                    toast({ title: "Failed to update slug", variant: "destructive" });
+                                  }
+                                }}
+                              />
+                            </div>
                           )}
                         </div>
                       </TableCell>
