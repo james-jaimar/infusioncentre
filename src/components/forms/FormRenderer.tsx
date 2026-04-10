@@ -45,6 +45,10 @@ interface FormRendererProps {
   onChange: (values: Record<string, any>) => void;
   readOnly?: boolean;
   onSignature?: (fieldName: string, data: string) => void;
+  /** Set of field_name values that failed validation — highlights them red */
+  errorFields?: Set<string>;
+  /** Called when the user interacts with an errored field to clear its error */
+  onClearError?: (fieldName: string) => void;
 }
 
 interface Section {
