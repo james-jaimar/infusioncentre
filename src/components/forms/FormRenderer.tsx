@@ -238,12 +238,17 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
 
   const renderField = (field: FormField) => {
     const val = values[field.field_name];
+    const hasError = errorFields?.has(field.field_name);
     const fieldLabel = (
-      <Label className="text-sm font-medium text-foreground">
+      <Label className={cn("text-sm font-medium", hasError ? "text-destructive" : "text-foreground")}>
         {field.label}
         {field.required && <span className="text-destructive ml-0.5">*</span>}
       </Label>
     );
+    const errorMsg = hasError ? (
+      <p className="text-xs text-destructive mt-1">This field is required</p>
+    ) : null;
+    const errorInputClass = hasError ? "border-destructive" : "";
 
     switch (field.field_type) {
       case "info_text": {
