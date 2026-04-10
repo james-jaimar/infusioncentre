@@ -491,15 +491,18 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
 
       case "signature":
         return (
-          <SignatureCanvas
-            label={`${field.label}${field.required ? " *" : ""}`}
-            value={val}
-            onChange={(data) => {
-              updateValue(field.field_name, data);
-              onSignature?.(field.field_name, data);
-            }}
-            readOnly={readOnly}
-          />
+          <div id={`field-${field.field_name}`}>
+            <SignatureCanvas
+              label={`${field.label}${field.required ? " *" : ""}`}
+              value={val}
+              onChange={(data) => {
+                updateValue(field.field_name, data);
+                onSignature?.(field.field_name, data);
+              }}
+              readOnly={readOnly}
+            />
+            {errorMsg}
+          </div>
         );
 
       case "medication_table":
