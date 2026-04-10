@@ -56,9 +56,10 @@ interface Section {
   fields: FormField[];
 }
 
-export default function FormRenderer({ schema, values, onChange, readOnly, onSignature }: FormRendererProps) {
+export default function FormRenderer({ schema, values, onChange, readOnly, onSignature, errorFields, onClearError }: FormRendererProps) {
   const updateValue = (fieldName: string, value: any) => {
     onChange({ ...values, [fieldName]: value });
+    onClearError?.(fieldName);
   };
 
   // Group fields into sections
