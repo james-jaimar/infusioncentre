@@ -252,7 +252,7 @@ export default function AdminFormTemplates() {
                             value={t.render_mode}
                             onValueChange={async (val) => {
                               try {
-                                await updateTemplate.mutateAsync({ id: t.id, render_mode: val, ...(val !== "facsimile" ? { slug: null } : {}) });
+                                await updateTemplate.mutateAsync({ id: t.id, render_mode: val });
                                 toast({ title: `Mode changed to ${val === "facsimile" ? "Facsimile" : val === "pdf_overlay" ? "PDF Overlay" : "Schema"}` });
                               } catch {
                                 toast({ title: "Failed to update mode", variant: "destructive" });
