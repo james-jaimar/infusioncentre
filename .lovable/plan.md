@@ -1,43 +1,88 @@
 
-Problem found
+Do I know what the issue is? Yes: this is not one stubborn field bug. The public-form system has accumulated layered fixes across page logic, renderer logic, edge-function logic, AI-import rules, and bad live template data. That is why “any form” can still fail in inconsistent ways.
 
-- This is failing before the form is ever sent. The red toast in your screenshot matches the client-side check in `src/pages/PublicForm.tsx` (`Please fill in your name`).
-- There are no recent `form_submissions` for `Ketamine_Questionnaire - General 2025`, so the block is happening in the browser, not in the edge function.
-- The current public-form identity logic is too brittle:
-  - it hides the fallback first/last-name inputs as soon as it sees any “name-like” field
-  - it then tries to derive the respondent name from a narrow set of field patterns
-  - across your live templates, name fields vary a lot (`name_in_full`, `patient_name_surname`, `patient_guardian_name`, etc.)
-- The ketamine template data also needs cleanup: `parent_guardian_name` is currently marked `required: true` with no condition, even though the label says “if under age”.
+What I found
 
-Plan
+- The main public-form flow is split across:
+  - `src/pages/PublicForm.tsx`
+  - `src/components/forms/FormRenderer.tsx`
+  - `src/components/forms/PdfOverlayRenderer.tsx`
+  - `src/components/forms/FieldEditor.tsx`
+  - `src/components/forms/FormTemplateEditor.tsx`
+  - `src/pages/admin/AdminFormTemplates.tsx`
+  - `supabase/functions/submit-public-form/index.ts`
+  - `supabase/functions/extract-form-template/index.ts`
+- `Ketamine_Questionnaire - General 2025` still has 0 submissions, so the block is happening in the browser before the edge function.
+- The live template data is also wrong, not just the code:
+  - `Ketamine_Questionnaire - General 2025` still has unconditional required guardian fields plus duplicate required patient-name fields.
+  - Similar schema problems exist in other active forms (`Ketamine Pre-Infusion Questionnaire`, POPI consent, Patient Information & Agreement for Care).
+- There is an upstream schema bug too: AI extraction instructs checkbox conditionals as `"value": "true"` strings, but the renderer checks strict equality against boolean `true`, so conditional follow-up fields can silently break.
+- The admin field editor does not expose `conditional_on`, `group`, `density`, or `layout_hint`, so once bad schema lands, it is difficult to repair properly.
+- Validation is duplicated and inconsistent:
+  - `PublicForm` does identity inference + required checks
+  - `FormRenderer` only renders + partial error display
+  - `PdfOverlayRenderer` has no comparable validation/error system
+  - `submit-public-form` has its own separate rules
 
-1. Fix identity resolution in `src/pages/PublicForm.tsx`
-- Replace the current `detectIdentityFields` / `extractFromValues` logic with a normalized matcher that handles spaces, underscores, and more real field variants.
-- Separate true patient-name fields from guardian / witness / doctor / representative fields.
-- Only hide the manual name card when there is a confident patient-name source.
-- If name still cannot be resolved, reveal and focus the manual name inputs instead of blocking with a vague toast.
+Clean rewrite plan
 
-2. Fix validation UX across public forms
-- Move from toast-only validation to field-level validation.
-- Validate only visible required fields.
-- Scroll to the first invalid field on submit.
-- Show a clearer summary like “Please fix the highlighted fields” instead of leaving users stranded at the bottom.
+1. Build one shared form-runtime layer
+- Create a single source of truth for:
+  - field visibility
+  - required-field evaluation
+  - empty-value checks by field type
+  - conditional coercion (`true` vs `"true"`, string/number cases)
+  - patient identity resolution
+- Make the page, renderers, and edge function all use this same contract.
 
-3. Update the form renderer for inline errors
-- Extend `src/components/forms/FormRenderer.tsx` so public forms can highlight missing fields and show small error messages under them.
-- Add stable field anchors/ids so `PublicForm` can jump directly to the problem area.
+2. Strip `PublicForm.tsx` back to orchestration only
+- Remove the current page-level pattern matching and identity extraction.
+- Keep `PublicForm` responsible only for:
+  - loading the template
+  - storing values
+  - receiving structured validation errors
+  - submitting a validated payload
 
-4. Clean up the ketamine template data
-- Audit the ketamine public templates for bad required flags and duplicate name capture.
-- Fix `Ketamine_Questionnaire - General 2025` so the guardian field is not always mandatory.
-- Review signature-adjacent text fields near the bottom so they are only required when legally intended.
+3. Rewrite validation UX cleanly
+- Use one validation result shape for schema, pdf_overlay, and facsimile modes.
+- Show inline errors and jump to the first invalid visible field.
+- Fix progress so it only counts visible required fields.
+- Add the same error-anchor support to `PdfOverlayRenderer`.
 
-5. Add a server-side safety backstop
-- Align `supabase/functions/submit-public-form/index.ts` with the improved client rules so future regressions return clear errors instead of silent confusion.
-- Keep the payload validation strict, but with better diagnostics.
+4. Clean out the bad live template data
+- Create a migration to normalize the active public form schemas.
+- First pass:
+  - remove unconditional guardian requirements where labels say “if under age” / “if applicable”
+  - reduce duplicate patient-name requirements
+  - repair broken conditionals
+- Prioritize:
+  - `Ketamine_Questionnaire - General 2025`
+  - `Ketamine Pre-Infusion Questionnaire`
+  - `The-Infusion-Centre_Patient-POPI-Consent - Amended April 23`
+  - `Patient Information & Agreement for Care`
 
-Technical notes
+5. Fix the authoring pipeline so this does not return
+- Update `extract-form-template` rules so conditionals are emitted in a runtime-safe way.
+- Add template linting/warnings before save for:
+  - multiple required patient-name fields
+  - unconditional guardian fields
+  - broken `conditional_on` references
+  - ambiguous identity mapping
+- Extend the field editor so admins can actually edit `conditional_on`, layout/group metadata, and other schema controls.
+- Make editor preview use the real render mode, not just the schema renderer.
 
-- Main files: `src/pages/PublicForm.tsx`, `src/components/forms/FormRenderer.tsx`, `supabase/functions/submit-public-form/index.ts`
-- Data fix: update the affected `form_templates` rows for the ketamine questionnaires
-- Expected outcome: users can complete and submit these long public forms successfully, and if something is missing, the UI will take them straight to the exact field instead of showing a generic bottom-page error
+6. Align `submit-public-form` with the rewrite
+- Keep server validation as a backstop, not a second conflicting rules engine.
+- Return field-level failures where possible instead of vague submission errors.
+
+7. Test every active public form end-to-end
+- Open each public slug, complete it, submit it, and verify saved submissions.
+- Test missing required fields, conditional fields, duplicate-name scenarios, and all render modes.
+
+Expected outcome
+
+- one validation system
+- one identity-resolution system
+- cleaner `form_templates` data
+- no more stacked “fixes on fixes”
+- reliable submission across all public forms, not just a ketamine patch
