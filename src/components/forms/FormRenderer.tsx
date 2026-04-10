@@ -277,7 +277,7 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
 
       case "text":
         return (
-          <div className="space-y-1.5">
+          <div id={`field-${field.field_name}`} className="space-y-1.5">
             {fieldLabel}
             {readOnly ? (
               <p className="text-sm px-3 py-2.5 bg-muted/40 rounded-lg border border-border/50 min-h-[40px]">{val || "—"}</p>
@@ -287,9 +287,10 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
                 placeholder={field.placeholder}
                 maxLength={field.max_length}
                 onChange={(e) => updateValue(field.field_name, e.target.value)}
-                className="h-11 rounded-lg border-border bg-background focus-visible:ring-primary/30 transition-shadow"
+                className={cn("h-11 rounded-lg border-border bg-background focus-visible:ring-primary/30 transition-shadow", errorInputClass)}
               />
             )}
+            {errorMsg}
           </div>
         );
 
