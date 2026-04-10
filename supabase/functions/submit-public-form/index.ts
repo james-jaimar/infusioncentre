@@ -385,12 +385,24 @@ Deno.serve(async (req) => {
 
     const body: SubmitPayload = await req.json();
 
-    if (!body.slug || !body.respondent_first_name || !body.respondent_last_name || !body.respondent_email || !body.data) {
+    // Validate required fields with clear diagnostics
+    const missing: string[] = [];
+    if (!body.slug) missing.push("slug");
+    if (!body.respondent_email) missing.push("respondent_email");
+    if (!body.data) missing.push("data");
+    // Name is required but we accept partial (first without last, or vice versa)
+    if (!body.respondent_first_name && !body.respondent_last_name) missing.push("respondent_name");
+
+    if (missing.length > 0) {
       return new Response(
-        JSON.stringify({ error: "slug, respondent_first_name, respondent_last_name, respondent_email, and data are required" }),
+        JSON.stringify({ error: `Missing required fields: ${missing.join(", ")}` }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Default missing name parts to prevent empty patient records
+    if (!body.respondent_first_name) body.respondent_first_name = body.respondent_last_name;
+    if (!body.respondent_last_name) body.respondent_last_name = body.respondent_first_name;
 
     // 1. Find form template by slug
     const { data: template, error: tplError } = await adminClient
