@@ -1,27 +1,43 @@
 
+Problem found
 
-## Plan: Allow Public Form Links for All Render Modes
+- This is failing before the form is ever sent. The red toast in your screenshot matches the client-side check in `src/pages/PublicForm.tsx` (`Please fill in your name`).
+- There are no recent `form_submissions` for `Ketamine_Questionnaire - General 2025`, so the block is happening in the browser, not in the edge function.
+- The current public-form identity logic is too brittle:
+  - it hides the fallback first/last-name inputs as soon as it sees any “name-like” field
+  - it then tries to derive the respondent name from a narrow set of field patterns
+  - across your live templates, name fields vary a lot (`name_in_full`, `patient_name_surname`, `patient_guardian_name`, etc.)
+- The ketamine template data also needs cleanup: `parent_guardian_name` is currently marked `required: true` with no condition, even though the label says “if under age”.
 
-### Problem
-The slug field and public link button are currently only available for forms with `render_mode === "facsimile"`. The Ketamine Questionnaire (likely using "schema" or "pdf_overlay" mode) lost its link option because slug assignment is gated behind facsimile mode.
+Plan
 
-### Changes
+1. Fix identity resolution in `src/pages/PublicForm.tsx`
+- Replace the current `detectIdentityFields` / `extractFromValues` logic with a normalized matcher that handles spaces, underscores, and more real field variants.
+- Separate true patient-name fields from guardian / witness / doctor / representative fields.
+- Only hide the manual name card when there is a confident patient-name source.
+- If name still cannot be resolved, reveal and focus the manual name inputs instead of blocking with a vague toast.
 
-**File: `src/pages/admin/AdminFormTemplates.tsx`**
+2. Fix validation UX across public forms
+- Move from toast-only validation to field-level validation.
+- Validate only visible required fields.
+- Scroll to the first invalid field on submit.
+- Show a clearer summary like “Please fix the highlighted fields” instead of leaving users stranded at the bottom.
 
-1. **Move the slug input out of the facsimile-only block** — Allow entering/editing a slug for all render modes. Change it from a `<Select>` of facsimile slugs to a text `<Input>` (or keep the Select but also allow free-text), so any form can have a custom slug regardless of render mode.
+3. Update the form renderer for inline errors
+- Extend `src/components/forms/FormRenderer.tsx` so public forms can highlight missing fields and show small error messages under them.
+- Add stable field anchors/ids so `PublicForm` can jump directly to the problem area.
 
-2. **Keep the facsimile slug select as an additional option** — When render_mode is facsimile, show the existing dropdown of available facsimile slugs. For other modes, show a small text input where the admin can type a slug.
+4. Clean up the ketamine template data
+- Audit the ketamine public templates for bad required flags and duplicate name capture.
+- Fix `Ketamine_Questionnaire - General 2025` so the guardian field is not always mandatory.
+- Review signature-adjacent text fields near the bottom so they are only required when legally intended.
 
-3. **Stop clearing slug on mode change** — Remove `slug: null` from line 255 so changing render mode doesn't wipe the slug.
+5. Add a server-side safety backstop
+- Align `supabase/functions/submit-public-form/index.ts` with the improved client rules so future regressions return clear errors instead of silent confusion.
+- Keep the payload validation strict, but with better diagnostics.
 
-4. **Link button stays as-is** — It already works for any form with a slug set (line 310), so no change needed there.
+Technical notes
 
-### Technical Detail
-
-- Line 255: Remove `...(val !== "facsimile" ? { slug: null } : {})` from the mode change handler
-- Lines 271-292: Move slug editing outside the `t.render_mode === "facsimile"` condition. For facsimile, keep the existing Select. For other modes, add a small Input + save button for slug entry.
-
-### Result
-All form templates can have a slug and a copyable public link, regardless of render mode.
-
+- Main files: `src/pages/PublicForm.tsx`, `src/components/forms/FormRenderer.tsx`, `supabase/functions/submit-public-form/index.ts`
+- Data fix: update the affected `form_templates` rows for the ketamine questionnaires
+- Expected outcome: users can complete and submit these long public forms successfully, and if something is missing, the UI will take them straight to the exact field instead of showing a generic bottom-page error
