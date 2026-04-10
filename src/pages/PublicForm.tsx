@@ -12,67 +12,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { CheckCircle, Loader2, AlertCircle, Mail } from "lucide-react";
 import logo from "@/assets/logo.png";
-
-/* ─── Patterns that represent the *patient's own* name ─── */
-const PATIENT_NAME_PATTERNS = [
-  "name_in_full", "full_name", "patient_name", "patient_full_name",
-  "first_name", "surname", "last_name", "pt_name", "pt_surname",
-];
-
-/* Patterns that look like names but belong to someone else */
-const NON_PATIENT_NAME_PATTERNS = [
-  "guardian", "witness", "doctor", "dr_", "nurse", "hcp",
-  "representative", "nok_", "next_of_kin", "acino", "facility",
-];
-
-const PHONE_PATTERNS = ["phone", "cell", "mobile", "contact_number", "tel", "patient_contact", "pt_tel"];
-const ID_PATTERNS = ["id_number", "identity", "sa_id", "id_no", "pt_id", "patient_id_number"];
-const EMAIL_PATTERNS = ["email", "pt_email"];
-
-function normalize(s: string) {
-  return (s || "").toLowerCase().replace(/[\s_-]+/g, "_");
-}
-
-function matchesPatterns(fieldName: string, label: string, patterns: string[], excludePatterns?: string[]): boolean {
-  const n = normalize(fieldName);
-  const l = normalize(label);
-  if (excludePatterns?.some(p => n.includes(p) || l.includes(p))) return false;
-  return patterns.some(p => n.includes(p) || l.includes(p));
-}
-
-/** Detect which identity fields the form schema already captures for the patient */
-function detectIdentityFields(schema: FormField[]) {
-  return {
-    hasName: schema.some(f =>
-      matchesPatterns(f.field_name, f.label, PATIENT_NAME_PATTERNS, NON_PATIENT_NAME_PATTERNS)
-    ),
-    hasEmail: schema.some(f =>
-      matchesPatterns(f.field_name, f.label, EMAIL_PATTERNS, NON_PATIENT_NAME_PATTERNS)
-    ),
-    hasPhone: schema.some(f =>
-      matchesPatterns(f.field_name, f.label, PHONE_PATTERNS, NON_PATIENT_NAME_PATTERNS)
-    ),
-    hasIdNumber: schema.some(f =>
-      matchesPatterns(f.field_name, f.label, ID_PATTERNS, NON_PATIENT_NAME_PATTERNS)
-    ),
-  };
-}
-
-/** Extract a value from submitted form data by matching field patterns */
-function extractFromValues(
-  values: Record<string, any>,
-  schema: FormField[],
-  patterns: string[],
-  excludePatterns?: string[]
-): string {
-  for (const f of schema) {
-    if (matchesPatterns(f.field_name, f.label, patterns, excludePatterns)) {
-      const v = values[f.field_name];
-      if (v && typeof v === "string") return v.trim();
-    }
-  }
-  return "";
-}
+import {
+  detectIdentityFields,
+  resolveIdentity,
+  validateSchema,
+  type FormFieldSchema,
+} from "@/lib/formRuntime";
 
 export default function PublicForm() {
   const { slug } = useParams<{ slug: string }>();
@@ -94,128 +39,70 @@ export default function PublicForm() {
     enabled: !!slug,
   });
 
-  // Respondent identity fields (used only when form doesn't already have them)
+  // Manual identity fields (shown only when form schema doesn't capture them)
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [idNumber, setIdNumber] = useState("");
   const [phone, setPhone] = useState("");
 
-  // Form values & validation
+  // Form values & state
   const [values, setValues] = useState<Record<string, any>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [errorFields, setErrorFields] = useState<Set<string>>(new Set());
 
   const isFacsimile = template?.render_mode === "facsimile";
-
   const schema = useMemo(
     () => (template?.form_schema as unknown as FormField[]) || [],
     [template]
   );
+  const identity = useMemo(() => detectIdentityFields(schema as FormFieldSchema[]), [schema]);
 
-  const identity = useMemo(() => detectIdentityFields(schema), [schema]);
-
-  // For facsimile forms, hide the identity card entirely
+  // Determine which manual identity fields to show
   const showNameFields = !isFacsimile && !identity.hasName;
   const showPhoneField = !isFacsimile && !identity.hasPhone;
   const showIdField = !isFacsimile && !identity.hasIdNumber;
   const showIdentityCard = showNameFields || showPhoneField || showIdField;
 
+  const clearError = (key: string) => {
+    setErrorFields(prev => {
+      if (!prev.has(key)) return prev;
+      const n = new Set(prev);
+      n.delete(key);
+      return n;
+    });
+  };
+
   const handleSubmit = async () => {
-    // Resolve identity data
-    let resolvedFirst = firstName.trim();
-    let resolvedLast = lastName.trim();
-    let resolvedEmail = email.trim();
-    let resolvedPhone = phone.trim();
-    let resolvedId = idNumber.trim();
+    // 1. Resolve identity
+    const resolved = resolveIdentity(
+      schema as FormFieldSchema[],
+      values,
+      { firstName: firstName.trim(), lastName: lastName.trim(), email: email.trim(), phone: phone.trim(), idNumber: idNumber.trim() },
+      template?.render_mode || "schema"
+    );
 
-    if (isFacsimile) {
-      const fullName = (values.patient_full_name || "").toString().trim();
-      const fName = (values.pt_name || "").toString().trim();
-      const lName = (values.pt_surname || "").toString().trim();
-
-      if (fName || lName) {
-        resolvedFirst = fName;
-        resolvedLast = lName;
-      } else if (fullName) {
-        const parts = fullName.split(/\s+/);
-        resolvedFirst = parts[0] || "";
-        resolvedLast = parts.slice(1).join(" ") || "";
-      }
-
-      resolvedPhone = (values.patient_contact || values.pt_tel || values.patient_phone || "").toString().trim();
-      resolvedId = (values.patient_id_number || values.pt_id || "").toString().trim();
-    } else {
-      if (identity.hasName) {
-        const fullName = extractFromValues(values, schema, [
-          "name_in_full", "full_name", "patient_name", "patient_full_name",
-        ], NON_PATIENT_NAME_PATTERNS);
-        const fName = extractFromValues(values, schema, ["first_name", "pt_name"], NON_PATIENT_NAME_PATTERNS);
-        const lName = extractFromValues(values, schema, ["surname", "last_name", "pt_surname"], NON_PATIENT_NAME_PATTERNS);
-
-        if (fName || lName) {
-          resolvedFirst = fName;
-          resolvedLast = lName;
-        } else if (fullName) {
-          const parts = fullName.split(/\s+/);
-          resolvedFirst = parts[0] || "";
-          resolvedLast = parts.slice(1).join(" ") || "";
-        }
-      }
-
-      if (identity.hasPhone) {
-        resolvedPhone = extractFromValues(values, schema, PHONE_PATTERNS, NON_PATIENT_NAME_PATTERNS);
-      }
-
-      if (identity.hasIdNumber) {
-        resolvedId = extractFromValues(values, schema, ID_PATTERNS, NON_PATIENT_NAME_PATTERNS);
-      }
-    }
-
-    // Build error set
+    // 2. Build errors
     const errors = new Set<string>();
 
-    // Validate identity
-    if (!resolvedFirst || !resolvedLast) {
+    // Identity validation
+    if (!resolved.firstName || !resolved.lastName) {
       if (showNameFields) {
         errors.add("__identity_name");
-      } else {
-        // Name should have come from the form — find the field and mark it
-        for (const f of schema) {
-          if (matchesPatterns(f.field_name, f.label, PATIENT_NAME_PATTERNS, NON_PATIENT_NAME_PATTERNS)) {
-            const v = values[f.field_name];
-            if (!v || (typeof v === "string" && !v.trim())) {
-              errors.add(f.field_name);
-            }
-          }
-        }
       }
+      // If name should come from schema, don't block — the edge function will handle partial names
     }
 
-    if (!resolvedEmail) {
-      errors.add("__identity_email");
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(resolvedEmail)) {
+    if (!resolved.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(resolved.email)) {
       errors.add("__identity_email");
     }
 
-    // Check required form fields (skip for facsimile)
+    // Form field validation (skip for facsimile — they don't have schema-based required flags)
     if (!isFacsimile) {
-      for (const f of schema) {
-        if (!f.required) continue;
-        if (f.field_type === "section_header" || f.field_type === "info_text") continue;
-
-        // Skip conditionally hidden fields
-        if (f.conditional_on) {
-          const parentVal = values[f.conditional_on.field];
-          if (parentVal !== f.conditional_on.value) continue;
-        }
-
-        const v = values[f.field_name];
-        const missing = Array.isArray(v) ? v.length === 0 : (v === undefined || v === null || v === "");
-        if (missing) {
-          errors.add(f.field_name);
-        }
+      const schemaResult = validateSchema(schema as FormFieldSchema[], values);
+      for (const fieldName of schemaResult.errors) {
+        errors.add(fieldName);
       }
     }
 
@@ -223,48 +110,41 @@ export default function PublicForm() {
 
     if (errors.size > 0) {
       // Scroll to first error
-      const identityErrors = ["__identity_name", "__identity_email"];
-      const hasIdentityError = identityErrors.some(e => errors.has(e));
-
+      const hasIdentityError = errors.has("__identity_name") || errors.has("__identity_email");
       if (hasIdentityError) {
         formTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       } else {
-        // Find first form field with error
-        const firstErrorField = [...errors].find(e => !e.startsWith("__"));
-        if (firstErrorField) {
-          const el = document.getElementById(`field-${firstErrorField}`);
-          if (el) {
-            el.scrollIntoView({ behavior: "smooth", block: "center" });
-          }
+        const firstField = [...errors].find(e => !e.startsWith("__"));
+        if (firstField) {
+          const el = document.getElementById(`field-${firstField}`);
+          if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
         }
       }
 
-      const errorCount = errors.size;
       toast({
-        title: `Please complete ${errorCount} required field${errorCount > 1 ? "s" : ""}`,
+        title: `Please complete ${errors.size} required field${errors.size > 1 ? "s" : ""}`,
         description: "Scroll up to see highlighted fields",
         variant: "destructive",
       });
       return;
     }
 
+    // 3. Submit
     setSubmitting(true);
     try {
       const res = await supabase.functions.invoke("submit-public-form", {
         body: {
           slug,
-          respondent_first_name: resolvedFirst,
-          respondent_last_name: resolvedLast,
-          respondent_email: resolvedEmail,
-          respondent_id_number: resolvedId || undefined,
-          respondent_phone: resolvedPhone || undefined,
+          respondent_first_name: resolved.firstName,
+          respondent_last_name: resolved.lastName,
+          respondent_email: resolved.email,
+          respondent_id_number: resolved.idNumber || undefined,
+          respondent_phone: resolved.phone || undefined,
           data: values,
         },
       });
-
       if (res.error) throw new Error(res.error.message || "Submission failed");
       if (res.data?.error) throw new Error(res.data.error);
-
       setSubmitted(true);
     } catch (err: any) {
       toast({ title: "Submission failed", description: err.message, variant: "destructive" });
@@ -272,6 +152,8 @@ export default function PublicForm() {
       setSubmitting(false);
     }
   };
+
+  // ─── Render states ──────────────────────────────────────────────────────
 
   if (isLoading) {
     return (
@@ -336,7 +218,7 @@ export default function PublicForm() {
           )}
         </div>
 
-        {/* Email — always shown when identity card is hidden */}
+        {/* Email — compact bar when identity card is hidden */}
         {!showIdentityCard && (
           <div className={`flex items-center gap-3 rounded-lg px-4 py-3 border ${errorFields.has("__identity_email") ? "bg-destructive/5 border-destructive/40" : "bg-muted/50"}`}>
             <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -348,7 +230,7 @@ export default function PublicForm() {
               <Input
                 type="email"
                 value={email}
-                onChange={(e) => { setEmail(e.target.value); setErrorFields(prev => { const n = new Set(prev); n.delete("__identity_email"); return n; }); }}
+                onChange={(e) => { setEmail(e.target.value); clearError("__identity_email"); }}
                 placeholder="your@email.com"
                 className={`h-9 mt-1 ${errorFields.has("__identity_email") ? "border-destructive" : ""}`}
               />
@@ -359,7 +241,7 @@ export default function PublicForm() {
           </div>
         )}
 
-        {/* Patient Identity Section — only fields not already in the form */}
+        {/* Patient Identity Section */}
         {showIdentityCard && (
           <Card className={`${errorFields.has("__identity_name") || errorFields.has("__identity_email") ? "border-destructive/40" : "border-primary/20"}`}>
             <CardContent className="p-6 space-y-4">
@@ -367,28 +249,23 @@ export default function PublicForm() {
                 <div className="h-1 w-6 bg-primary rounded-full" />
                 <h3 className="text-sm font-semibold text-primary uppercase tracking-wide">Your Details</h3>
               </div>
-
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {showNameFields && (
                   <>
                     <div className="space-y-1.5">
-                      <Label className="text-sm font-medium">
-                        First Name <span className="text-destructive">*</span>
-                      </Label>
+                      <Label className="text-sm font-medium">First Name <span className="text-destructive">*</span></Label>
                       <Input
                         value={firstName}
-                        onChange={(e) => { setFirstName(e.target.value); setErrorFields(prev => { const n = new Set(prev); n.delete("__identity_name"); return n; }); }}
+                        onChange={(e) => { setFirstName(e.target.value); clearError("__identity_name"); }}
                         placeholder="First name"
                         className={`h-11 ${errorFields.has("__identity_name") && !firstName.trim() ? "border-destructive" : ""}`}
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-sm font-medium">
-                        Last Name <span className="text-destructive">*</span>
-                      </Label>
+                      <Label className="text-sm font-medium">Last Name <span className="text-destructive">*</span></Label>
                       <Input
                         value={lastName}
-                        onChange={(e) => { setLastName(e.target.value); setErrorFields(prev => { const n = new Set(prev); n.delete("__identity_name"); return n; }); }}
+                        onChange={(e) => { setLastName(e.target.value); clearError("__identity_name"); }}
                         placeholder="Last name"
                         className={`h-11 ${errorFields.has("__identity_name") && !lastName.trim() ? "border-destructive" : ""}`}
                       />
@@ -398,15 +275,12 @@ export default function PublicForm() {
                     </div>
                   </>
                 )}
-                {/* Email always shown */}
                 <div className="space-y-1.5">
-                  <Label className="text-sm font-medium">
-                    Email Address <span className="text-destructive">*</span>
-                  </Label>
+                  <Label className="text-sm font-medium">Email Address <span className="text-destructive">*</span></Label>
                   <Input
                     type="email"
                     value={email}
-                    onChange={(e) => { setEmail(e.target.value); setErrorFields(prev => { const n = new Set(prev); n.delete("__identity_email"); return n; }); }}
+                    onChange={(e) => { setEmail(e.target.value); clearError("__identity_email"); }}
                     placeholder="your@email.com"
                     className={`h-11 ${errorFields.has("__identity_email") ? "border-destructive" : ""}`}
                   />
@@ -417,23 +291,13 @@ export default function PublicForm() {
                 {showPhoneField && (
                   <div className="space-y-1.5">
                     <Label className="text-sm font-medium">Phone</Label>
-                    <Input
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="Phone number"
-                      className="h-11"
-                    />
+                    <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone number" className="h-11" />
                   </div>
                 )}
                 {showIdField && (
                   <div className="space-y-1.5 sm:col-span-2">
                     <Label className="text-sm font-medium">SA ID Number</Label>
-                    <Input
-                      value={idNumber}
-                      onChange={(e) => setIdNumber(e.target.value)}
-                      placeholder="ID number (optional)"
-                      className="h-11 sm:max-w-xs"
-                    />
+                    <Input value={idNumber} onChange={(e) => setIdNumber(e.target.value)} placeholder="ID number (optional)" className="h-11 sm:max-w-xs" />
                   </div>
                 )}
               </div>
@@ -461,7 +325,7 @@ export default function PublicForm() {
                 values={values}
                 onChange={setValues}
                 errorFields={errorFields}
-                onClearError={(fieldName) => setErrorFields(prev => { const n = new Set(prev); n.delete(fieldName); return n; })}
+                onClearError={clearError}
               />
             )}
           </CardContent>
@@ -469,17 +333,9 @@ export default function PublicForm() {
 
         {/* Submit */}
         <div className="flex justify-end pb-8">
-          <Button
-            size="lg"
-            onClick={handleSubmit}
-            disabled={submitting}
-            className="min-w-[200px]"
-          >
+          <Button size="lg" onClick={handleSubmit} disabled={submitting} className="min-w-[200px]">
             {submitting ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Submitting...
-              </>
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Submitting...</>
             ) : (
               "Submit Form"
             )}

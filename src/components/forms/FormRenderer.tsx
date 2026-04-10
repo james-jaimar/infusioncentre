@@ -88,11 +88,18 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
     return ["text", "number", "date", "select"].includes(field.field_type);
   };
 
-  // Check if a field should be visible based on conditional_on
+  // Check if a field should be visible based on conditional_on (with coercion)
   const isFieldVisible = (field: FormField) => {
     if (!field.conditional_on) return true;
     const parentValue = values[field.conditional_on.field];
-    return parentValue === field.conditional_on.value;
+    // Coerce both sides: AI extraction may emit "true" string vs boolean true
+    const coerce = (v: any) => {
+      if (v === true) return "true";
+      if (v === false) return "false";
+      if (v === null || v === undefined) return "";
+      return String(v).trim().toLowerCase();
+    };
+    return coerce(parentValue) === coerce(field.conditional_on.value);
   };
 
   // Detect if a set of fields is checkbox-dense (>70% standalone checkboxes)
@@ -569,11 +576,12 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
     }
   };
 
-  // Calculate progress
-  const fillableFields = schema.filter(f => f.required && f.field_type !== "section_header" && f.field_type !== "info_text");
+  // Calculate progress — only count visible required fields
+  const fillableFields = schema.filter(f => f.required && f.field_type !== "section_header" && f.field_type !== "info_text" && isFieldVisible(f));
   const filledCount = fillableFields.filter(f => {
     const v = values[f.field_name];
     if (Array.isArray(v)) return v.length > 0;
+    if (typeof v === "boolean") return true; // false is a valid answer
     return v !== undefined && v !== null && v !== "";
   }).length;
   const progress = fillableFields.length > 0 ? Math.round((filledCount / fillableFields.length) * 100) : 100;
