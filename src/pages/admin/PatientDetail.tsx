@@ -265,12 +265,6 @@ export default function PatientDetail() {
 
   const displayData = isEditing ? editedData : patient;
 
-  // Check if multiple submissions exist for same template (for date suffixes)
-  const templateSubmissionCounts: Record<string, number> = {};
-  completedSubmissions.forEach((s: any) => {
-    templateSubmissionCounts[s.form_template_id] = (templateSubmissionCounts[s.form_template_id] || 0) + 1;
-  });
-
   return (
     <div className="space-y-6">
       {/* Header */}
