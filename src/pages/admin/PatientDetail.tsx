@@ -98,6 +98,7 @@ export default function PatientDetail() {
   const [activeChecklistItemId, setActiveChecklistItemId] = useState<string | undefined>();
   const [formValues, setFormValues] = useState<Record<string, any>>({});
   const [viewingSubmission, setViewingSubmission] = useState<any>(null);
+  const [newNoteContent, setNewNoteContent] = useState("");
 
   const { data: patient, isLoading, error } = usePatient(id);
   const { data: medicalHistory } = usePatientMedicalHistory(id);
