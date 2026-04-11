@@ -186,7 +186,7 @@ export function openPrintableForm(props: PrintableFormViewProps) {
 <body>
   <div class="header">
     <div>
-      <div class="clinic-name">D.I.S Infusion Centre</div>
+      <div class="clinic-name">Johannesburg Infusion Centre</div>
       <div class="clinic-sub">Patient Form Submission</div>
     </div>
     <div style="text-align:right;">
@@ -205,7 +205,7 @@ export function openPrintableForm(props: PrintableFormViewProps) {
   ${sectionsHtml}
 
   <div class="footer">
-    This form was submitted digitally via the D.I.S Infusion Centre patient portal.
+    This form was submitted digitally via the Johannesburg Infusion Centre patient portal.
   </div>
 </body>
 </html>`;
