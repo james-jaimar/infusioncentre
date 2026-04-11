@@ -118,7 +118,10 @@ export default function PatientDetail() {
   const generateChecklist = useGenerateChecklist();
   const updateChecklistItem = useUpdateChecklistItem();
   const createSubmission = useCreateFormSubmission();
-
+  const updateSubmission = useUpdateFormSubmission();
+  const { data: patientNotes } = usePatientNotes(id);
+  const createNote = useCreatePatientNote();
+  const deleteNote = useDeletePatientNote();
   // Completed form submissions for dynamic tabs
   const completedSubmissions = useMemo(() => {
     if (!submissions) return [];
