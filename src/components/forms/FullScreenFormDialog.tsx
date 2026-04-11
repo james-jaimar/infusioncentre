@@ -1,10 +1,11 @@
-import { useEffect, Suspense } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { Button } from "@/components/ui/button";
-import { X, ArrowLeft, Loader2, FileText, Printer } from "lucide-react";
+import { X, ArrowLeft, Loader2, FileText, Printer, Edit2, Save } from "lucide-react";
 import FormRenderer, { FormField } from "./FormRenderer";
 import PdfOverlayRenderer, { OverlayField } from "./PdfOverlayRenderer";
 import { facsimileRegistry } from "./facsimile/registry";
 import { openPrintableForm } from "./PrintableFormView";
+import { toast } from "sonner";
 
 interface FullScreenFormDialogProps {
   open: boolean;
@@ -25,6 +26,9 @@ interface FullScreenFormDialogProps {
   patientInfo?: { name: string; email?: string; idNumber?: string; phone?: string };
   submittedAt?: string;
   signatureData?: string;
+  /** Admin amendment tracking */
+  amendments?: Record<string, any>;
+  onSaveAmendments?: (updatedData: Record<string, any>, amendments: Record<string, any>) => Promise<void>;
 }
 
 export default function FullScreenFormDialog({
@@ -46,7 +50,14 @@ export default function FullScreenFormDialog({
   patientInfo,
   submittedAt,
   signatureData,
+  amendments,
+  onSaveAmendments,
 }: FullScreenFormDialogProps) {
+  const [isEditingAmendment, setIsEditingAmendment] = useState(false);
+  const [editValues, setEditValues] = useState<Record<string, any>>({});
+  const [originalValues, setOriginalValues] = useState<Record<string, any>>({});
+  const [isSavingAmendment, setIsSavingAmendment] = useState(false);
+
   // Lock body scroll when open
   useEffect(() => {
     if (open) {
@@ -55,14 +66,63 @@ export default function FullScreenFormDialog({
     }
   }, [open]);
 
+  // Reset edit state when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setIsEditingAmendment(false);
+      setEditValues({});
+    }
+  }, [open]);
+
   if (!open) return null;
+
+  const handleStartEdit = () => {
+    setOriginalValues({ ...values });
+    setEditValues({ ...values });
+    setIsEditingAmendment(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingAmendment(false);
+    setEditValues({});
+  };
+
+  const handleSaveAmendments = async () => {
+    if (!onSaveAmendments) return;
+    setIsSavingAmendment(true);
+    try {
+      // Compute which fields changed
+      const newAmendments: Record<string, any> = { ...(amendments || {}) };
+      for (const key of Object.keys(editValues)) {
+        if (JSON.stringify(editValues[key]) !== JSON.stringify(originalValues[key])) {
+          newAmendments[key] = {
+            value: editValues[key],
+            original_value: (amendments as any)?.[key]?.original_value ?? originalValues[key],
+            amended_at: new Date().toISOString(),
+          };
+        }
+      }
+      await onSaveAmendments(editValues, newAmendments);
+      setIsEditingAmendment(false);
+      toast.success("Amendments saved");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to save amendments");
+    } finally {
+      setIsSavingAmendment(false);
+    }
+  };
+
+  const displayValues = isEditingAmendment ? editValues : values;
+  const displayOnChange = isEditingAmendment ? setEditValues : onChange;
+  const displayReadOnly = isEditingAmendment ? false : readOnly;
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background">
       {/* Top bar */}
       <header className="flex-shrink-0 flex items-center justify-between gap-4 px-4 sm:px-6 lg:px-8 h-14 sm:h-16 border-b border-border/50 bg-card/80 backdrop-blur-sm">
         <div className="flex items-center gap-3 min-w-0">
-          <Button variant="ghost" size="icon" onClick={onClose} className="flex-shrink-0 h-9 w-9">
+          <Button variant="ghost" size="icon" onClick={isEditingAmendment ? handleCancelEdit : onClose} className="flex-shrink-0 h-9 w-9">
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="min-w-0">
@@ -70,6 +130,7 @@ export default function FullScreenFormDialog({
               <FileText className="h-4 w-4 text-primary flex-shrink-0 hidden sm:block" />
               <h2 className="text-sm sm:text-base font-semibold text-foreground truncate" style={{ fontSize: '15px', lineHeight: '1.3' }}>
                 {title}
+                {isEditingAmendment && <span className="text-destructive ml-2 text-xs font-normal">(Editing)</span>}
               </h2>
             </div>
             {description && (
@@ -79,7 +140,37 @@ export default function FullScreenFormDialog({
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
-          {readOnly && patientInfo && (
+          {/* Admin edit button — only show if readOnly, has save handler, and not currently editing */}
+          {readOnly && onSaveAmendments && !isEditingAmendment && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 gap-1.5"
+              onClick={handleStartEdit}
+            >
+              <Edit2 className="h-3.5 w-3.5" />
+              Edit
+            </Button>
+          )}
+          {/* Save amendments button */}
+          {isEditingAmendment && (
+            <>
+              <Button variant="outline" size="sm" className="h-9" onClick={handleCancelEdit}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                className="h-9 gap-1.5"
+                onClick={handleSaveAmendments}
+                disabled={isSavingAmendment}
+              >
+                {isSavingAmendment && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                <Save className="h-3.5 w-3.5" />
+                Save Amendments
+              </Button>
+            </>
+          )}
+          {readOnly && !isEditingAmendment && patientInfo && (
             <Button
               variant="outline"
               size="sm"
@@ -99,7 +190,7 @@ export default function FullScreenFormDialog({
               Print
             </Button>
           )}
-          {onSubmit && !readOnly && (
+          {onSubmit && !readOnly && !isEditingAmendment && (
             <Button
               onClick={onSubmit}
               disabled={isSubmitting}
@@ -121,28 +212,29 @@ export default function FullScreenFormDialog({
         <div className="w-full px-4 sm:px-6 lg:px-10 xl:px-16 py-6 sm:py-8 lg:py-10">
           {renderMode === "facsimile" && slug && facsimileRegistry[slug] ? (
             <Suspense fallback={<Loader2 className="h-6 w-6 animate-spin mx-auto mt-8" />}>
-              {(() => { const Comp = facsimileRegistry[slug]; return <Comp values={values} onChange={onChange} readOnly={readOnly} />; })()}
+              {(() => { const Comp = facsimileRegistry[slug]; return <Comp values={displayValues} onChange={displayOnChange} readOnly={displayReadOnly} />; })()}
             </Suspense>
           ) : renderMode === "pdf_overlay" && pdfPages && overlayFields ? (
             <PdfOverlayRenderer
               pdfPages={pdfPages}
               overlayFields={overlayFields}
-              values={values}
-              onChange={onChange}
-              readOnly={readOnly}
+              values={displayValues}
+              onChange={displayOnChange}
+              readOnly={displayReadOnly}
             />
           ) : (
             <FormRenderer
               schema={schema}
-              values={values}
-              onChange={onChange}
-              readOnly={readOnly}
+              values={displayValues}
+              onChange={displayOnChange}
+              readOnly={displayReadOnly}
+              amendments={amendments}
             />
           )}
         </div>
 
         {/* Bottom submit bar for mobile */}
-        {onSubmit && !readOnly && (
+        {onSubmit && !readOnly && !isEditingAmendment && (
           <div className="sm:hidden sticky bottom-0 bg-card/95 backdrop-blur-sm border-t border-border/50 px-4 py-3">
             <Button
               onClick={onSubmit}
