@@ -437,6 +437,15 @@ export default function PatientDetail() {
               </Badge>
             </TabsTrigger>
           )}
+          <TabsTrigger value="notes">
+            <StickyNote className="mr-2 h-4 w-4" />
+            Notes
+            {patientNotes && patientNotes.length > 0 && (
+              <Badge variant="secondary" className="ml-2 text-xs">
+                {patientNotes.length}
+              </Badge>
+            )}
+          </TabsTrigger>
         </TabsList>
 
         {/* Profile Tab */}
