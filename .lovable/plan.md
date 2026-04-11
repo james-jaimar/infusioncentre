@@ -1,88 +1,76 @@
 
-Do I know what the issue is? Yes: this is not one stubborn field bug. The public-form system has accumulated layered fixes across page logic, renderer logic, edge-function logic, AI-import rules, and bad live template data. That is why “any form” can still fail in inconsistent ways.
 
-What I found
+## Plan: Print-Optimized Form Viewer + Notification Email
 
-- The main public-form flow is split across:
-  - `src/pages/PublicForm.tsx`
-  - `src/components/forms/FormRenderer.tsx`
-  - `src/components/forms/PdfOverlayRenderer.tsx`
-  - `src/components/forms/FieldEditor.tsx`
-  - `src/components/forms/FormTemplateEditor.tsx`
-  - `src/pages/admin/AdminFormTemplates.tsx`
-  - `supabase/functions/submit-public-form/index.ts`
-  - `supabase/functions/extract-form-template/index.ts`
-- `Ketamine_Questionnaire - General 2025` still has 0 submissions, so the block is happening in the browser before the edge function.
-- The live template data is also wrong, not just the code:
-  - `Ketamine_Questionnaire - General 2025` still has unconditional required guardian fields plus duplicate required patient-name fields.
-  - Similar schema problems exist in other active forms (`Ketamine Pre-Infusion Questionnaire`, POPI consent, Patient Information & Agreement for Care).
-- There is an upstream schema bug too: AI extraction instructs checkbox conditionals as `"value": "true"` strings, but the renderer checks strict equality against boolean `true`, so conditional follow-up fields can silently break.
-- The admin field editor does not expose `conditional_on`, `group`, `density`, or `layout_hint`, so once bad schema lands, it is difficult to repair properly.
-- Validation is duplicated and inconsistent:
-  - `PublicForm` does identity inference + required checks
-  - `FormRenderer` only renders + partial error display
-  - `PdfOverlayRenderer` has no comparable validation/error system
-  - `submit-public-form` has its own separate rules
+### What we are building
 
-Clean rewrite plan
+1. **A "Print Form" button and print-optimized modal** in the patient detail view so Gail can open any completed form submission, see a clean preview, and print it directly from the browser.
 
-1. Build one shared form-runtime layer
-- Create a single source of truth for:
-  - field visibility
-  - required-field evaluation
-  - empty-value checks by field type
-  - conditional coercion (`true` vs `"true"`, string/number cases)
-  - patient identity resolution
-- Make the page, renderers, and edge function all use this same contract.
+2. **Replace the broken HTML email** with a short notification email containing a link to the patient's form in the admin portal.
 
-2. Strip `PublicForm.tsx` back to orchestration only
-- Remove the current page-level pattern matching and identity extraction.
-- Keep `PublicForm` responsible only for:
-  - loading the template
-  - storing values
-  - receiving structured validation errors
-  - submitting a validated payload
+### Changes
 
-3. Rewrite validation UX cleanly
-- Use one validation result shape for schema, pdf_overlay, and facsimile modes.
-- Show inline errors and jump to the first invalid visible field.
-- Fix progress so it only counts visible required fields.
-- Add the same error-anchor support to `PdfOverlayRenderer`.
+#### 1. Create a `PrintableFormView` component
 
-4. Clean out the bad live template data
-- Create a migration to normalize the active public form schemas.
-- First pass:
-  - remove unconditional guardian requirements where labels say “if under age” / “if applicable”
-  - reduce duplicate patient-name requirements
-  - repair broken conditionals
-- Prioritize:
-  - `Ketamine_Questionnaire - General 2025`
-  - `Ketamine Pre-Infusion Questionnaire`
-  - `The-Infusion-Centre_Patient-POPI-Consent - Amended April 23`
-  - `Patient Information & Agreement for Care`
+New file: `src/components/forms/PrintableFormView.tsx`
 
-5. Fix the authoring pipeline so this does not return
-- Update `extract-form-template` rules so conditionals are emitted in a runtime-safe way.
-- Add template linting/warnings before save for:
-  - multiple required patient-name fields
-  - unconditional guardian fields
-  - broken `conditional_on` references
-  - ambiguous identity mapping
-- Extend the field editor so admins can actually edit `conditional_on`, layout/group metadata, and other schema controls.
-- Make editor preview use the real render mode, not just the schema renderer.
+- Renders the form data in a clean, structured layout optimized for `@media print`
+- Header with clinic branding (D.I.S Infusion Centre logo/name), form title, submission date
+- Patient identity block (name, email, ID, phone)
+- Form fields rendered as a clean label/value table grouped by sections
+- Signature rendered as an image if present
+- Footer with submission metadata
+- Print styles: hide browser chrome, use serif/readable fonts, proper page breaks, no background colours
 
-6. Align `submit-public-form` with the rewrite
-- Keep server validation as a backstop, not a second conflicting rules engine.
-- Return field-level failures where possible instead of vague submission errors.
+#### 2. Add print preview to `FullScreenFormDialog`
 
-7. Test every active public form end-to-end
-- Open each public slug, complete it, submit it, and verify saved submissions.
-- Test missing required fields, conditional fields, duplicate-name scenarios, and all render modes.
+- Add a `Printer` icon button in the header bar (next to the close button) when `readOnly` is true
+- Clicking it opens a new browser window with the `PrintableFormView` content and auto-triggers `window.print()`
+- Alternative: render a print-only overlay within the dialog using `@media print` CSS to hide the dialog chrome and show only the form content
 
-Expected outcome
+#### 3. Add a "Print" button on the completed form tabs in `PatientDetail.tsx`
 
-- one validation system
-- one identity-resolution system
-- cleaner `form_templates` data
-- no more stacked “fixes on fixes”
-- reliable submission across all public forms, not just a ketamine patch
+- On each dynamic form submission tab (lines 1127-1163), add a "Print" button in the card header
+- Clicking it renders `PrintableFormView` in a print window
+
+#### 4. Rewrite the notification email in `submit-public-form` edge function
+
+Replace the 200+ line HTML renderers with a simple notification:
+- Subject: `New Form Submission: {form name} — {patient name}`
+- Body: Patient name, email, ID number, form name, submission timestamp
+- A direct link to the patient in the admin portal: `https://infusioncentre.lovable.app/admin/patients/{patientId}?tab=onboarding`
+- Clean, short HTML that will not break denomailer's encoding
+- Remove `renderFacsimileToHtml` and `renderFormToPdfHtml` functions entirely
+
+#### 5. Print CSS in `index.css`
+
+Add global `@media print` rules:
+- Hide nav, sidebar, header, footer, toast overlays
+- Clean white background, black text
+- Proper margins and page-break rules
+
+### Technical detail
+
+**PrintableFormView props:**
+```
+{ title, schema, values, patientInfo, submittedAt, signatureData }
+```
+
+**Email template (simplified):**
+```html
+<h2>New Form Submission</h2>
+<p><strong>Form:</strong> Ketamine Questionnaire</p>
+<p><strong>Patient:</strong> John Smith (john@example.com)</p>
+<p><strong>Submitted:</strong> 2026-04-10</p>
+<p><a href="https://infusioncentre.lovable.app/admin/patients/abc123?tab=onboarding">
+  View in Admin Portal
+</a></p>
+```
+
+**Files touched:**
+- New: `src/components/forms/PrintableFormView.tsx`
+- Edit: `src/components/forms/FullScreenFormDialog.tsx` (add print button)
+- Edit: `src/pages/admin/PatientDetail.tsx` (add print button on form tabs)
+- Edit: `src/index.css` (add `@media print` rules)
+- Edit: `supabase/functions/submit-public-form/index.ts` (replace email with notification)
+
