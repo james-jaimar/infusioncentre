@@ -9,7 +9,8 @@ import { usePatientMedicalHistory, useUpsertPatientMedicalHistory } from "@/hook
 import { usePatientDocuments, useUploadPatientDocument, useDeletePatientDocument, useGetDocumentUrl } from "@/hooks/usePatientDocuments";
 import { useOnboardingChecklist, useGenerateChecklist, useUpdateChecklistItem } from "@/hooks/useOnboardingChecklist";
 import { useFormTemplate, useFormTemplates } from "@/hooks/useFormTemplates";
-import { useFormSubmissions, useCreateFormSubmission } from "@/hooks/useFormSubmissions";
+import { useFormSubmissions, useCreateFormSubmission, useUpdateFormSubmission } from "@/hooks/useFormSubmissions";
+import { usePatientNotes, useCreatePatientNote, useDeletePatientNote } from "@/hooks/usePatientNotes";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,6 +68,8 @@ import {
   Sparkles,
   KeyRound,
   Printer,
+  StickyNote,
+  Plus,
 } from "lucide-react";
 import type { PatientStatus, DocumentType } from "@/types/patient";
 import type { FormField } from "@/components/forms/FormRenderer";
@@ -95,6 +98,7 @@ export default function PatientDetail() {
   const [activeChecklistItemId, setActiveChecklistItemId] = useState<string | undefined>();
   const [formValues, setFormValues] = useState<Record<string, any>>({});
   const [viewingSubmission, setViewingSubmission] = useState<any>(null);
+  const [newNoteContent, setNewNoteContent] = useState("");
 
   const { data: patient, isLoading, error } = usePatient(id);
   const { data: medicalHistory } = usePatientMedicalHistory(id);
@@ -114,7 +118,10 @@ export default function PatientDetail() {
   const generateChecklist = useGenerateChecklist();
   const updateChecklistItem = useUpdateChecklistItem();
   const createSubmission = useCreateFormSubmission();
-
+  const updateSubmission = useUpdateFormSubmission();
+  const { data: patientNotes } = usePatientNotes(id);
+  const createNote = useCreatePatientNote();
+  const deleteNote = useDeletePatientNote();
   // Completed form submissions for dynamic tabs
   const completedSubmissions = useMemo(() => {
     if (!submissions) return [];
@@ -430,6 +437,15 @@ export default function PatientDetail() {
               </Badge>
             </TabsTrigger>
           )}
+          <TabsTrigger value="notes">
+            <StickyNote className="mr-2 h-4 w-4" />
+            Notes
+            {patientNotes && patientNotes.length > 0 && (
+              <Badge variant="secondary" className="ml-2 text-xs">
+                {patientNotes.length}
+              </Badge>
+            )}
+          </TabsTrigger>
         </TabsList>
 
         {/* Profile Tab */}
@@ -1129,6 +1145,9 @@ export default function PatientDetail() {
                               <div className="flex items-center gap-2">
                                 <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                                 {sub.form_templates?.name || "Submitted Form"}
+                                {sub.admin_amendments && Object.keys(sub.admin_amendments).length > 0 && (
+                                  <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Amended</Badge>
+                                )}
                               </div>
                             </td>
                             <td className="p-3 text-muted-foreground">
@@ -1204,8 +1223,86 @@ export default function PatientDetail() {
             }}
             submittedAt={viewingSubmission.created_at}
             signatureData={viewingSubmission.signature_data || undefined}
+            amendments={viewingSubmission.admin_amendments || {}}
+            onSaveAmendments={async (updatedData, amendments) => {
+              await updateSubmission.mutateAsync({
+                id: viewingSubmission.id,
+                data: updatedData,
+                admin_amendments: amendments,
+              } as any);
+              // Update local state so the viewer reflects changes
+              setViewingSubmission({ ...viewingSubmission, data: updatedData, admin_amendments: amendments });
+            }}
           />
         )}
+
+        {/* Notes Tab */}
+        <TabsContent value="notes" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <StickyNote className="h-5 w-5" />
+                Patient Notes
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Add note form */}
+              <div className="flex gap-2">
+                <Textarea
+                  value={newNoteContent}
+                  onChange={(e) => setNewNoteContent(e.target.value)}
+                  placeholder="Add a note about this patient..."
+                  className="min-h-[80px]"
+                />
+              </div>
+              <Button
+                size="sm"
+                disabled={!newNoteContent.trim() || createNote.isPending}
+                onClick={async () => {
+                  if (!id || !newNoteContent.trim()) return;
+                  await createNote.mutateAsync({
+                    patient_id: id,
+                    content: newNoteContent.trim(),
+                    created_by: user?.id,
+                  });
+                  setNewNoteContent("");
+                  toast.success("Note added");
+                }}
+              >
+                {createNote.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                Add Note
+              </Button>
+
+              {/* Notes list */}
+              {!patientNotes || patientNotes.length === 0 ? (
+                <p className="text-muted-foreground text-center py-6">No notes yet.</p>
+              ) : (
+                <div className="space-y-3 mt-4">
+                  {patientNotes.map((note) => (
+                    <div key={note.id} className="border rounded-lg p-4 space-y-2">
+                      <p className="text-sm whitespace-pre-wrap">{note.content}</p>
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>{new Date(note.created_at).toLocaleString('en-ZA')}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-destructive hover:text-destructive"
+                          onClick={async () => {
+                            if (!id) return;
+                            await deleteNote.mutateAsync({ id: note.id, patientId: id });
+                            toast.success("Note deleted");
+                          }}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       {/* Full-screen Form Dialog */}

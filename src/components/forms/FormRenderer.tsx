@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { format, parse } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Edit2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -49,6 +49,8 @@ interface FormRendererProps {
   errorFields?: Set<string>;
   /** Called when the user interacts with an errored field to clear its error */
   onClearError?: (fieldName: string) => void;
+  /** Admin amendments tracking — field_name -> amendment metadata */
+  amendments?: Record<string, { value: any; original_value: any; amended_at: string }>;
 }
 
 interface Section {
@@ -56,7 +58,7 @@ interface Section {
   fields: FormField[];
 }
 
-export default function FormRenderer({ schema, values, onChange, readOnly, onSignature, errorFields, onClearError }: FormRendererProps) {
+export default function FormRenderer({ schema, values, onChange, readOnly, onSignature, errorFields, onClearError, amendments }: FormRendererProps) {
   const updateValue = (fieldName: string, value: any) => {
     onChange({ ...values, [fieldName]: value });
     onClearError?.(fieldName);
@@ -194,7 +196,7 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
         // Conditional detail fields render inline after the grid
         elements.push(
           <div key={`compact-other-${field.field_name}`}>
-            {renderField(field)}
+            {renderFieldWithAmendment(field)}
           </div>
         );
       }
@@ -225,15 +227,15 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
       if (!forceFullWidth && shouldInline(field) && nextVisible && next && shouldInline(next)) {
         elements.push(
           <div key={`pair-${field.field_name}`} className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-            {renderField(field)}
-            {renderField(next)}
+            {renderFieldWithAmendment(field)}
+            {renderFieldWithAmendment(next)}
           </div>
         );
         i += 2;
       } else {
         elements.push(
           <div key={`single-${field.field_name}`}>
-            {renderField(field)}
+            {renderFieldWithAmendment(field)}
           </div>
         );
         i += 1;
@@ -241,6 +243,26 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
     }
 
     return elements;
+  };
+
+  const renderFieldWithAmendment = (field: FormField) => {
+    const amendment = amendments?.[field.field_name];
+    const rendered = renderField(field);
+    if (!amendment) return rendered;
+    return (
+      <div className="border-l-[3px] border-l-destructive pl-3">
+        {rendered}
+        <p className="text-xs text-destructive mt-1 flex items-center gap-1">
+          <Edit2 className="h-3 w-3" />
+          Amended by admin
+          {readOnly && amendment.original_value !== undefined && (
+            <span className="text-muted-foreground ml-1">
+              (was: {typeof amendment.original_value === 'boolean' ? (amendment.original_value ? 'Yes' : 'No') : String(amendment.original_value || '—')})
+            </span>
+          )}
+        </p>
+      </div>
+    );
   };
 
   const renderField = (field: FormField) => {

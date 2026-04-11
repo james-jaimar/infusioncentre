@@ -1086,6 +1086,7 @@ export type Database = {
       }
       form_submissions: {
         Row: {
+          admin_amendments: Json
           created_at: string
           data: Json
           form_template_id: string
@@ -1100,6 +1101,7 @@ export type Database = {
           witness_signature_data: string | null
         }
         Insert: {
+          admin_amendments?: Json
           created_at?: string
           data?: Json
           form_template_id: string
@@ -1114,6 +1116,7 @@ export type Database = {
           witness_signature_data?: string | null
         }
         Update: {
+          admin_amendments?: Json
           created_at?: string
           data?: Json
           form_template_id?: string
@@ -1723,6 +1726,51 @@ export type Database = {
           },
           {
             foreignKeyName: "patient_medical_history_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patient_notes: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          patient_id: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          patient_id: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          patient_id?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_notes_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_notes_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
