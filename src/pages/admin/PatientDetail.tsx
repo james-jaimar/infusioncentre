@@ -68,12 +68,6 @@ import {
   KeyRound,
   Printer,
 } from "lucide-react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import type { PatientStatus, DocumentType } from "@/types/patient";
 import type { FormField } from "@/components/forms/FormRenderer";
 import { openPrintableForm } from "@/components/forms/PrintableFormView";
