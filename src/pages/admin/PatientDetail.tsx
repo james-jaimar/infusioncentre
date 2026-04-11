@@ -1235,7 +1235,6 @@ export default function PatientDetail() {
             }}
           />
         )}
-      </Tabs>
 
         {/* Notes Tab */}
         <TabsContent value="notes" className="space-y-4">
@@ -1304,6 +1303,7 @@ export default function PatientDetail() {
             </CardContent>
           </Card>
         </TabsContent>
+      </Tabs>
 
       {/* Full-screen Form Dialog */}
       <FullScreenFormDialog
