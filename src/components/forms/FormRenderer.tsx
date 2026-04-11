@@ -49,6 +49,8 @@ interface FormRendererProps {
   errorFields?: Set<string>;
   /** Called when the user interacts with an errored field to clear its error */
   onClearError?: (fieldName: string) => void;
+  /** Admin amendments tracking — field_name -> amendment metadata */
+  amendments?: Record<string, { value: any; original_value: any; amended_at: string }>;
 }
 
 interface Section {
