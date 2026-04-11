@@ -13,6 +13,7 @@ export interface FormSubmission {
   reviewed_by: string | null;
   reviewed_at: string | null;
   created_at: string;
+  admin_amendments: Record<string, { value: any; original_value: any; amended_by: string; amended_at: string }>;
 }
 
 export function useFormSubmissions(patientId: string | undefined) {
