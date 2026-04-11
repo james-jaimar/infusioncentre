@@ -1,9 +1,10 @@
 import { useEffect, Suspense } from "react";
 import { Button } from "@/components/ui/button";
-import { X, ArrowLeft, Loader2, FileText } from "lucide-react";
+import { X, ArrowLeft, Loader2, FileText, Printer } from "lucide-react";
 import FormRenderer, { FormField } from "./FormRenderer";
 import PdfOverlayRenderer, { OverlayField } from "./PdfOverlayRenderer";
 import { facsimileRegistry } from "./facsimile/registry";
+import { openPrintableForm } from "./PrintableFormView";
 
 interface FullScreenFormDialogProps {
   open: boolean;
@@ -21,6 +22,9 @@ interface FullScreenFormDialogProps {
   pdfPages?: string[];
   overlayFields?: OverlayField[];
   slug?: string;
+  patientInfo?: { name: string; email?: string; idNumber?: string; phone?: string };
+  submittedAt?: string;
+  signatureData?: string;
 }
 
 export default function FullScreenFormDialog({
@@ -39,6 +43,9 @@ export default function FullScreenFormDialog({
   pdfPages,
   overlayFields,
   slug,
+  patientInfo,
+  submittedAt,
+  signatureData,
 }: FullScreenFormDialogProps) {
   // Lock body scroll when open
   useEffect(() => {
@@ -72,6 +79,26 @@ export default function FullScreenFormDialog({
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
+          {readOnly && patientInfo && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 gap-1.5"
+              onClick={() =>
+                openPrintableForm({
+                  title,
+                  schema,
+                  values,
+                  patientInfo,
+                  submittedAt: submittedAt || new Date().toISOString(),
+                  signatureData,
+                })
+              }
+            >
+              <Printer className="h-3.5 w-3.5" />
+              Print
+            </Button>
+          )}
           {onSubmit && !readOnly && (
             <Button
               onClick={onSubmit}

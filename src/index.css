@@ -227,3 +227,14 @@
   color: white;
   border-color: hsl(var(--primary));
 }
+
+/* ── Print Styles ── */
+@media print {
+  body { background: #fff !important; }
+  header, footer, nav, aside,
+  [data-sonner-toaster],
+  .sidebar, .toaster,
+  [role="navigation"] { display: none !important; }
+  .no-print { display: none !important; }
+  * { box-shadow: none !important; }
+}
