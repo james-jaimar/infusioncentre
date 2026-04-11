@@ -196,7 +196,7 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
         // Conditional detail fields render inline after the grid
         elements.push(
           <div key={`compact-other-${field.field_name}`}>
-            {renderField(field)}
+            {renderFieldWithAmendment(field)}
           </div>
         );
       }
