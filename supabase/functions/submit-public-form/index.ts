@@ -28,220 +28,33 @@ function escapeHtml(str: string): string {
     .replace(/"/g, "&quot;");
 }
 
-// ─── Facsimile field labels grouped by section ───
-
-const FACSIMILE_SECTIONS: { title: string; fields: Record<string, string> }[] = [
-  {
-    title: "Patient Consent",
-    fields: {
-      consent_yes: "Consents to Service (YES)",
-      consent_no: "Consents to Service (NO)",
-      patient_full_name: "Patient Full Name",
-      patient_id_number: "Patient ID Number",
-      hcp_name: "Disclosing Doctor Name",
-      patient_signature: "Patient / Guardian Signature",
-      patient_consent_date: "Patient Consent Date",
-      patient_contact: "Patient Contact Number",
-      nok_contact: "Next of Kin Contact Number",
-    },
-  },
-  {
-    title: "Nurse Educator Details",
-    fields: {
-      nurse_name: "Nurse Educator Name",
-      nurse_signature: "Nurse Signature",
-      nurse_phone: "Phone",
-      nurse_fax: "Fax",
-      nurse_mobile: "Mobile",
-      nurse_email: "Email",
-    },
-  },
-  {
-    title: "Healthcare Professional's Consent",
-    fields: {
-      hcp_consent_name: "HCP Name",
-      hcp_practice_no: "Practice Number",
-      hcp_signature: "HCP Signature",
-      hcp_consent_date: "HCP Consent Date",
-      hcp_contact: "Doctor Contact Number",
-    },
-  },
-  {
-    title: "Undertaking by Acino",
-    fields: {
-      acino_nurse_name: "Nurse Educator Name",
-      acino_date: "Date",
-      acino_signature: "Acino Signature",
-    },
-  },
-  {
-    title: "Prescribing Practitioner",
-    fields: {
-      dr_name: "Name & Surname",
-      dr_facility: "Name of Facility",
-      dr_speciality: "Speciality",
-      dr_fax: "Fax",
-      dr_address: "Address",
-      dr_tel: "Tel",
-      dr_email: "Email",
-      dr_practice_no: "Practice No.",
-    },
-  },
-  {
-    title: "Infusion Facility",
-    fields: {
-      facility_name: "Name of Facility",
-      facility_address: "Address",
-      facility_tel: "Tel",
-      facility_email: "Email",
-      facility_practice_no: "Practice No.",
-      facility_pr_no: "Hospital PR No.",
-      facility_treatment_date: "Treatment Date",
-    },
-  },
-  {
-    title: "Patient Details",
-    fields: {
-      pt_name: "Name",
-      pt_address: "Physical Address",
-      pt_surname: "Surname",
-      pt_initials: "Initials",
-      pt_dob: "Date of Birth",
-      pt_gender_m: "Gender — Male",
-      pt_gender_f: "Gender — Female",
-      pt_id: "ID Number",
-      pt_email: "Email Address",
-      pt_medical_aid: "Medical Aid",
-      pt_treatment_date: "Treatment Date",
-      pt_membership: "Membership No.",
-      pt_hospital_pr: "Hospital Pr No.",
-      pt_weight: "Body Weight",
-      pt_gestational_age: "Gestational Age",
-    },
-  },
-  {
-    title: "Prescription",
-    fields: {
-      rx_monofer_1000: "Monofer 1000 mg / 10 ml vial (NAPPI 722193001)",
-      rx_monofer_500: "Monofer 500 mg / 5 ml vial (NAPPI 722192001)",
-      rx_cosmofer_500: "CosmoFer 500 mg / 10 ml (NAPPI 713080001)",
-      rx_cosmofer_100: "CosmoFer 100 mg / 2 ml (NAPPI 711596002)",
-    },
-  },
-  {
-    title: "Prior Treatment Including Oral",
-    fields: {
-      prior_medication: "Medication",
-      prior_dosage: "Dosage",
-      prior_duration: "Duration",
-    },
-  },
-  {
-    title: "Clinical Diagnosis",
-    fields: {
-      clinical_diagnosis: "Clinical Diagnosis",
-    },
-  },
-  {
-    title: "ICD 10 Codes",
-    fields: {
-      icd_d508: "D 50.8 — Other iron deficiency anaemias",
-      icd_n18: "N 18.0–N 18.9 — End stage renal failure",
-      icd_d638: "D 63.8 — Anaemia in other chronic diseases",
-      icd_o990: "O 99.0 — Anaemia complicating pregnancy",
-      icd_d509: "D 50.9 — Iron deficiency anaemia, unspecified",
-      icd_e611: "E 61.1 — Pure iron deficiency",
-      icd_other: "Other ICD Code",
-    },
-  },
-  {
-    title: "Procedure Codes",
-    fields: {
-      proc_0201: "0201",
-      proc_0206: "0206",
-      proc_5783: "5783",
-    },
-  },
-  {
-    title: "Doctor Motivation",
-    fields: {
-      dr_motivation_signature: "Doctor's Signature",
-      dr_motivation_date: "Date",
-    },
-  },
-];
-
-function renderFacsimileToHtml(
+function renderNotificationEmail(
   formName: string,
-  data: Record<string, unknown>,
   respondent: { first_name: string; last_name: string; email: string; id_number?: string; phone?: string },
+  patientId: string,
 ): string {
   const now = new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg" });
-
-  let sectionsHtml = "";
-
-  for (const section of FACSIMILE_SECTIONS) {
-    const rows: string[] = [];
-
-    for (const [key, label] of Object.entries(section.fields)) {
-      const val = data[key];
-      if (val === undefined || val === null || val === "" || val === false) continue;
-
-      // Signature — render as image
-      if (key.includes("signature") && typeof val === "string" && val.startsWith("data:")) {
-        rows.push(`<tr><td style="padding:8px 14px;font-weight:600;font-size:13px;color:#333;width:35%;vertical-align:top;">${escapeHtml(label)}</td><td style="padding:8px 14px;"><img src="${val}" style="max-height:80px;border:1px solid #ddd;border-radius:4px;" /></td></tr>`);
-        continue;
-      }
-
-      // Boolean / checkbox
-      if (typeof val === "boolean") {
-        rows.push(`<tr><td style="padding:8px 14px;font-weight:600;font-size:13px;color:#333;width:35%;">${escapeHtml(label)}</td><td style="padding:8px 14px;font-size:13px;">Yes</td></tr>`);
-        continue;
-      }
-
-      rows.push(`<tr><td style="padding:8px 14px;font-weight:600;font-size:13px;color:#333;width:35%;">${escapeHtml(label)}</td><td style="padding:8px 14px;font-size:13px;">${escapeHtml(String(val))}</td></tr>`);
-    }
-
-    if (rows.length === 0) continue;
-
-    sectionsHtml += `<tr><td colspan="2" style="background:#e8eff7;padding:10px 14px;font-weight:bold;font-size:14px;color:#1a3a5c;border-bottom:2px solid #3E5B84;">${escapeHtml(section.title)}</td></tr>`;
-    sectionsHtml += rows.join("");
-  }
+  const portalUrl = `https://infusioncentre.lovable.app/admin/patients/${patientId}?tab=onboarding`;
 
   return `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>${escapeHtml(formName)}</title></head>
-<body style="font-family:Arial,Helvetica,sans-serif;margin:0;padding:0;background:#fff;">
-  <div style="max-width:800px;margin:0 auto;padding:20px;">
-    <div style="background:#3E5B84;color:#fff;padding:20px 24px;border-radius:8px 8px 0 0;">
-      <h1 style="margin:0;font-size:20px;">D.I.S Infusion Centre</h1>
-      <p style="margin:4px 0 0;font-size:13px;opacity:0.9;">Completed Form Submission</p>
-    </div>
-    <div style="background:#f0f4f8;padding:14px 24px;border-bottom:1px solid #ddd;">
-      <h2 style="margin:0;font-size:16px;color:#1a3a5c;">${escapeHtml(formName)}</h2>
-      <p style="margin:4px 0 0;font-size:12px;color:#666;">Submitted: ${now}</p>
-    </div>
-    <div style="padding:14px 24px;background:#fafbfc;border-bottom:1px solid #eee;">
-      <table style="width:100%;font-size:13px;">
-        <tr>
-          <td style="padding:3px 0;"><strong>Patient:</strong> ${escapeHtml(respondent.first_name)} ${escapeHtml(respondent.last_name)}</td>
-          <td style="padding:3px 0;"><strong>Email:</strong> ${escapeHtml(respondent.email)}</td>
-        </tr>
-        <tr>
-          <td style="padding:3px 0;"><strong>ID Number:</strong> ${escapeHtml(respondent.id_number || "—")}</td>
-          <td style="padding:3px 0;"><strong>Phone:</strong> ${escapeHtml(respondent.phone || "—")}</td>
-        </tr>
-      </table>
-    </div>
-    <table style="width:100%;border-collapse:collapse;">
-      ${sectionsHtml}
+<html><head><meta charset="utf-8"></head>
+<body style="font-family:Arial,sans-serif;margin:0;padding:20px;background:#fff;">
+  <div style="max-width:560px;margin:0 auto;">
+    <h2 style="color:#1F3A5F;margin:0 0 16px;">New Form Submission</h2>
+    <table style="font-size:14px;line-height:1.6;">
+      <tr><td style="padding:4px 12px 4px 0;font-weight:600;">Form:</td><td>${escapeHtml(formName)}</td></tr>
+      <tr><td style="padding:4px 12px 4px 0;font-weight:600;">Patient:</td><td>${escapeHtml(respondent.first_name)} ${escapeHtml(respondent.last_name)}</td></tr>
+      <tr><td style="padding:4px 12px 4px 0;font-weight:600;">Email:</td><td>${escapeHtml(respondent.email)}</td></tr>
+      <tr><td style="padding:4px 12px 4px 0;font-weight:600;">ID Number:</td><td>${escapeHtml(respondent.id_number || "—")}</td></tr>
+      <tr><td style="padding:4px 12px 4px 0;font-weight:600;">Phone:</td><td>${escapeHtml(respondent.phone || "—")}</td></tr>
+      <tr><td style="padding:4px 12px 4px 0;font-weight:600;">Submitted:</td><td>${now}</td></tr>
     </table>
-    <div style="margin-top:20px;padding:12px 24px;background:#f5f5f5;border-radius:0 0 8px 8px;font-size:11px;color:#999;text-align:center;">
-      This form was submitted digitally via the D.I.S Infusion Centre patient portal.
+    <div style="margin-top:20px;">
+      <a href="${portalUrl}" style="display:inline-block;background:#1F3A5F;color:#fff;padding:10px 24px;text-decoration:none;border-radius:4px;font-size:14px;">View in Admin Portal</a>
     </div>
+    <p style="margin-top:24px;font-size:11px;color:#999;">You can view and print the full form from the patient's profile in the admin portal.</p>
   </div>
-</body>
-</html>`;
+</body></html>`;
 }
 
 // ─── Schema-based renderer (existing) ───
@@ -528,7 +341,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 4. Generate email HTML — use facsimile renderer when appropriate
+    // 4. Generate notification email
     const respondentInfo = {
       first_name: body.respondent_first_name,
       last_name: body.respondent_last_name,
@@ -537,22 +350,7 @@ Deno.serve(async (req) => {
       phone: body.respondent_phone,
     };
 
-    let emailHtml: string;
-    if (template.render_mode === "facsimile") {
-      emailHtml = renderFacsimileToHtml(
-        template.name,
-        body.data as Record<string, unknown>,
-        respondentInfo,
-      );
-    } else {
-      emailHtml = renderFormToPdfHtml(
-        template.name,
-        template.form_schema as any[],
-        body.data as Record<string, unknown>,
-        respondentInfo,
-        body.signature_data,
-      );
-    }
+    const emailHtml = renderNotificationEmail(template.name, respondentInfo, patientId);
 
     // 5. Send email
     const host = Deno.env.get("SMTP_HOST")!;
