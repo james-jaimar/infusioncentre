@@ -28,162 +28,30 @@ function escapeHtml(str: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function renderNotificationEmail(
+function renderNotificationText(
   formName: string,
   respondent: { first_name: string; last_name: string; email: string; id_number?: string; phone?: string },
   patientId: string,
 ): string {
   const now = new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg" });
-  const portalUrl = `https://infusioncentre.lovable.app/admin/patients/${patientId}?tab=onboarding`;
+  const portalUrl = `https://infusioncentre.lovable.app/admin/patients/${patientId}?tab=completed-forms`;
 
-  return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"></head>
-<body style="font-family:Arial,sans-serif;margin:0;padding:20px;background:#fff;">
-  <div style="max-width:560px;margin:0 auto;">
-    <h2 style="color:#1F3A5F;margin:0 0 16px;">New Form Submission</h2>
-    <table style="font-size:14px;line-height:1.6;">
-      <tr><td style="padding:4px 12px 4px 0;font-weight:600;">Form:</td><td>${escapeHtml(formName)}</td></tr>
-      <tr><td style="padding:4px 12px 4px 0;font-weight:600;">Patient:</td><td>${escapeHtml(respondent.first_name)} ${escapeHtml(respondent.last_name)}</td></tr>
-      <tr><td style="padding:4px 12px 4px 0;font-weight:600;">Email:</td><td>${escapeHtml(respondent.email)}</td></tr>
-      <tr><td style="padding:4px 12px 4px 0;font-weight:600;">ID Number:</td><td>${escapeHtml(respondent.id_number || "—")}</td></tr>
-      <tr><td style="padding:4px 12px 4px 0;font-weight:600;">Phone:</td><td>${escapeHtml(respondent.phone || "—")}</td></tr>
-      <tr><td style="padding:4px 12px 4px 0;font-weight:600;">Submitted:</td><td>${now}</td></tr>
-    </table>
-    <div style="margin-top:20px;">
-      <a href="${portalUrl}" style="display:inline-block;background:#1F3A5F;color:#fff;padding:10px 24px;text-decoration:none;border-radius:4px;font-size:14px;">View in Admin Portal</a>
-    </div>
-    <p style="margin-top:24px;font-size:11px;color:#999;">You can view and print the full form from the patient's profile in the admin portal.</p>
-  </div>
-</body></html>`;
-}
-
-// ─── Schema-based renderer (existing) ───
-
-function renderFormToPdfHtml(
-  formName: string,
-  schema: any[],
-  data: Record<string, unknown>,
-  respondent: { first_name: string; last_name: string; email: string; id_number?: string; phone?: string },
-  signatureData?: string
-): string {
-  const now = new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg" });
-
-  let fieldsHtml = "";
-
-  for (const field of schema) {
-    if (field.field_type === "section_header") {
-      fieldsHtml += `<tr><td colspan="2" style="background:#e8eff7;padding:10px 14px;font-weight:bold;font-size:14px;color:#1a3a5c;border-bottom:2px solid #3E5B84;">${escapeHtml(field.label)}</td></tr>`;
-      continue;
-    }
-
-    if (field.field_type === "info_text") {
-      fieldsHtml += `<tr><td colspan="2" style="padding:8px 14px;font-size:12px;color:#666;font-style:italic;background:#f9fafb;">${escapeHtml(field.content || "")}</td></tr>`;
-      continue;
-    }
-
-    if (field.field_type === "signature") {
-      const sigData = data[field.field_name] as string;
-      if (sigData) {
-        fieldsHtml += `<tr><td style="padding:8px 14px;font-weight:600;font-size:13px;color:#333;width:35%;vertical-align:top;">${escapeHtml(field.label)}</td><td style="padding:8px 14px;"><img src="${sigData}" style="max-height:80px;border:1px solid #ddd;border-radius:4px;" /></td></tr>`;
-      }
-      continue;
-    }
-
-    const val = data[field.field_name];
-    let displayVal = "—";
-
-    if (val !== undefined && val !== null && val !== "") {
-      if (Array.isArray(val)) {
-        if (val.length > 0 && typeof val[0] === "object") {
-          const rows = val as Record<string, string>[];
-          if (rows.length > 0) {
-            const cols = Object.keys(rows[0]);
-            let tableHtml = `<table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr>`;
-            for (const col of cols) {
-              tableHtml += `<th style="border:1px solid #ddd;padding:4px 8px;background:#f0f4f8;text-align:left;">${escapeHtml(col)}</th>`;
-            }
-            tableHtml += `</tr></thead><tbody>`;
-            for (const row of rows) {
-              tableHtml += `<tr>`;
-              for (const col of cols) {
-                tableHtml += `<td style="border:1px solid #ddd;padding:4px 8px;">${escapeHtml(String(row[col] || ""))}</td>`;
-              }
-              tableHtml += `</tr>`;
-            }
-            tableHtml += `</tbody></table>`;
-            displayVal = tableHtml;
-          }
-        } else {
-          displayVal = escapeHtml(val.join(", "));
-        }
-      } else if (typeof val === "object") {
-        const entries = Object.entries(val as Record<string, unknown>);
-        if (entries.length > 0) {
-          let objHtml = `<table style="width:100%;border-collapse:collapse;font-size:12px;">`;
-          for (const [k, v] of entries) {
-            if (typeof v === "object" && v !== null) {
-              const subEntries = Object.entries(v as Record<string, unknown>);
-              objHtml += `<tr><td style="border:1px solid #ddd;padding:4px 8px;font-weight:600;">${escapeHtml(k)}</td>`;
-              for (const [, sv] of subEntries) {
-                objHtml += `<td style="border:1px solid #ddd;padding:4px 8px;">${escapeHtml(String(sv || ""))}</td>`;
-              }
-              objHtml += `</tr>`;
-            } else {
-              objHtml += `<tr><td style="border:1px solid #ddd;padding:4px 8px;font-weight:600;">${escapeHtml(k)}</td><td style="border:1px solid #ddd;padding:4px 8px;">${escapeHtml(String(v || ""))}</td></tr>`;
-            }
-          }
-          objHtml += `</table>`;
-          displayVal = objHtml;
-        }
-      } else if (typeof val === "boolean") {
-        displayVal = val ? "Yes" : "No";
-      } else {
-        displayVal = escapeHtml(String(val));
-      }
-    }
-
-    const isTableDisplay = displayVal.startsWith("<table");
-    if (isTableDisplay) {
-      fieldsHtml += `<tr><td colspan="2" style="padding:8px 14px;"><strong style="font-size:13px;color:#333;">${escapeHtml(field.label)}</strong><div style="margin-top:6px;">${displayVal}</div></td></tr>`;
-    } else {
-      fieldsHtml += `<tr><td style="padding:8px 14px;font-weight:600;font-size:13px;color:#333;width:35%;vertical-align:top;">${escapeHtml(field.label)}</td><td style="padding:8px 14px;font-size:13px;">${displayVal}</td></tr>`;
-    }
-  }
-
-  return `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>${escapeHtml(formName)}</title></head>
-<body style="font-family:Arial,Helvetica,sans-serif;margin:0;padding:0;background:#fff;">
-  <div style="max-width:800px;margin:0 auto;padding:20px;">
-    <div style="background:#3E5B84;color:#fff;padding:20px 24px;border-radius:8px 8px 0 0;">
-      <h1 style="margin:0;font-size:20px;">D.I.S Infusion Centre</h1>
-      <p style="margin:4px 0 0;font-size:13px;opacity:0.9;">Completed Form Submission</p>
-    </div>
-    <div style="background:#f0f4f8;padding:14px 24px;border-bottom:1px solid #ddd;">
-      <h2 style="margin:0;font-size:16px;color:#1a3a5c;">${escapeHtml(formName)}</h2>
-      <p style="margin:4px 0 0;font-size:12px;color:#666;">Submitted: ${now}</p>
-    </div>
-    <div style="padding:14px 24px;background:#fafbfc;border-bottom:1px solid #eee;">
-      <table style="width:100%;font-size:13px;">
-        <tr>
-          <td style="padding:3px 0;"><strong>Patient:</strong> ${escapeHtml(respondent.first_name)} ${escapeHtml(respondent.last_name)}</td>
-          <td style="padding:3px 0;"><strong>Email:</strong> ${escapeHtml(respondent.email)}</td>
-        </tr>
-        <tr>
-          <td style="padding:3px 0;"><strong>ID Number:</strong> ${escapeHtml(respondent.id_number || "—")}</td>
-          <td style="padding:3px 0;"><strong>Phone:</strong> ${escapeHtml(respondent.phone || "—")}</td>
-        </tr>
-      </table>
-    </div>
-    <table style="width:100%;border-collapse:collapse;">
-      ${fieldsHtml}
-    </table>
-    <div style="margin-top:20px;padding:12px 24px;background:#f5f5f5;border-radius:0 0 8px 8px;font-size:11px;color:#999;text-align:center;">
-      This form was submitted digitally via the D.I.S Infusion Centre patient portal.
-    </div>
-  </div>
-</body>
-</html>`;
+  return [
+    "NEW FORM SUBMISSION",
+    "==================",
+    "",
+    `Form: ${formName}`,
+    `Patient: ${respondent.first_name} ${respondent.last_name}`,
+    `Email: ${respondent.email}`,
+    `ID Number: ${respondent.id_number || "N/A"}`,
+    `Phone: ${respondent.phone || "N/A"}`,
+    `Submitted: ${now}`,
+    "",
+    "View in Admin Portal:",
+    portalUrl,
+    "",
+    "You can view and print the full form from the patient's profile.",
+  ].join("\n");
 }
 
 Deno.serve(async (req) => {
