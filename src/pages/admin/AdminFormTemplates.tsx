@@ -406,7 +406,7 @@ export default function AdminFormTemplates() {
             <li>Biological medical history form</li>
             <li>Polygam long infusion monitoring</li>
             <li>Cosmofer long infusion monitoring</li>
-            <li>D.I.S Feedback form</li>
+            <li>Johannesburg Infusion Centre Feedback form</li>
           </ul>
         </CardContent>
       </Card>
