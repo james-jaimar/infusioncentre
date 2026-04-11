@@ -68,6 +68,8 @@ import {
   Sparkles,
   KeyRound,
   Printer,
+  StickyNote,
+  Plus,
 } from "lucide-react";
 import type { PatientStatus, DocumentType } from "@/types/patient";
 import type { FormField } from "@/components/forms/FormRenderer";
