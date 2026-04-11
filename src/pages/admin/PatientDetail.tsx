@@ -66,6 +66,7 @@ import {
   Send,
   Sparkles,
   KeyRound,
+  Printer,
 } from "lucide-react";
 import {
   Tooltip,
@@ -75,6 +76,7 @@ import {
 } from "@/components/ui/tooltip";
 import type { PatientStatus, DocumentType } from "@/types/patient";
 import type { FormField } from "@/components/forms/FormRenderer";
+import { openPrintableForm } from "@/components/forms/PrintableFormView";
 
 const documentTypeLabels: Record<DocumentType, string> = {
   prescription: "Prescription",
@@ -1138,6 +1140,29 @@ export default function PatientDetail() {
                       {sub.form_templates?.name || "Submitted Form"}
                     </div>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground font-normal">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 gap-1.5"
+                        onClick={() =>
+                          openPrintableForm({
+                            title: sub.form_templates?.name || "Submitted Form",
+                            schema,
+                            values: submissionData,
+                            patientInfo: {
+                              name: `${patient.first_name} ${patient.last_name}`,
+                              email: patient.email || undefined,
+                              idNumber: patient.id_number || undefined,
+                              phone: patient.phone || undefined,
+                            },
+                            submittedAt: sub.created_at,
+                            signatureData: sub.signature_data || undefined,
+                          })
+                        }
+                      >
+                        <Printer className="h-3.5 w-3.5" />
+                        Print
+                      </Button>
                       <Badge variant="secondary">
                         {sub.status}
                       </Badge>
@@ -1173,6 +1198,13 @@ export default function PatientDetail() {
         values={formValues}
         onChange={setFormValues}
         readOnly={!activeChecklistItemId}
+        patientInfo={{
+          name: `${patient.first_name} ${patient.last_name}`,
+          email: patient.email || undefined,
+          idNumber: patient.id_number || undefined,
+          phone: patient.phone || undefined,
+        }}
+        submittedAt={new Date().toISOString()}
         onSubmit={activeChecklistItemId ? async () => {
           if (!id || !activeFormTemplate || !activeChecklistItemId) return;
           try {
