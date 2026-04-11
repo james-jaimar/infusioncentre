@@ -218,7 +218,8 @@ Deno.serve(async (req) => {
       phone: body.respondent_phone,
     };
 
-    const emailHtml = renderNotificationEmail(template.name, respondentInfo, patientId);
+    const emailText = renderNotificationText(template.name, respondentInfo, patientId);
+    const emailSubject = `Form Submission: ${template.name} - ${body.respondent_first_name} ${body.respondent_last_name}`;
 
     // 5. Send email
     const host = Deno.env.get("SMTP_HOST")!;
@@ -233,7 +234,7 @@ Deno.serve(async (req) => {
         .insert({
           type: "email",
           recipient: GAYLE_EMAIL,
-          subject: `Form Submission: ${template.name} — ${body.respondent_first_name} ${body.respondent_last_name}`,
+          subject: emailSubject,
           status: "pending",
           related_entity_type: "form_submission",
           template: "public_form_submission",
@@ -256,9 +257,8 @@ Deno.serve(async (req) => {
       await client.send({
         from: fromEmail,
         to: GAYLE_EMAIL,
-        subject: `Form Submission: ${template.name} — ${body.respondent_first_name} ${body.respondent_last_name}`,
-        content: `Form submitted by ${body.respondent_first_name} ${body.respondent_last_name} (${email})`,
-        html: emailHtml,
+        subject: emailSubject,
+        content: emailText,
       });
 
       await client.close();
