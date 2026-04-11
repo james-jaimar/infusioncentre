@@ -245,6 +245,26 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
     return elements;
   };
 
+  const renderFieldWithAmendment = (field: FormField) => {
+    const amendment = amendments?.[field.field_name];
+    const rendered = renderField(field);
+    if (!amendment) return rendered;
+    return (
+      <div className="border-l-[3px] border-l-destructive pl-3">
+        {rendered}
+        <p className="text-xs text-destructive mt-1 flex items-center gap-1">
+          <Edit2 className="h-3 w-3" />
+          Amended by admin
+          {readOnly && amendment.original_value !== undefined && (
+            <span className="text-muted-foreground ml-1">
+              (was: {typeof amendment.original_value === 'boolean' ? (amendment.original_value ? 'Yes' : 'No') : String(amendment.original_value || '—')})
+            </span>
+          )}
+        </p>
+      </div>
+    );
+  };
+
   const renderField = (field: FormField) => {
     const val = values[field.field_name];
     const hasError = errorFields?.has(field.field_name);
