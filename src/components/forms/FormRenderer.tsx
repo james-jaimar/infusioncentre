@@ -227,15 +227,15 @@ export default function FormRenderer({ schema, values, onChange, readOnly, onSig
       if (!forceFullWidth && shouldInline(field) && nextVisible && next && shouldInline(next)) {
         elements.push(
           <div key={`pair-${field.field_name}`} className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-            {renderField(field)}
-            {renderField(next)}
+            {renderFieldWithAmendment(field)}
+            {renderFieldWithAmendment(next)}
           </div>
         );
         i += 2;
       } else {
         elements.push(
           <div key={`single-${field.field_name}`}>
-            {renderField(field)}
+            {renderFieldWithAmendment(field)}
           </div>
         );
         i += 1;
