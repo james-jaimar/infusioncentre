@@ -68,12 +68,6 @@ import {
   KeyRound,
   Printer,
 } from "lucide-react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import type { PatientStatus, DocumentType } from "@/types/patient";
 import type { FormField } from "@/components/forms/FormRenderer";
 import { openPrintableForm } from "@/components/forms/PrintableFormView";
@@ -100,6 +94,7 @@ export default function PatientDetail() {
   const [activeFormTemplateId, setActiveFormTemplateId] = useState<string | undefined>();
   const [activeChecklistItemId, setActiveChecklistItemId] = useState<string | undefined>();
   const [formValues, setFormValues] = useState<Record<string, any>>({});
+  const [viewingSubmission, setViewingSubmission] = useState<any>(null);
 
   const { data: patient, isLoading, error } = usePatient(id);
   const { data: medicalHistory } = usePatientMedicalHistory(id);
@@ -264,12 +259,6 @@ export default function PatientDetail() {
 
   const displayData = isEditing ? editedData : patient;
 
-  // Check if multiple submissions exist for same template (for date suffixes)
-  const templateSubmissionCounts: Record<string, number> = {};
-  completedSubmissions.forEach((s: any) => {
-    templateSubmissionCounts[s.form_template_id] = (templateSubmissionCounts[s.form_template_id] || 0) + 1;
-  });
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -432,33 +421,15 @@ export default function PatientDetail() {
             <KeyRound className="mr-2 h-4 w-4" />
             Account
           </TabsTrigger>
-          {/* Dynamic tabs for completed form submissions */}
-          {completedSubmissions.map((sub: any, idx: number) => {
-            const templateName = sub.form_templates?.name || "Form";
-            const hasMultiple = templateSubmissionCounts[sub.form_template_id] > 1;
-            const tabLabel = hasMultiple
-              ? `${templateName} (${new Date(sub.created_at).toLocaleDateString('en-ZA')})`
-              : templateName;
-            
-            return (
-              <TooltipProvider key={sub.id}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <TabsTrigger value={`form-${sub.id}`} className="max-w-[180px]">
-                      <FileText className="mr-2 h-4 w-4 flex-shrink-0" />
-                      <span className="truncate">{tabLabel}</span>
-                    </TabsTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{templateName}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Submitted {new Date(sub.created_at).toLocaleDateString('en-ZA')}
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            );
-          })}
+          {completedSubmissions.length > 0 && (
+            <TabsTrigger value="completed-forms">
+              <FileCheck className="mr-2 h-4 w-4" />
+              Completed Forms
+              <Badge variant="secondary" className="ml-2 text-xs">
+                {completedSubmissions.length}
+              </Badge>
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* Profile Tab */}
@@ -1125,67 +1096,116 @@ export default function PatientDetail() {
           />
         </TabsContent>
 
-        {/* Dynamic Form Submission Tabs */}
-        {completedSubmissions.map((sub: any) => {
-          const schema = templateSchemaMap[sub.form_template_id] || [];
-          const submissionData = (sub.data && typeof sub.data === 'object' ? sub.data : {}) as Record<string, any>;
-          
-          return (
-            <TabsContent key={sub.id} value={`form-${sub.id}`} className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-5 w-5" />
-                      {sub.form_templates?.name || "Submitted Form"}
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground font-normal">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 gap-1.5"
-                        onClick={() =>
-                          openPrintableForm({
-                            title: sub.form_templates?.name || "Submitted Form",
-                            schema,
-                            values: submissionData,
-                            patientInfo: {
-                              name: `${patient.first_name} ${patient.last_name}`,
-                              email: patient.email || undefined,
-                              idNumber: patient.id_number || undefined,
-                              phone: patient.phone || undefined,
-                            },
-                            submittedAt: sub.created_at,
-                            signatureData: sub.signature_data || undefined,
-                          })
-                        }
-                      >
-                        <Printer className="h-3.5 w-3.5" />
-                        Print
-                      </Button>
-                      <Badge variant="secondary">
-                        {sub.status}
-                      </Badge>
-                      <span>Submitted {new Date(sub.created_at).toLocaleDateString('en-ZA')}</span>
-                    </div>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {schema.length > 0 ? (
-                    <FormRenderer
-                      schema={schema}
-                      values={submissionData}
-                      onChange={() => {}}
-                      readOnly={true}
-                    />
-                  ) : (
-                    <p className="text-muted-foreground">Form template schema not available.</p>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-          );
-        })}
+        {/* Completed Forms Tab */}
+        <TabsContent value="completed-forms" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileCheck className="h-5 w-5" />
+                Completed Forms ({completedSubmissions.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {completedSubmissions.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">No completed forms yet.</p>
+              ) : (
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="text-left p-3 font-medium text-muted-foreground">Form Name</th>
+                        <th className="text-left p-3 font-medium text-muted-foreground">Date Submitted</th>
+                        <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
+                        <th className="text-right p-3 font-medium text-muted-foreground">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {completedSubmissions.map((sub: any) => {
+                        const schema = templateSchemaMap[sub.form_template_id] || [];
+                        const submissionData = (sub.data && typeof sub.data === 'object' ? sub.data : {}) as Record<string, any>;
+                        return (
+                          <tr key={sub.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                            <td className="p-3 font-medium">
+                              <div className="flex items-center gap-2">
+                                <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                {sub.form_templates?.name || "Submitted Form"}
+                              </div>
+                            </td>
+                            <td className="p-3 text-muted-foreground">
+                              {new Date(sub.created_at).toLocaleDateString('en-ZA', { year: 'numeric', month: 'short', day: 'numeric' })}
+                            </td>
+                            <td className="p-3">
+                              <Badge variant="secondary" className="capitalize">{sub.status}</Badge>
+                            </td>
+                            <td className="p-3 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 gap-1.5"
+                                  onClick={() => {
+                                    setViewingSubmission(sub);
+                                  }}
+                                >
+                                  <Eye className="h-3.5 w-3.5" />
+                                  View
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 gap-1.5"
+                                  onClick={() =>
+                                    openPrintableForm({
+                                      title: sub.form_templates?.name || "Submitted Form",
+                                      schema,
+                                      values: submissionData,
+                                      patientInfo: {
+                                        name: `${patient.first_name} ${patient.last_name}`,
+                                        email: patient.email || undefined,
+                                        idNumber: patient.id_number || undefined,
+                                        phone: patient.phone || undefined,
+                                      },
+                                      submittedAt: sub.created_at,
+                                      signatureData: sub.signature_data || undefined,
+                                    })
+                                  }
+                                >
+                                  <Printer className="h-3.5 w-3.5" />
+                                  Print
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Full-screen viewer for completed form submissions */}
+        {viewingSubmission && (
+          <FullScreenFormDialog
+            open={!!viewingSubmission}
+            onClose={() => setViewingSubmission(null)}
+            title={viewingSubmission.form_templates?.name || "Submitted Form"}
+            schema={(templateSchemaMap[viewingSubmission.form_template_id] || []) as FormField[]}
+            values={(viewingSubmission.data && typeof viewingSubmission.data === 'object' ? viewingSubmission.data : {}) as Record<string, any>}
+            onChange={() => {}}
+            readOnly
+            patientInfo={{
+              name: `${patient.first_name} ${patient.last_name}`,
+              email: patient.email || undefined,
+              idNumber: patient.id_number || undefined,
+              phone: patient.phone || undefined,
+            }}
+            submittedAt={viewingSubmission.created_at}
+            signatureData={viewingSubmission.signature_data || undefined}
+          />
+        )}
       </Tabs>
 
       {/* Full-screen Form Dialog */}
