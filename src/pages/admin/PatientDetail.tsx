@@ -9,7 +9,7 @@ import { usePatientMedicalHistory, useUpsertPatientMedicalHistory } from "@/hook
 import { usePatientDocuments, useUploadPatientDocument, useDeletePatientDocument, useGetDocumentUrl } from "@/hooks/usePatientDocuments";
 import { useOnboardingChecklist, useGenerateChecklist, useUpdateChecklistItem } from "@/hooks/useOnboardingChecklist";
 import { useFormTemplate, useFormTemplates } from "@/hooks/useFormTemplates";
-import { useFormSubmissions, useCreateFormSubmission, useUpdateFormSubmission } from "@/hooks/useFormSubmissions";
+import { useFormSubmissions, useCreateFormSubmission, useUpdateFormSubmission, useDeleteFormSubmission } from "@/hooks/useFormSubmissions";
 import { usePatientNotes, useCreatePatientNote, useDeletePatientNote } from "@/hooks/usePatientNotes";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
