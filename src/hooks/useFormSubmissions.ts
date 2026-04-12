@@ -79,3 +79,20 @@ export function useUpdateFormSubmission() {
     },
   });
 }
+
+export function useDeleteFormSubmission() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("form_submissions")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["form_submissions"] });
+      qc.invalidateQueries({ queryKey: ["onboarding_checklists"] });
+    },
+  });
+}
