@@ -1193,6 +1193,42 @@ export default function PatientDetail() {
                                   <Printer className="h-3.5 w-3.5" />
                                   Print
                                 </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 gap-1.5 text-destructive hover:text-destructive"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                      Delete
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Delete Form Submission</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Are you sure you want to delete this "{sub.form_templates?.name}" submission? This action cannot be undone.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        className="bg-destructive text-destructive-foreground"
+                                        onClick={async () => {
+                                          try {
+                                            await deleteSubmission.mutateAsync(sub.id);
+                                            toast.success("Form submission deleted");
+                                          } catch {
+                                            toast.error("Failed to delete submission");
+                                          }
+                                        }}
+                                      >
+                                        Delete
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
                               </div>
                             </td>
                           </tr>
