@@ -119,6 +119,7 @@ export default function PatientDetail() {
   const updateChecklistItem = useUpdateChecklistItem();
   const createSubmission = useCreateFormSubmission();
   const updateSubmission = useUpdateFormSubmission();
+  const deleteSubmission = useDeleteFormSubmission();
   const { data: patientNotes } = usePatientNotes(id);
   const createNote = useCreatePatientNote();
   const deleteNote = useDeletePatientNote();
