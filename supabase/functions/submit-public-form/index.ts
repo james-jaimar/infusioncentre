@@ -7,7 +7,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const GAYLE_EMAIL = "hello@jaimar.dev";
+const GAYLE_EMAIL = "gayle@infusioncentre.co.za";
 
 interface SubmitPayload {
   slug: string;
