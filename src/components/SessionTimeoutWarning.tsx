@@ -50,7 +50,7 @@ export function SessionTimeoutWarning() {
         <AlertDialogHeader>
           <AlertDialogTitle>Session Timeout Warning</AlertDialogTitle>
           <AlertDialogDescription>
-            Your session will expire in 2 minutes due to inactivity. Click below to stay logged in.
+            Your session will expire in 5 minutes due to inactivity. Click below to stay logged in.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

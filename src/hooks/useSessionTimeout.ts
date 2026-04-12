@@ -1,8 +1,9 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 
-const TIMEOUT_DURATION = 30 * 60 * 1000; // 30 minutes in milliseconds
-const WARNING_BEFORE = 2 * 60 * 1000; // Show warning 2 minutes before timeout
+const TIMEOUT_DURATION = 4 * 60 * 60 * 1000; // 4 hours in milliseconds
+const WARNING_BEFORE = 5 * 60 * 1000; // Show warning 5 minutes before timeout
+const DEBOUNCE_INTERVAL = 30 * 1000; // Only reset timers every 30 seconds max
 
 interface UseSessionTimeoutOptions {
   onWarning?: () => void;
@@ -59,6 +60,8 @@ export function useSessionTimeout(options: UseSessionTimeoutOptions = {}) {
     const events = ["mousedown", "mousemove", "keydown", "scroll", "touchstart", "click"];
     
     const handleActivity = () => {
+      const now = Date.now();
+      if (now - lastActivityRef.current < DEBOUNCE_INTERVAL) return;
       resetTimers();
     };
 
