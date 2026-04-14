@@ -14,17 +14,35 @@ interface SendEmailPayload {
   text?: string;
   related_entity_type?: string;
   related_entity_id?: string;
+  notification_key?: string;
 }
 
-async function sendEmailViaSMTP(payload: SendEmailPayload): Promise<{ success: boolean; error?: string }> {
+async function isNotificationEnabled(
+  adminClient: ReturnType<typeof createClient>,
+  key: string
+): Promise<boolean> {
+  const { data, error } = await adminClient
+    .from("feature_flags")
+    .select("is_enabled")
+    .eq("key", key)
+    .eq("category", "notifications")
+    .maybeSingle();
+  if (error) {
+    console.error("Error checking notification flag:", error);
+    return true; // Default to enabled on error
+  }
+  return data?.is_enabled ?? true;
+}
+
+async function sendEmailViaSMTP(
+  payload: SendEmailPayload,
+  adminClient: ReturnType<typeof createClient>
+): Promise<{ success: boolean; error?: string; skipped?: boolean }> {
   const host = Deno.env.get("SMTP_HOST")!;
   const port = parseInt(Deno.env.get("SMTP_PORT") || "587");
   const username = Deno.env.get("SMTP_USERNAME")!;
   const password = Deno.env.get("SMTP_PASSWORD")!;
   const fromEmail = Deno.env.get("SMTP_FROM_EMAIL")!;
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
   let logId: string | undefined;
 
@@ -100,9 +118,11 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const callerClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
+    const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
     const { data: { user: caller }, error: callerError } = await callerClient.auth.getUser();
     if (callerError || !caller) {
@@ -135,7 +155,18 @@ Deno.serve(async (req) => {
       );
     }
 
-    const result = await sendEmailViaSMTP(body);
+    // Check notification flag if provided
+    if (body.notification_key) {
+      const enabled = await isNotificationEnabled(adminClient, body.notification_key);
+      if (!enabled) {
+        return new Response(JSON.stringify({ success: true, skipped: true }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    const result = await sendEmailViaSMTP(body, adminClient);
 
     if (!result.success) {
       return new Response(JSON.stringify({ error: result.error }), {
