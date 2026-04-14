@@ -27,7 +27,8 @@ export default function FeatureFlagsTab() {
     }
   };
 
-  const grouped = flags.reduce<Record<string, typeof flags>>((acc, flag) => {
+  const nonNotificationFlags = flags.filter((f) => f.category !== "notifications");
+  const grouped = nonNotificationFlags.reduce<Record<string, typeof flags>>((acc, flag) => {
     const cat = flag.category;
     if (!acc[cat]) acc[cat] = [];
     acc[cat].push(flag);

@@ -266,6 +266,7 @@ export function useSendReport() {
           text: report.body_text || undefined,
           related_entity_type: "doctor_report",
           related_entity_id: report.id,
+          notification_key: "notify_doctor_patient_progress",
         },
       });
       if (error) throw error;
