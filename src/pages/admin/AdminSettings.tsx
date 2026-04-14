@@ -6,6 +6,7 @@ import StatusDictionaryTab from "@/components/admin/StatusDictionaryTab";
 import ProtocolConfigTab from "@/components/admin/settings/ProtocolConfigTab";
 import FormPackConfigTab from "@/components/admin/settings/FormPackConfigTab";
 import FeatureFlagsTab from "@/components/admin/settings/FeatureFlagsTab";
+import EmailNotificationsTab from "@/components/admin/settings/EmailNotificationsTab";
 import ClinicSettingsTab from "@/components/admin/settings/ClinicSettingsTab";
 
 export default function AdminSettings() {
