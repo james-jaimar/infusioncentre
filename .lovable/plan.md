@@ -9,9 +9,9 @@
 - ✅ Phase 5: Patient portal pages (appointments, records, profile, messages)
 - ✅ Phase 6: Doctor messaging page (/doctor/messages)
 - ✅ All routes wired in App.tsx, nav items added to all layouts
+- ✅ Patient messages tab in admin PatientDetail page
+- ✅ Unread badge counts in nav items (admin, doctor, patient)
 
 ### Remaining
 
 - Phase 7: Email notifications for new messages (Edge Function trigger)
-- Patient messages tab in admin PatientDetail page
-- Unread badge counts in nav items
