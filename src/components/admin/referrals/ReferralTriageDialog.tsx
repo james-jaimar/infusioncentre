@@ -19,7 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useUpdateReferralStatus } from "@/hooks/useReferrals";
+import { useUpdateReferralStatus, useCreatePatientFromReferral } from "@/hooks/useReferrals";
 import { useAllowedTransitions, useStatusDisplay } from "@/hooks/useStatusDictionaries";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -37,6 +37,7 @@ interface Props {
 
 export function ReferralTriageDialog({ referral, open, onOpenChange, onConvertToCourse }: Props) {
   const updateStatus = useUpdateReferralStatus();
+  const createPatient = useCreatePatientFromReferral();
   const { user } = useAuth();
   const { toast } = useToast();
   const allowedTransitions = useAllowedTransitions("referral", referral?.status || "pending");
@@ -215,7 +216,7 @@ export function ReferralTriageDialog({ referral, open, onOpenChange, onConvertTo
 
           <TabsContent value="patient" className="space-y-4 mt-4">
             <p className="text-sm text-muted-foreground">
-              Search for an existing patient to link this referral, or leave unlinked to create a new record during conversion.
+              Search for an existing patient to link this referral, or create a new patient record from the referral data.
             </p>
             <PatientMatcher
               firstName={referral.patient_first_name}
@@ -224,6 +225,24 @@ export function ReferralTriageDialog({ referral, open, onOpenChange, onConvertTo
               phone={referral.patient_phone}
               currentPatientId={linkedPatientId}
               onMatch={setLinkedPatientId}
+              onCreatePatient={async () => {
+                try {
+                  const patient = await createPatient.mutateAsync({
+                    referralId: referral.id,
+                    firstName: referral.patient_first_name,
+                    lastName: referral.patient_last_name,
+                    email: referral.patient_email,
+                    phone: referral.patient_phone,
+                    medicalAidScheme: referral.medical_aid_scheme,
+                    medicalAidNumber: referral.medical_aid_number,
+                    medicalAidMainMember: referral.medical_aid_main_member,
+                  });
+                  setLinkedPatientId(patient.id);
+                  toast({ title: `Patient record created for ${referral.patient_first_name} ${referral.patient_last_name}` });
+                } catch (e: any) {
+                  toast({ title: e.message, variant: "destructive" });
+                }
+              }}
             />
           </TabsContent>
 
