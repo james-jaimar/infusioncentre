@@ -70,6 +70,7 @@ import {
   Printer,
   StickyNote,
   Plus,
+  MessageCircle,
 } from "lucide-react";
 import type { PatientStatus, DocumentType } from "@/types/patient";
 import type { FormField } from "@/components/forms/FormRenderer";
@@ -446,6 +447,10 @@ export default function PatientDetail() {
                 {patientNotes.length}
               </Badge>
             )}
+          </TabsTrigger>
+          <TabsTrigger value="messages">
+            <MessageCircle className="mr-2 h-4 w-4" />
+            Messages
           </TabsTrigger>
         </TabsList>
 
