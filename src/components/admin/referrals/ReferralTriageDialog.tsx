@@ -77,6 +77,7 @@ export function ReferralTriageDialog({ referral, open, onOpenChange, onConvertTo
                 <p>Thank you,<br/>Gail Infusion Centre</p>`,
               related_entity_type: "referral",
               related_entity_id: referral.id,
+              notification_key: "notify_admin_doctor_referral",
             },
           });
         }
