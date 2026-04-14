@@ -156,6 +156,7 @@ const App = () => (
               <Route path="doctor-reports" element={<AdminDoctorReports />} />
               <Route path="billing" element={<AdminBilling />} />
               <Route path="tenants" element={<AdminTenants />} />
+              <Route path="messages" element={<AdminMessages />} />
               <Route path="command-centre" element={<NurseCommandCentre />} />
               <Route path="job-card/:appointmentId" element={<NurseJobCard />} />
               <Route path="settings" element={<AdminSettings />} />
