@@ -11,7 +11,8 @@
 - ✅ All routes wired in App.tsx, nav items added to all layouts
 - ✅ Patient messages tab in admin PatientDetail page
 - ✅ Unread badge counts in nav items (admin, doctor, patient)
+- ✅ Phase 7: Admin-configurable email notification toggles (10 types, Settings tab, Edge Function flag checking)
 
 ### Remaining
 
-- Phase 7: Email notifications for new messages (Edge Function trigger)
+- None — all phases complete
