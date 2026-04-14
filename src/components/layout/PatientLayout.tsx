@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import logo from "@/assets/logo.png";
+import { useUnreadMessageCount } from "@/hooks/useUnreadMessages";
 
 const navigation = [
   { name: "Dashboard", href: "/patient", icon: LayoutDashboard },
@@ -27,6 +28,7 @@ export default function PatientLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const unreadCount = useUnreadMessageCount();
 
   const handleSignOut = async () => {
     await signOut();
@@ -84,6 +86,11 @@ export default function PatientLayout() {
                 >
                   <item.icon className="h-5 w-5" />
                   {item.name}
+                  {item.name === "Messages" && unreadCount > 0 && (
+                    <span className="ml-auto bg-destructive text-destructive-foreground text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  )}
                 </Link>
               );
             })}

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import logo from "@/assets/logo.png";
+import { useUnreadMessageCount } from "@/hooks/useUnreadMessages";
 
 import { ClipboardList, Users, UserCircle } from "lucide-react";
 
@@ -30,6 +31,7 @@ export default function DoctorLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const unreadCount = useUnreadMessageCount();
 
   const handleSignOut = async () => {
     await signOut();
@@ -86,6 +88,11 @@ export default function DoctorLayout() {
                 >
                   <item.icon className="h-5 w-5" />
                   {item.name}
+                  {item.name === "Messages" && unreadCount > 0 && (
+                    <span className="ml-auto bg-destructive text-destructive-foreground text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  )}
                 </Link>
               );
             })}
