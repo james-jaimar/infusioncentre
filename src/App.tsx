@@ -196,6 +196,7 @@ const App = () => (
               <Route path="profile" element={<DoctorProfile />} />
               <Route path="reports" element={<DoctorReportsPage />} />
               <Route path="courses/:courseId" element={<DoctorPatientProgress />} />
+              <Route path="messages" element={<DoctorMessages />} />
             </Route>
 
             {/* Nurse routes */}
@@ -229,9 +230,10 @@ const App = () => (
               }
             >
               <Route index element={<PatientDashboard />} />
-              <Route path="appointments" element={<div className="p-4">My Appointments - Coming Soon</div>} />
-              <Route path="records" element={<div className="p-4">My Records - Coming Soon</div>} />
-              <Route path="profile" element={<div className="p-4">My Profile - Coming Soon</div>} />
+              <Route path="appointments" element={<PatientAppointments />} />
+              <Route path="records" element={<PatientRecords />} />
+              <Route path="messages" element={<PatientMessages />} />
+              <Route path="profile" element={<PatientProfile />} />
             </Route>
 
             {/* Catch-all */}
