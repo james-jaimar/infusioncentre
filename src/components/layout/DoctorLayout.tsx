@@ -8,6 +8,7 @@ import {
   Menu,
   X,
   PlusCircle,
+  MessageCircle,
 } from "lucide-react";
 import { useState } from "react";
 import logo from "@/assets/logo.png";
@@ -18,6 +19,7 @@ const navigation = [
   { name: "Dashboard", href: "/doctor", icon: LayoutDashboard },
   { name: "My Referrals", href: "/doctor/referrals", icon: FileText },
   { name: "My Patients", href: "/doctor/patients", icon: Users },
+  { name: "Messages", href: "/doctor/messages", icon: MessageCircle },
   { name: "Reports", href: "/doctor/reports", icon: ClipboardList },
   { name: "New Referral", href: "/doctor/referrals/new", icon: PlusCircle },
   { name: "My Profile", href: "/doctor/profile", icon: UserCircle },

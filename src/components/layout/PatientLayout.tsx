@@ -9,6 +9,7 @@ import {
   LogOut,
   Menu,
   X,
+  MessageCircle,
 } from "lucide-react";
 import { useState } from "react";
 import logo from "@/assets/logo.png";
@@ -17,6 +18,7 @@ const navigation = [
   { name: "Dashboard", href: "/patient", icon: LayoutDashboard },
   { name: "My Appointments", href: "/patient/appointments", icon: Calendar },
   { name: "My Records", href: "/patient/records", icon: FileText },
+  { name: "Messages", href: "/patient/messages", icon: MessageCircle },
   { name: "My Profile", href: "/patient/profile", icon: User },
 ];
 
