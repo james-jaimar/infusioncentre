@@ -12,9 +12,10 @@ interface Props {
   phone?: string | null;
   currentPatientId?: string | null;
   onMatch: (patientId: string | null) => void;
+  onCreatePatient?: () => void;
 }
 
-export function PatientMatcher({ firstName, lastName, email, phone, currentPatientId, onMatch }: Props) {
+export function PatientMatcher({ firstName, lastName, email, phone, currentPatientId, onMatch, onCreatePatient }: Props) {
   const [matches, setMatches] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
 
