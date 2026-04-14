@@ -1462,6 +1462,70 @@ export type Database = {
           },
         ]
       }
+      messages: {
+        Row: {
+          content: string
+          conversation_type: string
+          created_at: string
+          doctor_id: string | null
+          id: string
+          is_read: boolean
+          patient_id: string | null
+          read_at: string | null
+          sender_id: string
+          sender_role: string
+          tenant_id: string
+        }
+        Insert: {
+          content: string
+          conversation_type: string
+          created_at?: string
+          doctor_id?: string | null
+          id?: string
+          is_read?: boolean
+          patient_id?: string | null
+          read_at?: string | null
+          sender_id: string
+          sender_role: string
+          tenant_id?: string
+        }
+        Update: {
+          content?: string
+          conversation_type?: string
+          created_at?: string
+          doctor_id?: string | null
+          id?: string
+          is_read?: boolean
+          patient_id?: string | null
+          read_at?: string | null
+          sender_id?: string
+          sender_role?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "doctors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onboarding_checklists: {
         Row: {
           completed_at: string | null

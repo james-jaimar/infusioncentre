@@ -29,7 +29,8 @@ import logo from "@/assets/logo.png";
 const navigation = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { name: "Command Centre", href: "/admin/command-centre", icon: Monitor },
-  { name: "Contact Submissions", href: "/admin/contacts", icon: MessageSquare },
+  { name: "Messages", href: "/admin/messages", icon: MessageSquare },
+  { name: "Contact Submissions", href: "/admin/contacts", icon: Mail },
   { name: "Patients", href: "/admin/patients", icon: Users },
   { name: "Doctors", href: "/admin/doctors", icon: Stethoscope },
   { name: "Appointments", href: "/admin/appointments", icon: Calendar },

@@ -43,6 +43,7 @@ import AdminFormTemplates from "./pages/admin/AdminFormTemplates";
 import AdminBillableItems from "./pages/admin/AdminBillableItems";
 import AdminCommunications from "./pages/admin/AdminCommunications";
 import AdminTreatmentCourses from "./pages/admin/AdminTreatmentCourses";
+import AdminMessages from "./pages/admin/AdminMessages";
 
 // Nurse pages
 import NurseLayout from "./components/layout/NurseLayout";
@@ -66,6 +67,7 @@ import DoctorProfile from "./pages/doctor/DoctorProfile";
 import DoctorPatientView from "./pages/doctor/DoctorPatientView";
 import DoctorReportsPage from "./pages/doctor/DoctorReports";
 import DoctorPatientProgress from "./pages/doctor/DoctorPatientProgress";
+import DoctorMessages from "./pages/doctor/DoctorMessages";
 import AdminDoctorReports from "./pages/admin/AdminDoctorReports";
 import AdminBilling from "./pages/admin/AdminBilling";
 import AdminTenants from "./pages/admin/AdminTenants";
@@ -83,6 +85,10 @@ import PlatformSettings from "./pages/platform/PlatformSettings";
 // Patient pages
 import PatientLayout from "./components/layout/PatientLayout";
 import PatientDashboard from "./pages/patient/PatientDashboard";
+import PatientAppointments from "./pages/patient/PatientAppointments";
+import PatientRecords from "./pages/patient/PatientRecords";
+import PatientProfile from "./pages/patient/PatientProfile";
+import PatientMessages from "./pages/patient/PatientMessages";
 import InviteLanding from "./pages/InviteLanding";
 import PendingApproval from "./pages/PendingApproval";
 import PublicForm from "./pages/PublicForm";
@@ -150,6 +156,7 @@ const App = () => (
               <Route path="doctor-reports" element={<AdminDoctorReports />} />
               <Route path="billing" element={<AdminBilling />} />
               <Route path="tenants" element={<AdminTenants />} />
+              <Route path="messages" element={<AdminMessages />} />
               <Route path="command-centre" element={<NurseCommandCentre />} />
               <Route path="job-card/:appointmentId" element={<NurseJobCard />} />
               <Route path="settings" element={<AdminSettings />} />
@@ -189,6 +196,7 @@ const App = () => (
               <Route path="profile" element={<DoctorProfile />} />
               <Route path="reports" element={<DoctorReportsPage />} />
               <Route path="courses/:courseId" element={<DoctorPatientProgress />} />
+              <Route path="messages" element={<DoctorMessages />} />
             </Route>
 
             {/* Nurse routes */}
@@ -222,9 +230,10 @@ const App = () => (
               }
             >
               <Route index element={<PatientDashboard />} />
-              <Route path="appointments" element={<div className="p-4">My Appointments - Coming Soon</div>} />
-              <Route path="records" element={<div className="p-4">My Records - Coming Soon</div>} />
-              <Route path="profile" element={<div className="p-4">My Profile - Coming Soon</div>} />
+              <Route path="appointments" element={<PatientAppointments />} />
+              <Route path="records" element={<PatientRecords />} />
+              <Route path="messages" element={<PatientMessages />} />
+              <Route path="profile" element={<PatientProfile />} />
             </Route>
 
             {/* Catch-all */}
