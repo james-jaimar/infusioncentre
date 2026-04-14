@@ -50,13 +50,11 @@ export function PatientMatcher({ firstName, lastName, email, phone, currentPatie
     return () => clearTimeout(timeout);
   }, [firstName, lastName, email, phone]);
 
-  if (matches.length === 0 && !searching) return null;
-
   return (
     <div className="space-y-2">
       <p className="text-sm font-medium text-foreground flex items-center gap-1">
         <UserCheck className="h-4 w-4" />
-        {searching ? "Searching for existing patients..." : `${matches.length} potential match${matches.length !== 1 ? "es" : ""} found`}
+        {searching ? "Searching for existing patients..." : matches.length > 0 ? `${matches.length} potential match${matches.length !== 1 ? "es" : ""} found` : "No existing patients matched"}
       </p>
       {matches.map((p) => (
         <Card
@@ -83,10 +81,18 @@ export function PatientMatcher({ firstName, lastName, email, phone, currentPatie
           </CardContent>
         </Card>
       ))}
-      {matches.length > 0 && !currentPatientId && (
-        <p className="text-xs text-muted-foreground flex items-center gap-1">
-          <UserPlus className="h-3 w-3" /> Or leave unlinked to create a new patient record later.
-        </p>
+      {!currentPatientId && onCreatePatient && (
+        <Card className="border-dashed border-2 cursor-pointer hover:border-primary/50 transition-colors" onClick={onCreatePatient}>
+          <CardContent className="p-3 flex items-center gap-2 text-sm">
+            <UserPlus className="h-4 w-4 text-primary" />
+            <div>
+              <p className="font-medium">Create New Patient</p>
+              <p className="text-muted-foreground text-xs">
+                Create a patient record from referral data ({firstName} {lastName})
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

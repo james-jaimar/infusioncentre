@@ -91,6 +91,61 @@ export function useUpdateReferralStatus() {
   });
 }
 
+export function useCreatePatientFromReferral() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      referralId,
+      firstName,
+      lastName,
+      email,
+      phone,
+      medicalAidScheme,
+      medicalAidNumber,
+      medicalAidMainMember,
+    }: {
+      referralId: string;
+      firstName: string;
+      lastName: string;
+      email?: string | null;
+      phone?: string | null;
+      medicalAidScheme?: string | null;
+      medicalAidNumber?: string | null;
+      medicalAidMainMember?: string | null;
+    }) => {
+      // Create the patient
+      const { data: patient, error: patientError } = await supabase
+        .from("patients")
+        .insert({
+          first_name: firstName,
+          last_name: lastName,
+          email: email || null,
+          phone: phone || null,
+          medical_aid_name: medicalAidScheme || null,
+          medical_aid_number: medicalAidNumber || null,
+          medical_aid_main_member: medicalAidMainMember || null,
+          status: "active" as any,
+        })
+        .select()
+        .single();
+      if (patientError) throw patientError;
+
+      // Link patient to referral
+      const { error: linkError } = await supabase
+        .from("referrals")
+        .update({ patient_id: patient.id })
+        .eq("id", referralId);
+      if (linkError) throw linkError;
+
+      return patient;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["referrals"] });
+      queryClient.invalidateQueries({ queryKey: ["patients"] });
+    },
+  });
+}
+
 export function useSearchPatients() {
   return async (search: string) => {
     const { data, error } = await supabase
