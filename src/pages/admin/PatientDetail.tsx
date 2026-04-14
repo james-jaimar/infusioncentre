@@ -4,6 +4,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import SendInviteDialog from "@/components/admin/SendInviteDialog";
 import PatientAccountTab from "@/components/admin/PatientAccountTab";
 import PatientCommunicationsTab from "@/components/admin/PatientCommunicationsTab";
+import PatientChatThread from "@/components/admin/PatientChatThread";
 import { usePatient, useUpdatePatient, useDeletePatient } from "@/hooks/usePatients";
 import { usePatientMedicalHistory, useUpsertPatientMedicalHistory } from "@/hooks/usePatientMedicalHistory";
 import { usePatientDocuments, useUploadPatientDocument, useDeletePatientDocument, useGetDocumentUrl } from "@/hooks/usePatientDocuments";
@@ -1342,6 +1343,21 @@ export default function PatientDetail() {
                   ))}
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Messages Tab */}
+        <TabsContent value="messages" className="space-y-4">
+          <Card className="flex flex-col h-[500px] overflow-hidden">
+            <CardHeader className="pb-2 border-b bg-muted/30">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <MessageCircle className="h-5 w-5" />
+                Messages with {patient.first_name} {patient.last_name}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col overflow-hidden p-0">
+              <PatientChatThread patientId={id!} />
             </CardContent>
           </Card>
         </TabsContent>
