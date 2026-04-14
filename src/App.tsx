@@ -72,6 +72,7 @@ import AdminDoctorReports from "./pages/admin/AdminDoctorReports";
 import AdminBilling from "./pages/admin/AdminBilling";
 import AdminTenants from "./pages/admin/AdminTenants";
 import AdminDoctors from "./pages/admin/AdminDoctors";
+import DoctorDetail from "./pages/admin/DoctorDetail";
 
 // Platform (super-admin) pages
 import PlatformLayout from "./components/layout/PlatformLayout";
@@ -147,6 +148,7 @@ const App = () => (
               <Route path="staff" element={<AdminStaff />} />
               <Route path="training" element={<AdminTraining />} />
               <Route path="doctors" element={<AdminDoctors />} />
+              <Route path="doctors/:id" element={<DoctorDetail />} />
               <Route path="referrals" element={<AdminReferrals />} />
               <Route path="treatment-courses" element={<AdminTreatmentCourses />} />
               <Route path="form-templates" element={<AdminFormTemplates />} />

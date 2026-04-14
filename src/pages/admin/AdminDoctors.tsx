@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -129,6 +130,7 @@ function useDoctorsAdmin() {
 }
 
 export default function AdminDoctors() {
+  const navigate = useNavigate();
   const { data: doctors, isLoading } = useDoctorsAdmin();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -378,12 +380,15 @@ export default function AdminDoctors() {
                 {filtered.map((doc: any) => (
                   <TableRow key={doc.id}>
                     <TableCell>
-                      <div className="flex items-center gap-3">
+                      <div
+                        className="flex items-center gap-3 cursor-pointer hover:opacity-80"
+                        onClick={() => navigate(`/admin/doctors/${doc.id}`)}
+                      >
                         <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 shrink-0">
                           <Stethoscope className="h-4 w-4 text-primary" />
                         </div>
                         <div>
-                          <p className="font-medium text-foreground">{doc.doctor_name || "—"}</p>
+                          <p className="font-medium text-foreground underline decoration-primary/30 hover:decoration-primary">{doc.doctor_name || "—"}</p>
                           {doc.practice_number && (
                             <p className="text-xs text-muted-foreground">HPCSA: {doc.practice_number}</p>
                           )}
