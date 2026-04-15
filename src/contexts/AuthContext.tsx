@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -40,37 +40,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<AppRole | null>(null);
   const [mustChangePassword, setMustChangePassword] = useState(false);
   const [loading, setLoading] = useState(true);
+  const initialLoadDone = useRef(false);
+
+  function clearUserData() {
+    setProfile(null);
+    setRole(null);
+    setMustChangePassword(false);
+  }
 
   useEffect(() => {
-    // Set up auth state listener BEFORE checking session
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+    const queueUserDataFetch = (userId: string) => {
+      setTimeout(() => {
+        void fetchUserData(userId);
+      }, 0);
+    };
 
-        if (session?.user) {
-          // Set loading true while we fetch role/profile
-          setLoading(true);
-          // Defer data fetching to avoid blocking auth state
-          setTimeout(() => {
-            fetchUserData(session.user.id);
-          }, 0);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, nextSession) => {
+        setSession(nextSession);
+        setUser(nextSession?.user ?? null);
+
+        if (nextSession?.user) {
+          const shouldBlockUi = !initialLoadDone.current;
+
+          if (shouldBlockUi) {
+            setLoading(true);
+            initialLoadDone.current = true;
+          }
+
+          queueUserDataFetch(nextSession.user.id);
         } else {
-          setProfile(null);
-          setRole(null);
+          clearUserData();
           setLoading(false);
+          initialLoadDone.current = true;
         }
       }
     );
 
-    // Check existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        fetchUserData(session.user.id);
+    supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
+      if (initialLoadDone.current) {
+        return;
+      }
+
+      initialLoadDone.current = true;
+      setSession(existingSession);
+      setUser(existingSession?.user ?? null);
+
+      if (existingSession?.user) {
+        setLoading(true);
+        void fetchUserData(existingSession.user.id);
       } else {
+        clearUserData();
         setLoading(false);
       }
     });
@@ -151,9 +171,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
-    setProfile(null);
-    setRole(null);
-    setMustChangePassword(false);
+    clearUserData();
   }
 
   const value: AuthContextType = {

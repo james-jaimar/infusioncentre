@@ -94,7 +94,13 @@ import InviteLanding from "./pages/InviteLanding";
 import PendingApproval from "./pages/PendingApproval";
 import PublicForm from "./pages/PublicForm";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
