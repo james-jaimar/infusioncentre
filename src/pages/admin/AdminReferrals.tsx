@@ -15,6 +15,8 @@ export default function AdminReferrals() {
   const [search, setSearch] = useState("");
 
   const [selectedReferral, setSelectedReferral] = useState<any>(null);
+  const [convertReferral, setConvertReferral] = useState<any>(null);
+  const [convertPatientId, setConvertPatientId] = useState<string | undefined>();
   const [triageOpen, setTriageOpen] = useState(false);
   const [convertOpen, setConvertOpen] = useState(false);
 
@@ -36,7 +38,8 @@ export default function AdminReferrals() {
   };
 
   const handleConvertToCourse = (referral: any, patientId: string) => {
-    setSelectedReferral({ ...referral, patient_id: patientId });
+    setConvertReferral(referral);
+    setConvertPatientId(patientId);
     setConvertOpen(true);
   };
 
@@ -73,7 +76,12 @@ export default function AdminReferrals() {
         onConvertToCourse={handleConvertToCourse}
       />
 
-      <ConvertReferralDialog open={convertOpen} onOpenChange={setConvertOpen} />
+      <ConvertReferralDialog
+        open={convertOpen}
+        onOpenChange={setConvertOpen}
+        referral={convertReferral}
+        patientId={convertPatientId}
+      />
     </div>
   );
 }
