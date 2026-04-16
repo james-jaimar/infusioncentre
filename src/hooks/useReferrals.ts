@@ -7,7 +7,7 @@ export function useReferrals(doctorId?: string) {
     queryFn: async () => {
       let query = supabase
         .from("referrals")
-        .select("*, doctors(practice_name, email, specialisation)")
+        .select("*, doctors(id, user_id, practice_name, email, specialisation)")
         .order("created_at", { ascending: false });
 
       if (doctorId) {
@@ -16,7 +16,44 @@ export function useReferrals(doctorId?: string) {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data || [];
+
+      // Fetch profile names as fallback for doctors without practice_name
+      const userIds = Array.from(
+        new Set(
+          (data || [])
+            .map((r: any) => r.doctors?.user_id)
+            .filter(Boolean)
+        )
+      );
+
+      let profileMap = new Map<string, { first_name: string | null; last_name: string | null }>();
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("user_id, first_name, last_name")
+          .in("user_id", userIds);
+        profileMap = new Map(
+          (profiles || []).map((p: any) => [p.user_id, { first_name: p.first_name, last_name: p.last_name }])
+        );
+      }
+
+      return (data || []).map((r: any) => {
+        const userId = r.doctors?.user_id;
+        const profile = userId ? profileMap.get(userId) : null;
+        const fallbackName = profile
+          ? `${profile.first_name || ""} ${profile.last_name || ""}`.trim()
+          : "";
+        const displayName =
+          r.doctors?.practice_name ||
+          fallbackName ||
+          r.doctors?.email ||
+          "Unknown Doctor";
+        return {
+          ...r,
+          doctor_display_name: displayName,
+          doctor_profile: profile || null,
+        };
+      });
     },
   });
 }

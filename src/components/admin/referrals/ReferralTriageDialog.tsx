@@ -152,9 +152,12 @@ export function ReferralTriageDialog({ referral, open, onOpenChange, onConvertTo
               </div>
               <div>
                 <p className="text-muted-foreground text-xs">Referring Doctor</p>
-                <p className="font-medium">{(referral.doctors as any)?.practice_name || "—"}</p>
+                <p className="font-medium">{referral.doctor_display_name || "—"}</p>
                 {(referral.doctors as any)?.specialisation && (
                   <p className="text-xs text-muted-foreground">{(referral.doctors as any).specialisation}</p>
+                )}
+                {(referral.doctors as any)?.email && (
+                  <p className="text-xs text-muted-foreground">{(referral.doctors as any).email}</p>
                 )}
               </div>
               {referral.patient_email && (
