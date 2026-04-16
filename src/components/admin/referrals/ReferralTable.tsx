@@ -64,10 +64,15 @@ export function ReferralTable({ referrals, isLoading, onReview }: Props) {
                     )}
                   </TableCell>
                   <TableCell className="text-sm">
-                    {(ref.doctors as any)?.practice_name || "—"}
+                    {ref.doctor_display_name || "—"}
                     {(ref.doctors as any)?.specialisation && (
                       <span className="block text-xs text-muted-foreground">
                         {(ref.doctors as any).specialisation}
+                      </span>
+                    )}
+                    {(ref.doctors as any)?.email && (
+                      <span className="block text-xs text-muted-foreground">
+                        {(ref.doctors as any).email}
                       </span>
                     )}
                   </TableCell>

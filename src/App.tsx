@@ -65,6 +65,7 @@ import DoctorNewReferral from "./pages/doctor/DoctorNewReferral";
 import DoctorMyPatients from "./pages/doctor/DoctorMyPatients";
 import DoctorProfile from "./pages/doctor/DoctorProfile";
 import DoctorPatientView from "./pages/doctor/DoctorPatientView";
+import DoctorReferralDetail from "./pages/doctor/DoctorReferralDetail";
 import DoctorReportsPage from "./pages/doctor/DoctorReports";
 import DoctorPatientProgress from "./pages/doctor/DoctorPatientProgress";
 import DoctorMessages from "./pages/doctor/DoctorMessages";
@@ -199,6 +200,7 @@ const App = () => (
               <Route index element={<DoctorDashboard />} />
               <Route path="referrals" element={<DoctorReferrals />} />
               <Route path="referrals/new" element={<DoctorNewReferral />} />
+              <Route path="referrals/:referralId" element={<DoctorReferralDetail />} />
               <Route path="patients" element={<DoctorMyPatients />} />
               <Route path="patients/:patientId" element={<DoctorPatientView />} />
               <Route path="profile" element={<DoctorProfile />} />

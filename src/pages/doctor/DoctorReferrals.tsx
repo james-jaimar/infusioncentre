@@ -1,6 +1,6 @@
 import { useDoctorProfile } from "@/hooks/useDoctors";
 import { useReferrals } from "@/hooks/useReferrals";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,10 +25,13 @@ import { useState } from "react";
 
 const statusColors: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-800",
+  under_review: "bg-blue-100 text-blue-800",
+  info_requested: "bg-orange-100 text-orange-800",
   accepted: "bg-blue-100 text-blue-800",
   scheduled: "bg-primary/10 text-primary",
   completed: "bg-green-100 text-green-800",
   cancelled: "bg-muted text-muted-foreground",
+  rejected: "bg-destructive/10 text-destructive",
 };
 
 export default function DoctorReferrals() {
@@ -52,15 +55,18 @@ export default function DoctorReferrals() {
 
       <div className="flex gap-3">
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-48">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="under_review">Under Review</SelectItem>
+            <SelectItem value="info_requested">Info Requested</SelectItem>
             <SelectItem value="accepted">Accepted</SelectItem>
             <SelectItem value="scheduled">Scheduled</SelectItem>
             <SelectItem value="completed">Completed</SelectItem>
+            <SelectItem value="rejected">Rejected</SelectItem>
             <SelectItem value="cancelled">Cancelled</SelectItem>
           </SelectContent>
         </Select>
@@ -85,7 +91,11 @@ export default function DoctorReferrals() {
               </TableHeader>
               <TableBody>
                 {filtered.map((ref: any) => (
-                  <TableRow key={ref.id}>
+                  <TableRow
+                    key={ref.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => navigate(`/doctor/referrals/${ref.id}`)}
+                  >
                     <TableCell className="font-medium">
                       {ref.patient_first_name} {ref.patient_last_name}
                       {ref.patient_email && (

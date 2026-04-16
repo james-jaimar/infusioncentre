@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,40 +10,60 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useReferrals } from "@/hooks/useReferrals";
 import { useAppointmentTypes } from "@/hooks/useAppointmentTypes";
 import { useConvertReferralToCourse } from "@/hooks/useTreatmentCourses";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  referral?: {
+    id: string;
+    patient_id?: string | null;
+    doctor_id?: string | null;
+    patient_first_name?: string;
+    patient_last_name?: string;
+    diagnosis?: string | null;
+    urgency?: string;
+    prescription_notes?: string | null;
+    treatment_requested?: string | null;
+    treatment_type_id?: string | null;
+  } | null;
+  patientId?: string;
 }
 
-export function ConvertReferralDialog({ open, onOpenChange }: Props) {
-  const { data: referrals = [] } = useReferrals();
+export function ConvertReferralDialog({ open, onOpenChange, referral, patientId }: Props) {
   const { data: appointmentTypes = [] } = useAppointmentTypes();
   const convertMutation = useConvertReferralToCourse();
 
-  const pendingReferrals = referrals.filter(
-    (r: any) => r.status === "pending" || r.status === "accepted"
-  );
-
-  const [selectedReferralId, setSelectedReferralId] = useState("");
   const [treatmentTypeId, setTreatmentTypeId] = useState("");
   const [totalSessions, setTotalSessions] = useState(1);
   const [expectedEndDate, setExpectedEndDate] = useState("");
   const [notes, setNotes] = useState("");
 
-  const selectedReferral = pendingReferrals.find((r: any) => r.id === selectedReferralId);
+  // Pre-fill treatment type from referral when opening
+  useEffect(() => {
+    if (open && referral) {
+      setTreatmentTypeId(referral.treatment_type_id || "");
+      setNotes(referral.prescription_notes || "");
+    }
+    if (!open) {
+      setTreatmentTypeId("");
+      setTotalSessions(1);
+      setExpectedEndDate("");
+      setNotes("");
+    }
+  }, [open, referral]);
+
+  const effectivePatientId = patientId || referral?.patient_id || undefined;
 
   const handleConvert = async () => {
-    if (!selectedReferral || !treatmentTypeId) return;
+    if (!referral || !effectivePatientId || !treatmentTypeId) return;
 
     try {
       await convertMutation.mutateAsync({
-        referral_id: selectedReferral.id,
-        patient_id: selectedReferral.patient_id,
-        doctor_id: selectedReferral.doctor_id,
+        referral_id: referral.id,
+        patient_id: effectivePatientId,
+        doctor_id: referral.doctor_id || undefined,
         treatment_type_id: treatmentTypeId,
         total_sessions_planned: totalSessions,
         expected_end_date: expectedEndDate || undefined,
@@ -51,18 +71,9 @@ export function ConvertReferralDialog({ open, onOpenChange }: Props) {
       });
       toast.success("Referral converted to treatment course");
       onOpenChange(false);
-      resetForm();
     } catch (err) {
       toast.error("Failed to convert referral");
     }
-  };
-
-  const resetForm = () => {
-    setSelectedReferralId("");
-    setTreatmentTypeId("");
-    setTotalSessions(1);
-    setExpectedEndDate("");
-    setNotes("");
   };
 
   return (
@@ -71,37 +82,18 @@ export function ConvertReferralDialog({ open, onOpenChange }: Props) {
         <DialogHeader>
           <DialogTitle>Convert Referral to Treatment Course</DialogTitle>
           <DialogDescription>
-            Select a pending referral and configure the treatment course.
+            Configure the treatment course based on this referral.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label>Referral</Label>
-            <Select value={selectedReferralId} onValueChange={setSelectedReferralId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a referral..." />
-              </SelectTrigger>
-              <SelectContent>
-                {pendingReferrals.length === 0 ? (
-                  <div className="px-3 py-2 text-sm text-muted-foreground">No pending referrals</div>
-                ) : (
-                  pendingReferrals.map((r: any) => (
-                    <SelectItem key={r.id} value={r.id}>
-                      {r.patient_first_name} {r.patient_last_name} — {r.treatment_requested || "Unspecified"}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {selectedReferral && (
+          {referral && (
             <div className="rounded-md border p-3 text-sm space-y-1 bg-muted/50">
-              <p><strong>Patient:</strong> {selectedReferral.patient_first_name} {selectedReferral.patient_last_name}</p>
-              <p><strong>Diagnosis:</strong> {selectedReferral.diagnosis || "—"}</p>
-              <p><strong>Urgency:</strong> {selectedReferral.urgency}</p>
-              <p><strong>Prescription:</strong> {selectedReferral.prescription_notes || "—"}</p>
+              <p><strong>Patient:</strong> {referral.patient_first_name} {referral.patient_last_name}</p>
+              <p><strong>Diagnosis:</strong> {referral.diagnosis || "—"}</p>
+              <p><strong>Urgency:</strong> {referral.urgency || "—"}</p>
+              <p><strong>Treatment Requested:</strong> {referral.treatment_requested || "—"}</p>
+              <p><strong>Prescription:</strong> {referral.prescription_notes || "—"}</p>
             </div>
           )}
 
@@ -148,13 +140,19 @@ export function ConvertReferralDialog({ open, onOpenChange }: Props) {
               rows={3}
             />
           </div>
+
+          {!effectivePatientId && (
+            <p className="text-sm text-destructive">
+              No patient is linked to this referral. Link a patient on the Patient Match tab first.
+            </p>
+          )}
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button
             onClick={handleConvert}
-            disabled={!selectedReferralId || !treatmentTypeId || convertMutation.isPending}
+            disabled={!referral || !effectivePatientId || !treatmentTypeId || convertMutation.isPending}
           >
             {convertMutation.isPending ? "Converting..." : "Convert to Course"}
           </Button>
