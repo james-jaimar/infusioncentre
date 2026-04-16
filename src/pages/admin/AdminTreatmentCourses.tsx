@@ -12,7 +12,7 @@ import {
 import { FileText, ArrowRight, CalendarPlus } from "lucide-react";
 import { useTreatmentCourses } from "@/hooks/useTreatmentCourses";
 import { TreatmentCourseStatus } from "@/types/treatment";
-import { ConvertReferralDialog } from "@/components/admin/ConvertReferralDialog";
+// ConvertReferralDialog moved to referral triage flow
 import { RecurringSessionDialog } from "@/components/admin/RecurringSessionDialog";
 
 const STATUS_CONFIG: Record<TreatmentCourseStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -28,7 +28,7 @@ const STATUS_CONFIG: Record<TreatmentCourseStatus, { label: string; variant: "de
 
 export default function AdminTreatmentCourses() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [convertDialogOpen, setConvertDialogOpen] = useState(false);
+  
   const [recurringCourse, setRecurringCourse] = useState<any>(null);
   const { data: courses = [], isLoading } = useTreatmentCourses(
     statusFilter === "all" ? undefined : [statusFilter as TreatmentCourseStatus]
