@@ -42,7 +42,7 @@ export default function AdminTreatmentCourses() {
           <p className="text-muted-foreground">Manage episodes of care</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setConvertDialogOpen(true)}>
+          <Button variant="outline" onClick={() => (window.location.href = "/admin/referrals")}>
             <ArrowRight className="mr-2 h-4 w-4" />
             Convert Referral
           </Button>
@@ -138,10 +138,7 @@ export default function AdminTreatmentCourses() {
         </CardContent>
       </Card>
 
-      <ConvertReferralDialog
-        open={convertDialogOpen}
-        onOpenChange={setConvertDialogOpen}
-      />
+      {/* ConvertReferralDialog removed — conversion now happens from referral triage */}
 
       {recurringCourse && (
         <RecurringSessionDialog
