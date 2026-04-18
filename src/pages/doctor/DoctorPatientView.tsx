@@ -266,6 +266,10 @@ export default function DoctorPatientView() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="documents" className="mt-4">
+          <DoctorDocumentUpload patientId={patient.id} />
+        </TabsContent>
       </Tabs>
 
       {doctor?.id && (
