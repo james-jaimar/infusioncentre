@@ -1,58 +1,60 @@
 
 
-## Plan: Fix Referral Workflow — Admin + Doctor Sides
+## The workflow question
 
-### Issues identified
+You're right — this is a tricky one. Right now once a doctor's referral becomes a patient at the clinic, **Gail owns that record**. The doctor can see the patient but can't touch anything. That's actually the safer default for a clinical CRM (single source of truth, no conflicting edits), but it's too restrictive for the doctor's actual needs.
 
-1. **Admin: Doctor name shows "—"** — The doctor's `practice_name` is null in DB. The display should fall back to the doctor's profile name (first_name + last_name from profiles table), or at minimum show the email.
+### How clinics typically handle this
 
-2. **Admin: Actions tab appears empty or non-functional** — The status transitions data exists and should work for `under_review` status. However, `ConvertReferralDialog` is broken: it ignores the referral being converted and instead shows a dropdown to pick from pending/accepted referrals. It needs to accept the selected referral + patient_id as props.
+The doctor doesn't need to edit Gail's patient record directly. What they actually need is a way to **send updates/additional info** that Gail can then accept into the master record. Think of it like: the doctor *requests* a change, Gail *applies* it.
 
-3. **Doctor: Referral rows not clickable** — No detail page exists at `/doctor/referrals/:id`. Doctor can't view or interact with their referral after submission.
+### Recommended approach: "Patient Update" notes from the doctor
 
-4. **Doctor: Patient view is a skeleton** — `DoctorPatientView` only shows treatment history. No notes, no doctor reports, no messaging.
+Instead of giving the doctor edit rights to the patient table (risky, conflicts with Gail's authority), add **two narrow capabilities**:
 
-### Changes
+**1. "Send Update to Clinic" button on the doctor's patient view**
+- Opens a small dialog: free-text note + optional structured fields (new phone, new medical aid, new diagnosis/ICD-10, additional prescription notes)
+- Posts a message into the existing `admin_doctor` thread with a clear `[Patient Update — Jane Doe]` prefix
+- Gail sees it in her doctor messages tab and can manually update the patient record if she agrees
 
-**1. Fix doctor name display (admin referral table + triage dialog)**
-- Update `useReferrals` query to also join `profiles` via `doctors.user_id` to get first/last name as fallback
-- Update `ReferralTable` and `ReferralTriageDialog` to display `profiles.first_name + last_name` when `practice_name` is null
+**2. "Submit Follow-up Referral"**
+- For when the doctor wants to add a NEW treatment course / new prescription for an existing patient
+- Pre-fills patient info, doctor only fills clinical bits
+- Goes through the same triage flow as a brand-new referral, but linked to the existing patient
 
-**2. Fix ConvertReferralDialog**
-- Add `referralId`, `patientId`, `doctorId`, `patientName`, `treatmentRequested` props
-- Pre-populate the form with the passed referral data instead of showing a dropdown
-- Remove the referral selector when a referral is already provided
+### Why this is better than direct edit
 
-**3. Create Doctor Referral Detail page**
-- New file: `src/pages/doctor/DoctorReferralDetail.tsx`
-- Tabbed view:
-  - **Details** — Read-only referral info (patient, diagnosis, treatment, prescription, ICD-10, medical aid, attachments)
-  - **Status & Updates** — Timeline showing status changes, admin notes (read-only from doctor's perspective)
-  - **Messages** — Chat thread with admin about this specific referral (reuse ChatThread/ChatInput with `conversation_type: 'admin_doctor'` filtered to doctor_id)
-- New route: `/doctor/referrals/:referralId` in App.tsx
-- Update `DoctorReferrals.tsx` to make table rows clickable → navigate to detail page
-- Add status filter values for `under_review`, `info_requested`, `rejected` (currently missing from the Select)
+- Gail keeps single-source-of-truth ownership
+- All doctor-initiated changes are auditable (sit in the message thread)
+- No race conditions (doctor changes phone while Gail is mid-edit)
+- Matches how real clinics work — the referring doctor never directly mutates the receiving clinic's chart
 
-**4. Enhance DoctorPatientView**
-- Add tabs: **Overview** (current info + medical aid), **Treatment Courses** (existing, improved), **Reports** (doctor_reports for this patient, read-only), **Notes** (read-only clinical notes from admin/nurse)
-- Keep everything read-only as designed
+### What stays read-only for the doctor
 
-**5. Fix referral name resolution in useReferrals**
-- The join `doctors(practice_name, email, specialisation)` works, but we also need profile names. Add a secondary query or modify the join to include a name fallback.
+- Patient demographics, contact, medical aid (they can *suggest* changes via the update button)
+- Treatment courses, appointments, nurse notes, billing — all clinic-owned
 
-### Files
+### What the doctor CAN do (additions, not edits)
+
+- Send patient updates (above)
+- Submit follow-up referrals (above)
+- Message admin about the patient (already works)
+- View their own doctor reports for that patient (already works)
+
+### Files to build
 
 | Action | File |
 |--------|------|
-| Create | `src/pages/doctor/DoctorReferralDetail.tsx` |
-| Modify | `src/App.tsx` — add route |
-| Modify | `src/pages/doctor/DoctorReferrals.tsx` — clickable rows, more status filters |
-| Modify | `src/pages/doctor/DoctorPatientView.tsx` — tabbed detail view |
-| Modify | `src/components/admin/ConvertReferralDialog.tsx` — accept referral props |
-| Modify | `src/pages/admin/AdminReferrals.tsx` — pass referral data to ConvertReferralDialog |
-| Modify | `src/hooks/useReferrals.ts` — join profiles for doctor name fallback |
-| Modify | `src/components/admin/referrals/ReferralTable.tsx` — use fallback name |
-| Modify | `src/components/admin/referrals/ReferralTriageDialog.tsx` — use fallback name |
+| Create | `src/components/doctor/PatientUpdateDialog.tsx` — update form, posts to messages |
+| Create | `src/components/doctor/FollowUpReferralDialog.tsx` — pre-filled referral form |
+| Modify | `src/pages/doctor/DoctorPatientView.tsx` — add two action buttons in header |
+| Modify | `src/components/admin/PatientChatThread.tsx` (or doctor messages tab) — render `[Patient Update]` prefixed messages with a subtle highlight so Gail spots them |
 
-No database changes needed.
+No DB schema changes. Uses the existing `messages` table and existing referrals flow.
+
+### Alternative if you really want direct edit
+
+If you'd rather the doctor just edits the patient directly (faster, simpler, less ceremony), I can do that instead — but only on a narrow whitelist of fields (phone, email, address, medical aid). I'd **not** allow editing of name/DOB/ID number (identity fields) or any clinical/treatment data. Every edit would write to `audit_log` so Gail can see who changed what.
+
+**Which would you prefer?**
 
