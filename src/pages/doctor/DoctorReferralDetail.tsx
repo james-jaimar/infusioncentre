@@ -12,7 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ChatThread } from "@/components/messaging/ChatThread";
 import { ChatInput } from "@/components/messaging/ChatInput";
-import { ArrowLeft, MessageCircle, FileText, Activity } from "lucide-react";
+import { ArrowLeft, MessageCircle, FileText, Activity, Paperclip } from "lucide-react";
+import { DoctorDocumentUpload } from "@/components/doctor/DoctorDocumentUpload";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
