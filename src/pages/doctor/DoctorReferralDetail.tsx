@@ -12,7 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ChatThread } from "@/components/messaging/ChatThread";
 import { ChatInput } from "@/components/messaging/ChatInput";
-import { ArrowLeft, MessageCircle, FileText, Activity } from "lucide-react";
+import { ArrowLeft, MessageCircle, FileText, Activity, Paperclip } from "lucide-react";
+import { DoctorDocumentUpload } from "@/components/doctor/DoctorDocumentUpload";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
@@ -121,6 +122,9 @@ export default function DoctorReferralDetail() {
           </TabsTrigger>
           <TabsTrigger value="messages" className="gap-2">
             <MessageCircle className="h-4 w-4" /> Messages
+          </TabsTrigger>
+          <TabsTrigger value="documents" className="gap-2">
+            <Paperclip className="h-4 w-4" /> Documents
           </TabsTrigger>
         </TabsList>
 
@@ -233,6 +237,20 @@ export default function DoctorReferralDetail() {
               placeholder={`Message about ${referral.patient_first_name} ${referral.patient_last_name}...`}
             />
           </Card>
+        </TabsContent>
+
+        <TabsContent value="documents" className="mt-4">
+          {referral.patient_id ? (
+            <DoctorDocumentUpload patientId={referral.patient_id} />
+          ) : (
+            <Card>
+              <CardContent className="py-8 text-center text-sm text-muted-foreground">
+                Documents can be uploaded once the clinic has reviewed the referral and created the
+                patient record. Until then, please use the Messages tab to send any additional
+                information.
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </div>
