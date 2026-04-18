@@ -238,6 +238,20 @@ export default function DoctorReferralDetail() {
             />
           </Card>
         </TabsContent>
+
+        <TabsContent value="documents" className="mt-4">
+          {referral.patient_id ? (
+            <DoctorDocumentUpload patientId={referral.patient_id} />
+          ) : (
+            <Card>
+              <CardContent className="py-8 text-center text-sm text-muted-foreground">
+                Documents can be uploaded once the clinic has reviewed the referral and created the
+                patient record. Until then, please use the Messages tab to send any additional
+                information.
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
       </Tabs>
     </div>
   );
