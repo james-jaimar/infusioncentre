@@ -121,6 +121,9 @@ export default function DoctorPatientView() {
           <TabsTrigger value="history" className="gap-2">
             <StickyNote className="h-4 w-4" /> History
           </TabsTrigger>
+          <TabsTrigger value="documents" className="gap-2">
+            <Paperclip className="h-4 w-4" /> Documents
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-4 space-y-4">
