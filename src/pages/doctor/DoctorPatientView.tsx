@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,13 +8,17 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
-import { ArrowLeft, User, Activity, FileText, StickyNote } from "lucide-react";
+import { ArrowLeft, User, Activity, FileText, StickyNote, Send, FilePlus2 } from "lucide-react";
 import { useDoctorProfile } from "@/hooks/useDoctors";
+import { PatientUpdateDialog } from "@/components/doctor/PatientUpdateDialog";
+import { FollowUpReferralDialog } from "@/components/doctor/FollowUpReferralDialog";
 
 export default function DoctorPatientView() {
   const { patientId } = useParams();
   const navigate = useNavigate();
   const { data: doctor } = useDoctorProfile();
+  const [updateOpen, setUpdateOpen] = useState(false);
+  const [followUpOpen, setFollowUpOpen] = useState(false);
 
   const { data: patient } = useQuery({
     queryKey: ["doctor-patient", patientId],
@@ -82,11 +87,23 @@ export default function DoctorPatientView() {
         <ArrowLeft className="h-4 w-4" /> Back
       </Button>
 
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">
-          {patient.first_name} {patient.last_name}
-        </h1>
-        <p className="text-muted-foreground">Patient Summary (Read Only)</p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">
+            {patient.first_name} {patient.last_name}
+          </h1>
+          <p className="text-muted-foreground">Patient Summary (Read Only — clinic owns the master record)</p>
+        </div>
+        {doctor?.id && (
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setUpdateOpen(true)} className="gap-2">
+              <Send className="h-4 w-4" /> Send Update to Clinic
+            </Button>
+            <Button size="sm" onClick={() => setFollowUpOpen(true)} className="gap-2">
+              <FilePlus2 className="h-4 w-4" /> Submit Follow-up Referral
+            </Button>
+          </div>
+        )}
       </div>
 
       <Tabs defaultValue="overview">
@@ -246,6 +263,24 @@ export default function DoctorPatientView() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {doctor?.id && (
+        <>
+          <PatientUpdateDialog
+            open={updateOpen}
+            onOpenChange={setUpdateOpen}
+            patientId={patient.id}
+            patientName={`${patient.first_name} ${patient.last_name}`}
+            doctorId={doctor.id}
+          />
+          <FollowUpReferralDialog
+            open={followUpOpen}
+            onOpenChange={setFollowUpOpen}
+            patient={patient as any}
+            doctorId={doctor.id}
+          />
+        </>
+      )}
     </div>
   );
 }
