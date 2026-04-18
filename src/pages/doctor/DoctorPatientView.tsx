@@ -17,6 +17,8 @@ export default function DoctorPatientView() {
   const { patientId } = useParams();
   const navigate = useNavigate();
   const { data: doctor } = useDoctorProfile();
+  const [updateOpen, setUpdateOpen] = useState(false);
+  const [followUpOpen, setFollowUpOpen] = useState(false);
 
   const { data: patient } = useQuery({
     queryKey: ["doctor-patient", patientId],
