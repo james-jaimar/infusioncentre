@@ -1,60 +1,54 @@
 
 
-## The workflow question
+Looking at the current state: `usePatientDocuments.ts` exists and uploads to the `patient-documents` bucket — used by admin. Doctors currently can attach a document only at referral submission time (single `referral_document_path`). No way to add more later.
 
-You're right — this is a tricky one. Right now once a doctor's referral becomes a patient at the clinic, **Gail owns that record**. The doctor can see the patient but can't touch anything. That's actually the safer default for a clinical CRM (single source of truth, no conflicting edits), but it's too restrictive for the doctor's actual needs.
+Need to check: doctor's view of patient — can they see existing docs? And the referral detail page for doctors — can they add more there?
 
-### How clinics typically handle this
+## Plan: Doctor Document Uploads (Post-Referral)
 
-The doctor doesn't need to edit Gail's patient record directly. What they actually need is a way to **send updates/additional info** that Gail can then accept into the master record. Think of it like: the doctor *requests* a change, Gail *applies* it.
+### What's missing
+- Doctor cannot upload additional documents after submitting a referral
+- Doctor cannot upload documents to a patient record they referred
+- Doctor cannot see what documents already exist on the patient
 
-### Recommended approach: "Patient Update" notes from the doctor
+### Approach
 
-Instead of giving the doctor edit rights to the patient table (risky, conflicts with Gail's authority), add **two narrow capabilities**:
+Reuse the existing `patient-documents` storage bucket and `patient_documents` table (already used by admin). Add doctor-side UI + RLS policy so doctors can upload/view documents for patients they referred.
 
-**1. "Send Update to Clinic" button on the doctor's patient view**
-- Opens a small dialog: free-text note + optional structured fields (new phone, new medical aid, new diagnosis/ICD-10, additional prescription notes)
-- Posts a message into the existing `admin_doctor` thread with a clear `[Patient Update — Jane Doe]` prefix
-- Gail sees it in her doctor messages tab and can manually update the patient record if she agrees
+### Changes
 
-**2. "Submit Follow-up Referral"**
-- For when the doctor wants to add a NEW treatment course / new prescription for an existing patient
-- Pre-fills patient info, doctor only fills clinical bits
-- Goes through the same triage flow as a brand-new referral, but linked to the existing patient
+**1. RLS policy update (migration)**
+- Add policy on `patient_documents`: doctors can SELECT/INSERT documents where the patient has a referral linked to that doctor
+- Add storage policy on `patient-documents` bucket: same scoping for doctors
 
-### Why this is better than direct edit
+**2. New tab on `DoctorReferralDetail.tsx`** — "Documents"
+- List existing documents on the patient (from `usePatientDocuments`)
+- Upload new document with type + notes (reuse `useUploadPatientDocument`)
+- Tag uploads with `uploaded_by = doctor's user_id` so admin sees the source
+- Need to resolve `patient_id` from referral — referrals link to patients via `patient_id` after triage; for pending referrals (no patient yet), allow upload that links to the referral itself via `referral_attachments` bucket
 
-- Gail keeps single-source-of-truth ownership
-- All doctor-initiated changes are auditable (sit in the message thread)
-- No race conditions (doctor changes phone while Gail is mid-edit)
-- Matches how real clinics work — the referring doctor never directly mutates the receiving clinic's chart
+**3. New tab on `DoctorPatientView.tsx`** — "Documents"
+- Same list + upload UI for the linked patient
+- Read existing docs, add new ones
 
-### What stays read-only for the doctor
+**4. Admin visibility**
+- Admin's existing patient documents tab will automatically show doctor uploads (same table)
+- Add a small "Uploaded by Dr. X" indicator if uploader is a doctor (nice-to-have)
 
-- Patient demographics, contact, medical aid (they can *suggest* changes via the update button)
-- Treatment courses, appointments, nurse notes, billing — all clinic-owned
+### Edge case: pending referrals (no patient_id yet)
+For referrals still in triage (no patient created), uploads go to the existing `referral-attachments` bucket and append to a `referral_additional_documents` jsonb column on the referral. Once converted to a patient, admin can promote them.
 
-### What the doctor CAN do (additions, not edits)
+Simpler alternative: only allow extra doc uploads **after** the referral is matched/converted to a patient. Doctor sees a message "Documents can be added once the referral is reviewed" for pending referrals.
 
-- Send patient updates (above)
-- Submit follow-up referrals (above)
-- Message admin about the patient (already works)
-- View their own doctor reports for that patient (already works)
-
-### Files to build
+### Files
 
 | Action | File |
 |--------|------|
-| Create | `src/components/doctor/PatientUpdateDialog.tsx` — update form, posts to messages |
-| Create | `src/components/doctor/FollowUpReferralDialog.tsx` — pre-filled referral form |
-| Modify | `src/pages/doctor/DoctorPatientView.tsx` — add two action buttons in header |
-| Modify | `src/components/admin/PatientChatThread.tsx` (or doctor messages tab) — render `[Patient Update]` prefixed messages with a subtle highlight so Gail spots them |
+| Migration | RLS for `patient_documents` + storage policy |
+| Modify | `src/pages/doctor/DoctorReferralDetail.tsx` — add Documents tab |
+| Modify | `src/pages/doctor/DoctorPatientView.tsx` — add Documents tab |
+| Create | `src/components/doctor/DoctorDocumentUpload.tsx` — reusable upload + list component |
+| Modify | `src/hooks/usePatientDocuments.ts` — no change needed (already generic) |
 
-No DB schema changes. Uses the existing `messages` table and existing referrals flow.
-
-### Alternative if you really want direct edit
-
-If you'd rather the doctor just edits the patient directly (faster, simpler, less ceremony), I can do that instead — but only on a narrow whitelist of fields (phone, email, address, medical aid). I'd **not** allow editing of name/DOB/ID number (identity fields) or any clinical/treatment data. Every edit would write to `audit_log` so Gail can see who changed what.
-
-**Which would you prefer?**
+No changes to admin side needed — they'll see the docs automatically.
 
