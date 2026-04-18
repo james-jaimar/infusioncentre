@@ -3433,6 +3433,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      doctor_has_patient_referral: {
+        Args: { _patient_id: string }
+        Returns: boolean
+      }
       generate_invoice_number: { Args: never; Returns: string }
       get_user_role: {
         Args: { _user_id: string }
