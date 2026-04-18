@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,8 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
-import { ArrowLeft, User, Activity, FileText, StickyNote } from "lucide-react";
+import { ArrowLeft, User, Activity, FileText, StickyNote, Send, FilePlus2 } from "lucide-react";
 import { useDoctorProfile } from "@/hooks/useDoctors";
+import { PatientUpdateDialog } from "@/components/doctor/PatientUpdateDialog";
+import { FollowUpReferralDialog } from "@/components/doctor/FollowUpReferralDialog";
 
 export default function DoctorPatientView() {
   const { patientId } = useParams();
