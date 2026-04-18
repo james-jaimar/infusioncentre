@@ -87,11 +87,23 @@ export default function DoctorPatientView() {
         <ArrowLeft className="h-4 w-4" /> Back
       </Button>
 
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">
-          {patient.first_name} {patient.last_name}
-        </h1>
-        <p className="text-muted-foreground">Patient Summary (Read Only)</p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">
+            {patient.first_name} {patient.last_name}
+          </h1>
+          <p className="text-muted-foreground">Patient Summary (Read Only — clinic owns the master record)</p>
+        </div>
+        {doctor?.id && (
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setUpdateOpen(true)} className="gap-2">
+              <Send className="h-4 w-4" /> Send Update to Clinic
+            </Button>
+            <Button size="sm" onClick={() => setFollowUpOpen(true)} className="gap-2">
+              <FilePlus2 className="h-4 w-4" /> Submit Follow-up Referral
+            </Button>
+          </div>
+        )}
       </div>
 
       <Tabs defaultValue="overview">
