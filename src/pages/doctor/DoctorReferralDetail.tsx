@@ -123,6 +123,9 @@ export default function DoctorReferralDetail() {
           <TabsTrigger value="messages" className="gap-2">
             <MessageCircle className="h-4 w-4" /> Messages
           </TabsTrigger>
+          <TabsTrigger value="documents" className="gap-2">
+            <Paperclip className="h-4 w-4" /> Documents
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="details" className="mt-4 space-y-4">
