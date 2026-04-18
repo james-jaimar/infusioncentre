@@ -263,6 +263,24 @@ export default function DoctorPatientView() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {doctor?.id && (
+        <>
+          <PatientUpdateDialog
+            open={updateOpen}
+            onOpenChange={setUpdateOpen}
+            patientId={patient.id}
+            patientName={`${patient.first_name} ${patient.last_name}`}
+            doctorId={doctor.id}
+          />
+          <FollowUpReferralDialog
+            open={followUpOpen}
+            onOpenChange={setFollowUpOpen}
+            patient={patient as any}
+            doctorId={doctor.id}
+          />
+        </>
+      )}
     </div>
   );
 }
