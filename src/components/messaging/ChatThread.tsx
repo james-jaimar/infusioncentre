@@ -50,6 +50,7 @@ export function ChatThread({ messages, currentUserId, isLoading }: Props) {
           const showDate = msgDate !== lastDate;
           lastDate = msgDate;
           const isMine = msg.sender_id === currentUserId;
+          const isPatientUpdate = msg.content.startsWith("[Patient Update");
 
           return (
             <div key={msg.id}>
@@ -63,11 +64,18 @@ export function ChatThread({ messages, currentUserId, isLoading }: Props) {
               <div className={`flex ${isMine ? "justify-end" : "justify-start"} mb-1`}>
                 <div
                   className={`max-w-[75%] px-3 py-2 rounded-2xl text-sm ${
-                    isMine
+                    isPatientUpdate && !isMine
+                      ? "bg-accent text-accent-foreground border border-primary/30 rounded-bl-md"
+                      : isMine
                       ? "bg-primary text-primary-foreground rounded-br-md"
                       : "bg-muted text-foreground rounded-bl-md"
                   }`}
                 >
+                  {isPatientUpdate && !isMine && (
+                    <p className="text-[10px] font-semibold uppercase tracking-wide mb-1 text-primary">
+                      Patient update request
+                    </p>
+                  )}
                   {!isMine && (
                     <p className="text-xs font-medium mb-0.5 opacity-70 capitalize">
                       {msg.sender_role}
