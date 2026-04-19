@@ -169,13 +169,23 @@ export default function CourseTemplatesTab() {
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-xl font-semibold">Treatment Course Templates</h2>
-          <p className="text-sm text-muted-foreground max-w-2xl">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-xl font-semibold">Treatment Course Templates</h2>
+            {!isLoading && typesCount > 0 && (
+              <Badge variant="secondary">
+                {variantsCount} variant{variantsCount === 1 ? "" : "s"} across {typesCount} type{typesCount === 1 ? "" : "s"}
+              </Badge>
+            )}
+          </div>
+          <p className="text-sm text-muted-foreground max-w-2xl mt-1">
             Pre-configured "recipes" for each treatment type. When a doctor refers a patient,
             they can pick the specific variant (e.g. Ferinject vs Venofer for Iron). On
             conversion, sessions, frequency and required forms are auto-populated.
           </p>
         </div>
+        <Button onClick={() => openNew("")} className="gap-1 shrink-0" disabled={typesCount === 0}>
+          <Plus className="h-4 w-4" /> New Template
+        </Button>
       </div>
 
       {isLoading ? (
@@ -212,7 +222,17 @@ export default function CourseTemplatesTab() {
                 {isOpen && (
                   <CardContent className="pt-0">
                     {list.length === 0 ? (
-                      <p className="text-sm text-muted-foreground py-2">No variants yet.</p>
+                      <div className="flex flex-col items-center justify-center gap-2 py-6 border border-dashed rounded-md">
+                        <p className="text-sm text-muted-foreground">No variants yet for {t.name}.</p>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => openNew(t.id)}
+                          className="gap-1"
+                        >
+                          <Plus className="h-3.5 w-3.5" /> Add first variant
+                        </Button>
+                      </div>
                     ) : (
                       <div className="space-y-2">
                         {list.map((tmpl) => (
