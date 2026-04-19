@@ -175,6 +175,43 @@ export default function CourseTemplatesTab() {
     }
   };
 
+  const saveType = async () => {
+    if (!editingType) return;
+    if (!editingType.name.trim()) {
+      toast.error("Name required");
+      return;
+    }
+    try {
+      if (editingType.id) {
+        await updateType.mutateAsync({
+          id: editingType.id,
+          data: { name: editingType.name.trim(), color: editingType.color } as any,
+        });
+        toast.success("Treatment type updated");
+      } else {
+        await createType.mutateAsync({
+          name: editingType.name.trim(),
+          color: editingType.color,
+        });
+        toast.success("Treatment type created");
+      }
+      setEditingType(null);
+    } catch (e: any) {
+      toast.error(e.message ?? "Save failed");
+    }
+  };
+
+  const confirmDeleteType = async () => {
+    if (!deletingTypeId) return;
+    try {
+      await deleteType.mutateAsync(deletingTypeId);
+      toast.success("Treatment type deleted");
+      setDeletingTypeId(null);
+    } catch (e: any) {
+      toast.error(e.message ?? "Delete failed (type may be in use)");
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-4">
