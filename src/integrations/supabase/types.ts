@@ -2098,6 +2098,7 @@ export type Database = {
       referrals: {
         Row: {
           clinical_history: string | null
+          course_template_id: string | null
           created_at: string
           current_medications: string | null
           diagnosis: string | null
@@ -2127,6 +2128,7 @@ export type Database = {
         }
         Insert: {
           clinical_history?: string | null
+          course_template_id?: string | null
           created_at?: string
           current_medications?: string | null
           diagnosis?: string | null
@@ -2156,6 +2158,7 @@ export type Database = {
         }
         Update: {
           clinical_history?: string | null
+          course_template_id?: string | null
           created_at?: string
           current_medications?: string | null
           diagnosis?: string | null
@@ -2184,6 +2187,13 @@ export type Database = {
           urgency?: Database["public"]["Enums"]["referral_urgency"]
         }
         Relationships: [
+          {
+            foreignKeyName: "referrals_course_template_id_fkey"
+            columns: ["course_template_id"]
+            isOneToOne: false
+            referencedRelation: "treatment_course_templates"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "referrals_doctor_id_fkey"
             columns: ["doctor_id"]
@@ -2609,9 +2619,125 @@ export type Database = {
           },
         ]
       }
+      treatment_course_template_forms: {
+        Row: {
+          created_at: string
+          display_order: number
+          form_template_id: string
+          id: string
+          template_id: string
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          form_template_id: string
+          id?: string
+          template_id: string
+          tenant_id?: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          form_template_id?: string
+          id?: string
+          template_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treatment_course_template_forms_form_template_id_fkey"
+            columns: ["form_template_id"]
+            isOneToOne: false
+            referencedRelation: "form_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_course_template_forms_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "treatment_course_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_course_template_forms_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      treatment_course_templates: {
+        Row: {
+          appointment_type_id: string
+          created_at: string
+          default_frequency: Database["public"]["Enums"]["course_frequency"]
+          default_session_duration_mins: number | null
+          default_sessions: number
+          description: string | null
+          display_order: number
+          id: string
+          is_active: boolean
+          medication_name: string | null
+          medication_notes: string | null
+          name: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          appointment_type_id: string
+          created_at?: string
+          default_frequency?: Database["public"]["Enums"]["course_frequency"]
+          default_session_duration_mins?: number | null
+          default_sessions?: number
+          description?: string | null
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          medication_name?: string | null
+          medication_notes?: string | null
+          name: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Update: {
+          appointment_type_id?: string
+          created_at?: string
+          default_frequency?: Database["public"]["Enums"]["course_frequency"]
+          default_session_duration_mins?: number | null
+          default_sessions?: number
+          description?: string | null
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          medication_name?: string | null
+          medication_notes?: string | null
+          name?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treatment_course_templates_appointment_type_id_fkey"
+            columns: ["appointment_type_id"]
+            isOneToOne: false
+            referencedRelation: "appointment_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_course_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       treatment_courses: {
         Row: {
           completed_at: string | null
+          course_template_id: string | null
           created_at: string
           created_by: string | null
           doctor_id: string | null
@@ -2630,6 +2756,7 @@ export type Database = {
         }
         Insert: {
           completed_at?: string | null
+          course_template_id?: string | null
           created_at?: string
           created_by?: string | null
           doctor_id?: string | null
@@ -2648,6 +2775,7 @@ export type Database = {
         }
         Update: {
           completed_at?: string | null
+          course_template_id?: string | null
           created_at?: string
           created_by?: string | null
           doctor_id?: string | null
@@ -2665,6 +2793,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "treatment_courses_course_template_id_fkey"
+            columns: ["course_template_id"]
+            isOneToOne: false
+            referencedRelation: "treatment_course_templates"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "treatment_courses_doctor_id_fkey"
             columns: ["doctor_id"]
@@ -3553,6 +3688,12 @@ export type Database = {
       communication_status: "pending" | "sent" | "failed"
       communication_type: "email" | "whatsapp" | "sms"
       contact_status: "new" | "in_progress" | "resolved" | "archived"
+      course_frequency:
+        | "single"
+        | "weekly"
+        | "twice_weekly"
+        | "biweekly"
+        | "monthly"
       doctor_report_status:
         | "pending"
         | "generating"
@@ -3814,6 +3955,13 @@ export const Constants = {
       communication_status: ["pending", "sent", "failed"],
       communication_type: ["email", "whatsapp", "sms"],
       contact_status: ["new", "in_progress", "resolved", "archived"],
+      course_frequency: [
+        "single",
+        "weekly",
+        "twice_weekly",
+        "biweekly",
+        "monthly",
+      ],
       doctor_report_status: [
         "pending",
         "generating",

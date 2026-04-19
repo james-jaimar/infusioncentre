@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useDoctorProfile } from "@/hooks/useDoctors";
 import { useCreateReferral } from "@/hooks/useReferrals";
 import { useAppointmentTypes } from "@/hooks/useAppointmentTypes";
+import { useActiveCourseTemplatesByType } from "@/hooks/useCourseTemplates";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +45,7 @@ export default function DoctorNewReferral() {
     current_medications: "",
     reason_for_referral: "",
     treatment_type_id: "",
+    course_template_id: "",
   });
 
   const [files, setFiles] = useState<File[]>([]);
@@ -128,6 +130,7 @@ export default function DoctorNewReferral() {
         current_medications: form.current_medications || null,
         reason_for_referral: form.reason_for_referral || null,
         treatment_type_id: form.treatment_type_id || null,
+        course_template_id: form.course_template_id || null,
       };
 
       const result = await createReferral.mutateAsync(referralData);
@@ -147,9 +150,15 @@ export default function DoctorNewReferral() {
   };
 
   const update = (field: string, value: string) =>
-    setForm((prev) => ({ ...prev, [field]: value }));
+    setForm((prev) => {
+      const next = { ...prev, [field]: value };
+      // Reset variant when type changes
+      if (field === "treatment_type_id") next.course_template_id = "";
+      return next;
+    });
 
   const activeTypes = appointmentTypes?.filter((t: any) => t.is_active) || [];
+  const { data: variants = [] } = useActiveCourseTemplatesByType(form.treatment_type_id || undefined);
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -259,6 +268,27 @@ export default function DoctorNewReferral() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+            )}
+            {form.treatment_type_id && variants.length > 0 && (
+              <div>
+                <Label>Treatment Variant</Label>
+                <Select value={form.course_template_id} onValueChange={(v) => update("course_template_id", v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select variant / medication..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {variants.map((v) => (
+                      <SelectItem key={v.id} value={v.id}>
+                        {v.name}
+                        {v.default_sessions > 1 ? ` — ${v.default_sessions} sessions` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Pre-configured by the clinic. Selecting a variant pre-fills sessions, frequency and required forms.
+                </p>
               </div>
             )}
             <div>

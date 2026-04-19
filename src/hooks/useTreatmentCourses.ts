@@ -60,6 +60,7 @@ export function useCreateTreatmentCourse() {
       patient_id: string;
       doctor_id?: string;
       treatment_type_id: string;
+      course_template_id?: string | null;
       total_sessions_planned: number;
       expected_end_date?: string;
       notes?: string;
@@ -98,6 +99,7 @@ export function useConvertReferralToCourse() {
       patient_id: string;
       doctor_id: string;
       treatment_type_id: string;
+      course_template_id?: string | null;
       total_sessions_planned: number;
       expected_end_date?: string;
       notes?: string;
@@ -110,6 +112,7 @@ export function useConvertReferralToCourse() {
           patient_id: data.patient_id,
           doctor_id: data.doctor_id,
           treatment_type_id: data.treatment_type_id,
+          course_template_id: data.course_template_id ?? null,
           total_sessions_planned: data.total_sessions_planned,
           expected_end_date: data.expected_end_date,
           notes: data.notes,
