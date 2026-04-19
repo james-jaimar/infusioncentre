@@ -230,9 +230,18 @@ export default function CourseTemplatesTab() {
             conversion, sessions, frequency and required forms are auto-populated.
           </p>
         </div>
-        <Button onClick={() => openNew("")} className="gap-1 shrink-0" disabled={typesCount === 0}>
-          <Plus className="h-4 w-4" /> New Template
-        </Button>
+        <div className="flex gap-2 shrink-0">
+          <Button
+            variant="outline"
+            onClick={() => setEditingType({ name: "", color: "#3E5B84" })}
+            className="gap-1"
+          >
+            <Plus className="h-4 w-4" /> New Type
+          </Button>
+          <Button onClick={() => openNew("")} className="gap-1" disabled={typesCount === 0}>
+            <Plus className="h-4 w-4" /> New Template
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
