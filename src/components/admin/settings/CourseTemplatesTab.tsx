@@ -19,7 +19,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { useAppointmentTypes } from "@/hooks/useAppointmentTypes";
+import {
+  useAppointmentTypes,
+  useCreateAppointmentType,
+  useUpdateAppointmentType,
+  useDeleteAppointmentType,
+} from "@/hooks/useAppointmentTypes";
 import { useFormTemplates } from "@/hooks/useFormTemplates";
 import {
   useCourseTemplates, useCreateCourseTemplate, useUpdateCourseTemplate,
