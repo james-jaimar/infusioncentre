@@ -2,10 +2,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { MessageSquare, Users, Calendar, Activity } from "lucide-react";
+import { MessageSquare, Users, Calendar, Activity, Layers } from "lucide-react";
 import { Link } from "react-router-dom";
-import { startOfDay, endOfDay, startOfWeek, endOfWeek, format } from "date-fns";
+import { startOfDay, endOfDay, startOfWeek, endOfWeek, formatDistanceToNow } from "date-fns";
+import { useActivePatientsWithCourses } from "@/hooks/useTreatmentCourses";
+import { TreatmentCourseChip } from "@/components/shared/TreatmentCourseChip";
 
 function useDashboardStats() {
   return useQuery({
@@ -17,11 +18,12 @@ function useDashboardStats() {
       const todayStart = startOfDay(now).toISOString();
       const todayEnd = endOfDay(now).toISOString();
 
-      const [contacts, patients, weekAppointments, todayAppointments] = await Promise.all([
+      const [contacts, patients, weekAppointments, todayAppointments, activeCourses] = await Promise.all([
         supabase.from("contact_submissions").select("id", { count: "exact", head: true }).eq("status", "new"),
         supabase.from("patients").select("id", { count: "exact", head: true }).eq("status", "active"),
         supabase.from("appointments").select("id", { count: "exact", head: true }).gte("scheduled_start", weekStart).lte("scheduled_start", weekEnd),
         supabase.from("appointments").select("id, status, scheduled_start, patient:patients!inner(first_name, last_name), appointment_type:appointment_types!inner(name)").gte("scheduled_start", todayStart).lte("scheduled_start", todayEnd).order("scheduled_start", { ascending: true }).limit(5),
+        supabase.from("treatment_courses").select("id", { count: "exact", head: true }).in("status", ["draft", "active", "ready"] as any),
       ]);
 
       return {
@@ -29,6 +31,7 @@ function useDashboardStats() {
         totalPatients: patients.count || 0,
         weekAppointments: weekAppointments.count || 0,
         todayAppointments: todayAppointments.data || [],
+        activeCourses: activeCourses.count || 0,
       };
     },
     refetchInterval: 60000,
@@ -38,14 +41,15 @@ function useDashboardStats() {
 export default function AdminDashboard() {
   const { profile } = useAuth();
   const { data: stats } = useDashboardStats();
+  const { data: activePatients } = useActivePatientsWithCourses(8);
 
   const greeting = profile?.first_name ? `Welcome back, ${profile.first_name}` : "Welcome back";
 
   const statCards = [
     { name: "Contact Submissions", href: "/admin/contacts", icon: MessageSquare, value: stats?.unreadContacts ?? "—", description: "Unread enquiries", variant: "info" as const },
     { name: "Patients", href: "/admin/patients", icon: Users, value: stats?.totalPatients ?? "—", description: "Active patients", variant: "success" as const },
-    { name: "Appointments", href: "/admin/appointments", icon: Calendar, value: stats?.weekAppointments ?? "—", description: "This week", variant: "warning" as const },
-    { name: "Reports", href: "/admin/reports", icon: Activity, value: "→", description: "View analytics", variant: "neutral" as const },
+    { name: "Active Courses", href: "/admin/patients?state=has_active", icon: Layers, value: stats?.activeCourses ?? "—", description: "Treatment courses underway", variant: "warning" as const },
+    { name: "Appointments", href: "/admin/appointments", icon: Calendar, value: stats?.weekAppointments ?? "—", description: "This week", variant: "neutral" as const },
   ];
 
   const stateClasses: Record<string, string> = {
@@ -126,34 +130,83 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Today's Appointments */}
-      <div className="mt-8">
-        <h2 className="text-lg font-semibold mb-4">Today's Appointments</h2>
-        <Card>
-          {stats?.todayAppointments?.length ? (
-            <CardContent className="p-0">
-              <div className="divide-y divide-border">
-                {stats.todayAppointments.map((apt: any) => (
-                  <div key={apt.id} className="flex items-center justify-between px-5 py-4">
-                    <div>
-                      <p className="font-medium text-foreground">
-                        {apt.patient.first_name} {apt.patient.last_name}
-                      </p>
-                      <p className="text-sm text-muted-foreground mt-0.5">{apt.appointment_type.name}</p>
+      {/* Today's Appointments + Active Patients */}
+      <div className="mt-8 grid gap-6 lg:grid-cols-2">
+        <div>
+          <h2 className="text-lg font-semibold mb-4">Today's Appointments</h2>
+          <Card>
+            {stats?.todayAppointments?.length ? (
+              <CardContent className="p-0">
+                <div className="divide-y divide-border">
+                  {stats.todayAppointments.map((apt: any) => (
+                    <div key={apt.id} className="flex items-center justify-between px-5 py-4">
+                      <div>
+                        <p className="font-medium text-foreground">
+                          {apt.patient.first_name} {apt.patient.last_name}
+                        </p>
+                        <p className="text-sm text-muted-foreground mt-0.5">{apt.appointment_type.name}</p>
+                      </div>
+                      <span className="text-sm text-muted-foreground font-mono tabular-nums">
+                        {new Date(apt.scheduled_start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </span>
                     </div>
-                    <span className="text-sm text-muted-foreground font-mono tabular-nums">
-                      {new Date(apt.scheduled_start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          ) : (
-            <CardContent className="py-8 text-center text-muted-foreground text-sm">
-              No appointments scheduled for today.
-            </CardContent>
-          )}
-        </Card>
+                  ))}
+                </div>
+              </CardContent>
+            ) : (
+              <CardContent className="py-8 text-center text-muted-foreground text-sm">
+                No appointments scheduled for today.
+              </CardContent>
+            )}
+          </Card>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">Active Patients</h2>
+            <Link
+              to="/admin/patients?state=has_active"
+              className="text-xs font-medium text-primary hover:underline"
+            >
+              View all →
+            </Link>
+          </div>
+          <Card>
+            {activePatients?.length ? (
+              <CardContent className="p-0">
+                <div className="divide-y divide-border">
+                  {activePatients.map((c: any) => (
+                    <Link
+                      key={c.id}
+                      to={`/admin/patients/${c.patient?.id}`}
+                      className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-muted/40 transition-colors"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-foreground truncate">
+                          {c.patient?.first_name} {c.patient?.last_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Updated {formatDistanceToNow(new Date(c.updated_at), { addSuffix: true })}
+                        </p>
+                      </div>
+                      <TreatmentCourseChip
+                        typeName={c.appointment_type?.name ?? "Course"}
+                        color={c.appointment_type?.color}
+                        sessionsCompleted={c.sessions_completed}
+                        totalSessions={c.total_sessions_planned}
+                        status={c.status}
+                      />
+                    </Link>
+                  ))}
+                </div>
+              </CardContent>
+            ) : (
+              <CardContent className="py-8 text-center text-muted-foreground text-sm">
+                No active treatment courses yet.
+              </CardContent>
+            )}
+          </Card>
+        </div>
       </div>
     </div>
   );

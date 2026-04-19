@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { usePatientList } from "@/hooks/usePatients";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { usePatientList, type CourseStateFilter, type PatientWithCourses } from "@/hooks/usePatients";
+import { useAppointmentTypes } from "@/hooks/useAppointmentTypes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -20,6 +21,8 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TreatmentCourseChip } from "@/components/shared/TreatmentCourseChip";
+import { cn } from "@/lib/utils";
 import {
   Search,
   Plus,
@@ -29,14 +32,31 @@ import {
 } from "lucide-react";
 import type { PatientStatus } from "@/types/patient";
 
+const ACTIVE_SET = new Set(["draft", "active", "ready"]);
+
+const COURSE_STATE_TABS: { value: CourseStateFilter; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "has_active", label: "Active courses" },
+  { value: "awaiting_scheduling", label: "Awaiting scheduling" },
+  { value: "completed", label: "Completed" },
+  { value: "no_course", label: "No course yet" },
+];
+
 export default function AdminPatients() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // URL-driven state
+  const courseState = (searchParams.get("state") as CourseStateFilter) || "all";
+  const treatmentTypeId = searchParams.get("type") || "all";
+  const status = (searchParams.get("status") as PatientStatus | "all") || "all";
+
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [status, setStatus] = useState<PatientStatus | 'all'>('all');
   const [page, setPage] = useState(1);
 
-  // Debounce search input
+  const { data: appointmentTypes } = useAppointmentTypes();
+
   const handleSearchChange = (value: string) => {
     setSearch(value);
     clearTimeout((window as any).searchTimeout);
@@ -46,29 +66,76 @@ export default function AdminPatients() {
     }, 300);
   };
 
+  const updateParam = (key: string, value: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (value === "all" || !value) next.delete(key);
+    else next.set(key, value);
+    setSearchParams(next, { replace: true });
+    setPage(1);
+  };
+
   const { data, isLoading, error } = usePatientList({
     search: debouncedSearch,
     status,
+    treatment_type_id: treatmentTypeId,
+    course_state: courseState,
     page,
     pageSize: 10,
   });
 
-  const getStatusBadgeVariant = (status: PatientStatus) => {
-    switch (status) {
-      case 'active':
-        return 'default';
-      case 'inactive':
-        return 'secondary';
-      case 'archived':
-        return 'outline';
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [courseState, treatmentTypeId, status]);
+
+  const getStatusBadgeVariant = (s: PatientStatus) => {
+    switch (s) {
+      case "active":
+        return "default";
+      case "inactive":
+        return "secondary";
+      case "archived":
+        return "outline";
       default:
-        return 'default';
+        return "default";
     }
   };
 
   const formatDate = (dateString: string | null) => {
-    if (!dateString) return '—';
-    return new Date(dateString).toLocaleDateString('en-ZA');
+    if (!dateString) return "—";
+    return new Date(dateString).toLocaleDateString("en-ZA");
+  };
+
+  const renderCourseChips = (patient: PatientWithCourses) => {
+    const courses = patient.treatment_courses ?? [];
+    if (courses.length === 0) {
+      return <span className="text-xs text-muted-foreground">—</span>;
+    }
+    // Prioritise active/scheduled/draft, then others
+    const sorted = [...courses].sort((a, b) => {
+      const aActive = ACTIVE_SET.has(a.status) ? 0 : 1;
+      const bActive = ACTIVE_SET.has(b.status) ? 0 : 1;
+      return aActive - bActive;
+    });
+    return (
+      <div className="flex flex-wrap gap-1">
+        {sorted.slice(0, 3).map((c) => (
+          <TreatmentCourseChip
+            key={c.id}
+            typeName={c.appointment_type?.name ?? "Course"}
+            color={c.appointment_type?.color}
+            sessionsCompleted={c.sessions_completed}
+            totalSessions={c.total_sessions_planned}
+            status={c.status}
+          />
+        ))}
+        {sorted.length > 3 && (
+          <span className="text-xs text-muted-foreground self-center">
+            +{sorted.length - 3}
+          </span>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -81,10 +148,31 @@ export default function AdminPatients() {
             Manage patient records and medical information
           </p>
         </div>
-        <Button onClick={() => navigate('/admin/patients/new')}>
+        <Button onClick={() => navigate("/admin/patients/new")}>
           <Plus className="mr-2 h-4 w-4" />
           Add Patient
         </Button>
+      </div>
+
+      {/* Course state quick filter chips */}
+      <div className="flex flex-wrap gap-2">
+        {COURSE_STATE_TABS.map((tab) => {
+          const active = courseState === tab.value;
+          return (
+            <button
+              key={tab.value}
+              onClick={() => updateParam("state", tab.value)}
+              className={cn(
+                "rounded-full border px-3 py-1 text-sm transition-colors",
+                active
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/40"
+              )}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Filters */}
@@ -98,14 +186,27 @@ export default function AdminPatients() {
             className="pl-10"
           />
         </div>
-        <Select
-          value={status}
-          onValueChange={(value) => {
-            setStatus(value as PatientStatus | 'all');
-            setPage(1);
-          }}
-        >
-          <SelectTrigger className="w-[180px]">
+        <Select value={treatmentTypeId} onValueChange={(v) => updateParam("type", v)}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Treatment Type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Treatment Types</SelectItem>
+            {appointmentTypes?.map((t) => (
+              <SelectItem key={t.id} value={t.id}>
+                <span className="inline-flex items-center gap-2">
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: t.color }}
+                  />
+                  {t.name}
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={status} onValueChange={(v) => updateParam("status", v)}>
+          <SelectTrigger className="w-[160px]">
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
           <SelectContent>
@@ -124,7 +225,7 @@ export default function AdminPatients() {
             <TableRow>
               <TableHead>Patient</TableHead>
               <TableHead className="hidden sm:table-cell">ID Number</TableHead>
-              <TableHead className="hidden md:table-cell">Phone</TableHead>
+              <TableHead>Treatment Course</TableHead>
               <TableHead className="hidden lg:table-cell">Medical Aid</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="hidden md:table-cell">Added</TableHead>
@@ -132,7 +233,6 @@ export default function AdminPatients() {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              // Loading skeleton
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
                   <TableCell>
@@ -147,8 +247,8 @@ export default function AdminPatients() {
                   <TableCell className="hidden sm:table-cell">
                     <Skeleton className="h-4 w-24" />
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    <Skeleton className="h-4 w-24" />
+                  <TableCell>
+                    <Skeleton className="h-5 w-32" />
                   </TableCell>
                   <TableCell className="hidden lg:table-cell">
                     <Skeleton className="h-4 w-32" />
@@ -174,16 +274,16 @@ export default function AdminPatients() {
                     <User className="h-8 w-8 text-muted-foreground" />
                     <p className="text-muted-foreground">
                       {debouncedSearch
-                        ? 'No patients found matching your search'
-                        : 'No patients yet'}
+                        ? "No patients found matching your search"
+                        : "No patients match the current filters"}
                     </p>
                     {!debouncedSearch && (
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => navigate('/admin/patients/new')}
+                        onClick={() => navigate("/admin/patients/new")}
                       >
-                        Add your first patient
+                        Add a patient
                       </Button>
                     )}
                   </div>
@@ -215,13 +315,11 @@ export default function AdminPatients() {
                     </div>
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">
-                    {patient.id_number || '—'}
+                    {patient.id_number || "—"}
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    {patient.phone || '—'}
-                  </TableCell>
+                  <TableCell>{renderCourseChips(patient)}</TableCell>
                   <TableCell className="hidden lg:table-cell">
-                    {patient.medical_aid_name || '—'}
+                    {patient.medical_aid_name || "—"}
                   </TableCell>
                   <TableCell>
                     <Badge variant={getStatusBadgeVariant(patient.status)}>
@@ -242,7 +340,7 @@ export default function AdminPatients() {
       {data && data.totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Showing {((page - 1) * 10) + 1} to {Math.min(page * 10, data.totalCount)} of{' '}
+            Showing {(page - 1) * 10 + 1} to {Math.min(page * 10, data.totalCount)} of{" "}
             {data.totalCount} patients
           </p>
           <div className="flex items-center gap-2">
