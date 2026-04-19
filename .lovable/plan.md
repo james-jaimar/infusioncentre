@@ -1,35 +1,38 @@
 
 
-## Make Course Templates CRUD obvious to Gail
+## Add "Wound Care" as care pathway service
 
-### What's actually wrong
+Same pattern as Stoma Therapy — pure data seed, no schema or code changes.
 
-The CRUD code is fully wired (create / edit / delete / link forms all work), but **the UI hides it** behind two friction points:
+### Migration: seed Wound Care + starter templates
 
-1. Treatment-type cards start **collapsed** — Gail sees a list of grey cards with no obvious action.
-2. The "+ Variant" button only appears **inside** an expanded card. There's no top-level "New Template" button.
-3. No empty-state guidance when a treatment type has zero variants.
+**Appointment type**
+- Name: `Wound Care`
+- `service_category`: `care_pathway`
+- Duration: 45 min, color e.g. `#B85C5C` (clinical clay)
+- `display_order`: 110 (after Stoma at 100)
 
-### What we'll change in `CourseTemplatesTab.tsx`
+**Starter templates** (all `as_needed` frequency, single session each, ongoing courses)
 
-1. **Top-level "New Template" button** in the page header — opens the editor with type pre-empty so Gail picks the type from inside the dialog. Single discoverable entry point.
-2. **Cards expanded by default** — initialize `expanded` set with all type IDs so all variants are visible immediately. Gail can collapse to declutter if she wants.
-3. **Make the "+ Variant" button always visible** on the card header (not just when expanded) — so adding a Ferinject variant under "Iron Infusion" is one click from any state.
-4. **Friendly empty state** inside each card with a centred "Add first variant" call-to-action when a type has no templates yet.
-5. **Header pill summary** — show total template count next to title (e.g. "Course Templates · 6 variants across 3 types") so Gail knows the page works even when types are collapsed.
+| # | Template | Duration | Purpose |
+|---|---|---|---|
+| 0 | Initial Wound Assessment | 60 min | First visit: wound measurement, photo, baseline TIME assessment, dressing plan |
+| 1 | Dressing Change | 30 min | Routine dressing change, cleansing, reassessment |
+| 2 | Wound Review | 45 min | Periodic progress review, photo, plan adjustment |
+| 3 | Compression Therapy | 45 min | Application/replacement of compression bandaging (venous ulcers) |
+| 4 | Discharge / Healed Review | 30 min | Final review when wound healed; education on prevention |
+
+Idempotent (skip if Wound Care already exists, skip templates if any already linked) — same guard pattern as the Stoma migration.
 
 ### What stays the same
+- All UI (CourseTemplatesTab already renders care pathways with the badge, ongoing chip, as_needed handling)
+- All hooks/types (already support `care_pathway` + `as_needed`)
+- No frontend changes needed
 
-- Database schema, hooks, mutations — all already correct
-- The edit/delete/forms-linking dialog — already complete and functional
-- Sidebar navigation
-- Seeded templates from earlier round
-
-### Files to touch
-
+### Files
 | File | Change |
 |---|---|
-| `src/components/admin/settings/CourseTemplatesTab.tsx` | Add top-level New button, default-expanded cards, always-visible variant button, empty-state CTA, header counter |
+| New migration `supabase/migrations/<ts>_wound_care_seed.sql` | Insert appointment type + 5 templates |
 
-No other files affected. No DB migration. No new hooks.
+After this, Gail can edit/rename/add/delete the wound care templates from Settings → Course Templates exactly like Stoma.
 
