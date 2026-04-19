@@ -524,6 +524,69 @@ export default function CourseTemplatesTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!editingType} onOpenChange={(o) => !o && setEditingType(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingType?.id ? "Rename Treatment Type" : "New Treatment Type"}</DialogTitle>
+            <DialogDescription>
+              Treatment types group course template variants (e.g. "Iron Infusion" contains Ferinject, Venofer, Monofer).
+            </DialogDescription>
+          </DialogHeader>
+          {editingType && (
+            <div className="space-y-3 py-2">
+              <div className="space-y-1.5">
+                <Label>Name</Label>
+                <Input
+                  value={editingType.name}
+                  onChange={(e) => setEditingType({ ...editingType, name: e.target.value })}
+                  placeholder="e.g. Iron Infusion"
+                  autoFocus
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Color</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="color"
+                    value={editingType.color}
+                    onChange={(e) => setEditingType({ ...editingType, color: e.target.value })}
+                    className="h-10 w-16 p-1 cursor-pointer"
+                  />
+                  <Input
+                    value={editingType.color}
+                    onChange={(e) => setEditingType({ ...editingType, color: e.target.value })}
+                    placeholder="#3E5B84"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingType(null)}>Cancel</Button>
+            <Button onClick={saveType} disabled={createType.isPending || updateType.isPending}>
+              {createType.isPending || updateType.isPending ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!deletingTypeId} onOpenChange={(o) => !o && setDeletingTypeId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this treatment type?</AlertDialogTitle>
+            <AlertDialogDescription>
+              All course template variants under this type will also be removed. Appointments and
+              referrals using this type will be blocked from deletion — deactivate it via Appointment Types
+              if it is in use.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteType}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
