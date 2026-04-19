@@ -266,14 +266,34 @@ export default function CourseTemplatesTab() {
                     <CardTitle className="text-base">{t.name}</CardTitle>
                     <Badge variant="secondary">{list.length} variant{list.length === 1 ? "" : "s"}</Badge>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={(e) => { e.stopPropagation(); openNew(t.id); }}
-                    className="gap-1"
-                  >
-                    <Plus className="h-3.5 w-3.5" /> Variant
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={(e) => { e.stopPropagation(); setEditingType({ id: t.id, name: t.name, color: t.color }); }}
+                      title="Rename type"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={(e) => { e.stopPropagation(); setDeletingTypeId(t.id); }}
+                      title="Delete type"
+                    >
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => { e.stopPropagation(); openNew(t.id); }}
+                      className="gap-1 ml-1"
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Variant
+                    </Button>
+                  </div>
                 </CardHeader>
                 {isOpen && (
                   <CardContent className="pt-0">
