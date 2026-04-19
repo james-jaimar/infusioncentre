@@ -51,6 +51,31 @@ export function useTreatmentCoursesByPatient(patientId: string | undefined) {
   });
 }
 
+export function useActivePatientsWithCourses(limit = 8) {
+  return useQuery({
+    queryKey: [QUERY_KEY, "active-patients", limit],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("treatment_courses" as any)
+        .select(`
+          id,
+          status,
+          sessions_completed,
+          total_sessions_planned,
+          updated_at,
+          patient:patients!treatment_courses_patient_id_fkey(id, first_name, last_name),
+          appointment_type:appointment_types!treatment_courses_treatment_type_id_fkey(id, name, color)
+        `)
+        .in("status", ["draft", "active", "scheduled"])
+        .order("updated_at", { ascending: false })
+        .limit(limit);
+      if (error) throw error;
+      return data as any[];
+    },
+    refetchInterval: 60000,
+  });
+}
+
 export function useTreatmentCourse(id: string | undefined) {
   return useQuery({
     queryKey: [QUERY_KEY, id],
