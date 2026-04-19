@@ -74,11 +74,16 @@ export default function CourseTemplatesTab() {
   const update = useUpdateCourseTemplate();
   const remove = useDeleteCourseTemplate();
   const setForms = useSetTemplateForms();
+  const createType = useCreateAppointmentType();
+  const updateType = useUpdateAppointmentType();
+  const deleteType = useDeleteAppointmentType();
 
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const [hasInitExpanded, setHasInitExpanded] = useState(false);
   const [editing, setEditing] = useState<EditState | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingType, setEditingType] = useState<{ id?: string; name: string; color: string } | null>(null);
+  const [deletingTypeId, setDeletingTypeId] = useState<string | null>(null);
 
   const grouped = useMemo(() => {
     const map = new Map<string, CourseTemplate[]>();
