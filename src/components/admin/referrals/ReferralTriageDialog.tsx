@@ -1,32 +1,30 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useUpdateReferralStatus, useCreatePatientFromReferral } from "@/hooks/useReferrals";
+import {
+  useUpdateReferralStatus,
+  useCreatePatientFromReferral,
+  useLinkReferralPatient,
+  useReferral,
+} from "@/hooks/useReferrals";
 import { useAllowedTransitions, useStatusDisplay } from "@/hooks/useStatusDictionaries";
 import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { PatientMatcher } from "./PatientMatcher";
+import { ReferralStatusTimeline } from "./ReferralStatusTimeline";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
-import { CheckCircle, XCircle, MessageSquare, ArrowRight } from "lucide-react";
+import { CheckCircle, XCircle, MessageSquare, ArrowRight, AlertCircle, Loader2 } from "lucide-react";
 
 interface Props {
   referral: any;
@@ -35,72 +33,114 @@ interface Props {
   onConvertToCourse: (referral: any, patientId: string) => void;
 }
 
-export function ReferralTriageDialog({ referral, open, onOpenChange, onConvertToCourse }: Props) {
+// Fire-and-forget doctor notification — don't block UI on cold-starts
+function notifyDoctorAsync(referral: any, toStatus: string, statusLabel: string, notes: string) {
+  const doctorEmail = (referral.doctors as any)?.email;
+  if (!doctorEmail) return;
+  void supabase.functions
+    .invoke("send-email", {
+      body: {
+        to: doctorEmail,
+        subject: `Referral Update: ${referral.patient_first_name} ${referral.patient_last_name} — ${statusLabel}`,
+        html: `<p>Dear ${(referral.doctors as any)?.practice_name || "Doctor"},</p>
+          <p>Your referral for <strong>${referral.patient_first_name} ${referral.patient_last_name}</strong> has been updated to: <strong>${statusLabel}</strong>.</p>
+          ${notes ? `<p><strong>Notes:</strong> ${notes}</p>` : ""}
+          <p>Thank you,<br/>Gail Infusion Centre</p>`,
+        related_entity_type: "referral",
+        related_entity_id: referral.id,
+        notification_key: "notify_admin_doctor_referral",
+      },
+    })
+    .catch((err) => console.error("Doctor notification failed (non-blocking):", err));
+}
+
+export function ReferralTriageDialog({ referral: referralProp, open, onOpenChange, onConvertToCourse }: Props) {
   const updateStatus = useUpdateReferralStatus();
   const createPatient = useCreatePatientFromReferral();
+  const linkPatient = useLinkReferralPatient();
   const { user } = useAuth();
-  const { toast } = useToast();
+
+  // Always read fresh data — props are stale after status transitions
+  const { data: fresh } = useReferral(referralProp?.id);
+  const referral = fresh
+    ? { ...referralProp, ...fresh, doctors: referralProp?.doctors || (fresh as any).doctors, doctor_display_name: referralProp?.doctor_display_name }
+    : referralProp;
+
   const allowedTransitions = useAllowedTransitions("referral", referral?.status || "pending");
   const getStatus = useStatusDisplay("referral");
 
   const [activeTab, setActiveTab] = useState("details");
   const [reviewNotes, setReviewNotes] = useState(referral?.notes || "");
-  const [linkedPatientId, setLinkedPatientId] = useState<string | null>(referral?.patient_id || null);
   const [infoRequestMessage, setInfoRequestMessage] = useState("");
+  const [pendingTo, setPendingTo] = useState<string | null>(null);
+
+  // Reset notes when switching referrals
+  useEffect(() => {
+    setReviewNotes(referralProp?.notes || "");
+    setInfoRequestMessage("");
+    setActiveTab("details");
+  }, [referralProp?.id]);
 
   if (!referral) return null;
 
+  const linkedPatientId: string | null = referral.patient_id || null;
   const status = getStatus(referral.status);
 
-  const handleTransition = async (toStatus: string) => {
+  const handleLinkPatient = async (patientId: string | null) => {
+    try {
+      await linkPatient.mutateAsync({ referralId: referral.id, patientId });
+      toast.success(patientId ? "Patient linked" : "Patient unlinked");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to update link");
+    }
+  };
+
+  const handleTransition = async (toStatus: string, opts?: { skipNotify?: boolean }) => {
+    // Guard: Accept requires linked patient
+    if (toStatus === "accepted" && !linkedPatientId) {
+      toast.error("Link a patient before accepting this referral");
+      setActiveTab("patient");
+      return;
+    }
+
+    setPendingTo(toStatus);
     try {
       await updateStatus.mutateAsync({
         id: referral.id,
         status: toStatus,
         reviewed_by: user?.id,
         notes: reviewNotes,
-        patient_id: linkedPatientId || undefined,
+        from_status: referral.status,
       });
 
-      // Send doctor notification
-      try {
-        const doctorEmail = (referral.doctors as any)?.email;
-        if (doctorEmail) {
-          const statusLabel = getStatus(toStatus).label;
-          await supabase.functions.invoke("send-email", {
-            body: {
-              to: doctorEmail,
-              subject: `Referral Update: ${referral.patient_first_name} ${referral.patient_last_name} — ${statusLabel}`,
-              html: `<p>Dear ${(referral.doctors as any)?.practice_name || "Doctor"},</p>
-                <p>Your referral for <strong>${referral.patient_first_name} ${referral.patient_last_name}</strong> has been updated to: <strong>${statusLabel}</strong>.</p>
-                ${reviewNotes ? `<p><strong>Notes:</strong> ${reviewNotes}</p>` : ""}
-                <p>Thank you,<br/>Gail Infusion Centre</p>`,
-              related_entity_type: "referral",
-              related_entity_id: referral.id,
-              notification_key: "notify_admin_doctor_referral",
-            },
-          });
-        }
-      } catch {
-        // Notification failure shouldn't block the transition
+      const statusLabel = getStatus(toStatus).label;
+      if (!opts?.skipNotify) {
+        notifyDoctorAsync(referral, toStatus, statusLabel, reviewNotes);
       }
 
-      toast({ title: `Referral ${getStatus(toStatus).label.toLowerCase()}` });
-      onOpenChange(false);
+      toast.success(`Referral status: ${statusLabel}`);
+      // Don't auto-close — let user see new status & take next action
     } catch (e: any) {
-      toast({ title: e.message, variant: "destructive" });
+      toast.error(e.message || "Failed to update status");
+    } finally {
+      setPendingTo(null);
     }
   };
 
   const handleRequestInfo = async () => {
     const doctorEmail = (referral.doctors as any)?.email;
-    if (!doctorEmail || !infoRequestMessage) {
-      toast({ title: "Doctor email and message are required", variant: "destructive" });
+    if (!doctorEmail) {
+      toast.error("Doctor email not on file");
+      return;
+    }
+    if (!infoRequestMessage.trim()) {
+      toast.error("Describe what information is needed");
       return;
     }
 
-    try {
-      await supabase.functions.invoke("send-email", {
+    // Fire-and-forget the bespoke info-request email
+    void supabase.functions
+      .invoke("send-email", {
         body: {
           to: doctorEmail,
           subject: `Information Required: Referral for ${referral.patient_first_name} ${referral.patient_last_name}`,
@@ -112,15 +152,13 @@ export function ReferralTriageDialog({ referral, open, onOpenChange, onConvertTo
           related_entity_type: "referral",
           related_entity_id: referral.id,
         },
-      });
+      })
+      .catch((err) => console.error("Info-request email failed (non-blocking):", err));
 
-      await handleTransition("info_requested");
-    } catch (e: any) {
-      toast({ title: e.message, variant: "destructive" });
-    }
+    await handleTransition("info_requested", { skipNotify: true });
   };
 
-  const canConvert = referral.status === "accepted" && linkedPatientId;
+  const canConvert = referral.status === "accepted" && !!linkedPatientId;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -134,13 +172,21 @@ export function ReferralTriageDialog({ referral, open, onOpenChange, onConvertTo
             >
               {status.label}
             </Badge>
+            {linkedPatientId && (
+              <Badge variant="outline" className="gap-1">
+                <CheckCircle className="h-3 w-3" /> Patient linked
+              </Badge>
+            )}
           </DialogTitle>
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="patient">Patient Match</TabsTrigger>
+            <TabsTrigger value="patient">
+              Patient Match
+              {linkedPatientId && <CheckCircle className="h-3 w-3 ml-1 text-primary" />}
+            </TabsTrigger>
             <TabsTrigger value="actions">Actions</TabsTrigger>
           </TabsList>
 
@@ -215,12 +261,23 @@ export function ReferralTriageDialog({ referral, open, onOpenChange, onConvertTo
                 rows={3}
                 placeholder="Add notes about this referral..."
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                Notes are saved when you take an action below.
+              </p>
+            </div>
+
+            <Separator />
+
+            <div>
+              <p className="text-sm font-medium mb-2">History</p>
+              <ReferralStatusTimeline referralId={referral.id} createdAt={referral.created_at} />
             </div>
           </TabsContent>
 
           <TabsContent value="patient" className="space-y-4 mt-4">
             <p className="text-sm text-muted-foreground">
               Search for an existing patient to link this referral, or create a new patient record from the referral data.
+              Linking is saved immediately.
             </p>
             <PatientMatcher
               firstName={referral.patient_first_name}
@@ -228,7 +285,7 @@ export function ReferralTriageDialog({ referral, open, onOpenChange, onConvertTo
               email={referral.patient_email}
               phone={referral.patient_phone}
               currentPatientId={linkedPatientId}
-              onMatch={setLinkedPatientId}
+              onMatch={handleLinkPatient}
               onCreatePatient={async () => {
                 try {
                   const patient = await createPatient.mutateAsync({
@@ -241,50 +298,85 @@ export function ReferralTriageDialog({ referral, open, onOpenChange, onConvertTo
                     medicalAidNumber: referral.medical_aid_number,
                     medicalAidMainMember: referral.medical_aid_main_member,
                   });
-                  setLinkedPatientId(patient.id);
-                  toast({ title: `Patient record created for ${referral.patient_first_name} ${referral.patient_last_name}` });
+                  toast.success(`Patient record created for ${referral.patient_first_name} ${referral.patient_last_name}`);
                 } catch (e: any) {
-                  toast({ title: e.message, variant: "destructive" });
+                  toast.error(e.message);
                 }
               }}
             />
           </TabsContent>
 
           <TabsContent value="actions" className="space-y-4 mt-4">
-            {/* Status transition actions */}
-            <div className="space-y-3">
+            {/* Convert CTA — surfaces immediately when accepted + linked */}
+            {canConvert && (
+              <div className="rounded-lg border-2 border-primary bg-primary/5 p-4 space-y-2">
+                <p className="text-sm font-semibold text-foreground">Ready to convert</p>
+                <p className="text-xs text-muted-foreground">
+                  This referral is accepted and linked to a patient. Create a Treatment Course to schedule sessions.
+                </p>
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    onOpenChange(false);
+                    onConvertToCourse(referral, linkedPatientId!);
+                  }}
+                >
+                  Convert to Treatment Course →
+                </Button>
+              </div>
+            )}
+
+            {referral.status === "under_review" && !linkedPatientId && (
+              <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+                <div className="text-xs">
+                  <p className="font-medium text-foreground">Link a patient before accepting</p>
+                  <p className="text-muted-foreground">
+                    Use the <strong>Patient Match</strong> tab to link an existing record or create a new one.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-2">
               <p className="text-sm font-medium">Available Actions</p>
 
               {allowedTransitions.map((t) => {
-                const isAccept = t.to_status === "accepted" || t.to_status === "under_review";
-                const isReject = t.to_status === "rejected" || t.to_status === "cancelled";
+                const isAccept = t.to_status === "accepted";
+                const isStartReview = t.to_status === "under_review";
+                const isReject = t.to_status === "rejected";
+                const isCancel = t.to_status === "cancelled";
                 const isInfoRequest = t.to_status === "info_requested";
+                const isConvert = t.to_status === "converted_to_course";
+                const isInfoReceived = t.to_status === "under_review" && referral.status === "info_requested";
 
-                let icon = <ArrowRight className="h-4 w-4" />;
+                // Hide the dictionary "Convert" — handled by dedicated CTA above
+                if (isConvert) return null;
+
+                let icon: JSX.Element = <ArrowRight className="h-4 w-4" />;
                 let variant: "default" | "destructive" | "outline" | "secondary" = "outline";
 
                 if (isAccept) {
                   icon = <CheckCircle className="h-4 w-4" />;
                   variant = "default";
-                } else if (isReject) {
+                } else if (isReject || isCancel) {
                   icon = <XCircle className="h-4 w-4" />;
                   variant = "destructive";
                 } else if (isInfoRequest) {
                   icon = <MessageSquare className="h-4 w-4" />;
                   variant = "secondary";
+                } else if (isStartReview || isInfoReceived) {
+                  icon = <ArrowRight className="h-4 w-4" />;
+                  variant = "default";
                 }
 
                 if (isInfoRequest) {
                   return (
                     <div key={t.to_status} className="space-y-2 border rounded-lg p-3">
-                      <Button
-                        variant={variant}
-                        className="w-full justify-start gap-2"
-                        disabled
-                      >
-                        {icon}
+                      <p className="text-sm font-medium flex items-center gap-2">
+                        <MessageSquare className="h-4 w-4" />
                         {t.label || t.display_label}
-                      </Button>
+                      </p>
                       <Textarea
                         placeholder="Describe what information is needed from the doctor..."
                         value={infoRequestMessage}
@@ -293,14 +385,19 @@ export function ReferralTriageDialog({ referral, open, onOpenChange, onConvertTo
                       />
                       <Button
                         onClick={handleRequestInfo}
-                        disabled={!infoRequestMessage || updateStatus.isPending}
+                        disabled={!infoRequestMessage.trim() || pendingTo === "info_requested"}
                         size="sm"
+                        variant="secondary"
                       >
+                        {pendingTo === "info_requested" && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
                         Send Request & Update Status
                       </Button>
                     </div>
                   );
                 }
+
+                const acceptDisabled = isAccept && !linkedPatientId;
+                const isPending = pendingTo === t.to_status;
 
                 return (
                   <Button
@@ -308,40 +405,29 @@ export function ReferralTriageDialog({ referral, open, onOpenChange, onConvertTo
                     variant={variant}
                     className="w-full justify-start gap-2"
                     onClick={() => handleTransition(t.to_status)}
-                    disabled={updateStatus.isPending}
+                    disabled={isPending || acceptDisabled || updateStatus.isPending}
                   >
-                    {icon}
+                    {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : icon}
                     {t.label || t.display_label}
+                    {acceptDisabled && (
+                      <span className="ml-auto text-xs opacity-70">Link a patient first</span>
+                    )}
                   </Button>
                 );
               })}
 
               {allowedTransitions.length === 0 && (
-                <p className="text-sm text-muted-foreground">No further transitions available for this status.</p>
+                <p className="text-sm text-muted-foreground">
+                  No further transitions available for this status.
+                </p>
               )}
             </div>
 
-            {/* Convert to course action */}
-            {canConvert && (
-              <>
-                <Separator />
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Convert to Treatment Course</p>
-                  <p className="text-xs text-muted-foreground">
-                    This referral has been accepted and linked to a patient. You can now create a Treatment Course.
-                  </p>
-                  <Button
-                    className="w-full"
-                    onClick={() => {
-                      onOpenChange(false);
-                      onConvertToCourse(referral, linkedPatientId!);
-                    }}
-                  >
-                    Convert to Treatment Course →
-                  </Button>
-                </div>
-              </>
-            )}
+            <Separator />
+
+            <Button variant="ghost" className="w-full" onClick={() => onOpenChange(false)}>
+              Close
+            </Button>
           </TabsContent>
         </Tabs>
       </DialogContent>

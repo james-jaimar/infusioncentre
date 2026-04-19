@@ -70,6 +70,7 @@ export default function AdminReferrals() {
       />
 
       <ReferralTriageDialog
+        key={selectedReferral?.id || "none"}
         referral={selectedReferral}
         open={triageOpen}
         onOpenChange={setTriageOpen}
