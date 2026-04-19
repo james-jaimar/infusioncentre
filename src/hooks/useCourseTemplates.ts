@@ -1,7 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-export type CourseFrequency = "single" | "weekly" | "twice_weekly" | "biweekly" | "monthly";
+export type CourseFrequency =
+  | "single"
+  | "weekly"
+  | "twice_weekly"
+  | "biweekly"
+  | "monthly"
+  | "as_needed"
+  | "custom_schedule";
+
+export type ServiceCategory = "infusion" | "care_pathway";
 
 export interface CourseTemplate {
   id: string;
@@ -9,14 +18,14 @@ export interface CourseTemplate {
   appointment_type_id: string;
   name: string;
   description: string | null;
-  default_sessions: number;
+  default_sessions: number | null;
   default_frequency: CourseFrequency;
   default_session_duration_mins: number | null;
   medication_name: string | null;
   medication_notes: string | null;
   is_active: boolean;
   display_order: number;
-  appointment_type?: { id: string; name: string; color: string };
+  appointment_type?: { id: string; name: string; color: string; service_category?: ServiceCategory };
   template_forms?: Array<{ id: string; form_template_id: string; form_template?: { id: string; name: string } }>;
 }
 
