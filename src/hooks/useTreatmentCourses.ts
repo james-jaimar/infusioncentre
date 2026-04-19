@@ -30,6 +30,27 @@ export function useTreatmentCourses(statusFilter?: TreatmentCourseStatus[]) {
   });
 }
 
+export function useTreatmentCoursesByPatient(patientId: string | undefined) {
+  return useQuery({
+    queryKey: [QUERY_KEY, "by-patient", patientId],
+    enabled: !!patientId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("treatment_courses" as any)
+        .select(`
+          *,
+          appointment_type:appointment_types!treatment_courses_treatment_type_id_fkey(id, name, color),
+          doctor:doctors!treatment_courses_doctor_id_fkey(id, practice_name),
+          referral:referrals!treatment_courses_referral_id_fkey(id, diagnosis, urgency)
+        `)
+        .eq("patient_id", patientId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as any[];
+    },
+  });
+}
+
 export function useTreatmentCourse(id: string | undefined) {
   return useQuery({
     queryKey: [QUERY_KEY, id],
