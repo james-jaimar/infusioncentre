@@ -16,6 +16,8 @@ export interface TreatmentChair {
   updated_at: string;
 }
 
+export type ServiceCategory = "infusion" | "care_pathway";
+
 export interface AppointmentType {
   id: string;
   name: string;
@@ -25,6 +27,7 @@ export interface AppointmentType {
   preparation_instructions: string | null;
   is_active: boolean;
   display_order: number;
+  service_category?: ServiceCategory;
   created_at: string;
   updated_at: string;
 }

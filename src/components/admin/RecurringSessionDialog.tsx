@@ -24,7 +24,7 @@ interface RecurringSessionDialogProps {
     id: string;
     patient_id: string;
     treatment_type_id: string;
-    total_sessions_planned: number;
+    total_sessions_planned: number | null;
     sessions_completed: number;
     appointment_type?: { name: string; color: string; default_duration_minutes: number } | null;
     patient?: { first_name: string; last_name: string } | null;
@@ -55,7 +55,10 @@ const DAYS_OF_WEEK = [
 ];
 
 export function RecurringSessionDialog({ open, onOpenChange, treatmentCourse }: RecurringSessionDialogProps) {
-  const remainingSessions = treatmentCourse.total_sessions_planned - treatmentCourse.sessions_completed;
+  const isOngoing = treatmentCourse.total_sessions_planned == null;
+  const remainingSessions = isOngoing
+    ? 12
+    : Math.max(0, (treatmentCourse.total_sessions_planned ?? 0) - treatmentCourse.sessions_completed);
   const defaultDuration = treatmentCourse.appointment_type?.default_duration_minutes || 60;
 
   const [startDate, setStartDate] = useState<Date | undefined>();
@@ -63,7 +66,7 @@ export function RecurringSessionDialog({ open, onOpenChange, treatmentCourse }: 
   const [preferredDay, setPreferredDay] = useState<number>(1);
   const [secondDay, setSecondDay] = useState<number>(4);
   const [time, setTime] = useState("09:00");
-  const [numSessions, setNumSessions] = useState(remainingSessions);
+  const [numSessions, setNumSessions] = useState(remainingSessions || 1);
   const [chairId, setChairId] = useState<string>("");
   const [nurseId, setNurseId] = useState<string>("");
 
@@ -121,7 +124,9 @@ export function RecurringSessionDialog({ open, onOpenChange, treatmentCourse }: 
           scheduled_start: date,
           duration_minutes: defaultDuration,
           session_number: treatmentCourse.sessions_completed + idx + 1,
-          notes: `Session ${treatmentCourse.sessions_completed + idx + 1} of ${treatmentCourse.total_sessions_planned}`,
+          notes: isOngoing
+            ? `Session ${treatmentCourse.sessions_completed + idx + 1} (ongoing pathway)`
+            : `Session ${treatmentCourse.sessions_completed + idx + 1} of ${treatmentCourse.total_sessions_planned}`,
         })),
       });
       toast.success(`${previewDates.length} appointments created`);
@@ -232,11 +237,19 @@ export function RecurringSessionDialog({ open, onOpenChange, treatmentCourse }: 
             <Input
               type="number"
               min={1}
-              max={remainingSessions}
+              max={isOngoing ? undefined : remainingSessions}
               value={numSessions}
-              onChange={(e) => setNumSessions(Math.min(remainingSessions, Math.max(1, parseInt(e.target.value) || 1)))}
+              onChange={(e) =>
+                setNumSessions(
+                  isOngoing
+                    ? Math.max(1, parseInt(e.target.value) || 1)
+                    : Math.min(remainingSessions, Math.max(1, parseInt(e.target.value) || 1))
+                )
+              }
             />
-            <p className="text-xs text-muted-foreground">{remainingSessions} remaining in course</p>
+            <p className="text-xs text-muted-foreground">
+              {isOngoing ? "Ongoing pathway — book as many as needed" : `${remainingSessions} remaining in course`}
+            </p>
           </div>
 
           {/* Chair */}

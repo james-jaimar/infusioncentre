@@ -37,7 +37,11 @@ const FREQUENCY_LABELS: Record<CourseFrequency, string> = {
   twice_weekly: "Twice weekly",
   biweekly: "Every 2 weeks",
   monthly: "Monthly",
+  as_needed: "As needed",
+  custom_schedule: "Custom schedule",
 };
+
+type TypeEditState = { id?: string; name: string; color: string; service_category: "infusion" | "care_pathway" };
 
 interface EditState {
   id?: string;
@@ -82,7 +86,7 @@ export default function CourseTemplatesTab() {
   const [hasInitExpanded, setHasInitExpanded] = useState(false);
   const [editing, setEditing] = useState<EditState | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [editingType, setEditingType] = useState<{ id?: string; name: string; color: string } | null>(null);
+  const [editingType, setEditingType] = useState<TypeEditState | null>(null);
   const [deletingTypeId, setDeletingTypeId] = useState<string | null>(null);
 
   const grouped = useMemo(() => {
@@ -185,14 +189,19 @@ export default function CourseTemplatesTab() {
       if (editingType.id) {
         await updateType.mutateAsync({
           id: editingType.id,
-          data: { name: editingType.name.trim(), color: editingType.color } as any,
+          data: {
+            name: editingType.name.trim(),
+            color: editingType.color,
+            service_category: editingType.service_category,
+          } as any,
         });
         toast.success("Treatment type updated");
       } else {
         await createType.mutateAsync({
           name: editingType.name.trim(),
           color: editingType.color,
-        });
+          service_category: editingType.service_category,
+        } as any);
         toast.success("Treatment type created");
       }
       setEditingType(null);
@@ -233,7 +242,7 @@ export default function CourseTemplatesTab() {
         <div className="flex gap-2 shrink-0">
           <Button
             variant="outline"
-            onClick={() => setEditingType({ name: "", color: "#3E5B84" })}
+            onClick={() => setEditingType({ name: "", color: "#3E5B84", service_category: "infusion" })}
             className="gap-1"
           >
             <Plus className="h-4 w-4" /> New Type
@@ -265,13 +274,24 @@ export default function CourseTemplatesTab() {
                     />
                     <CardTitle className="text-base">{t.name}</CardTitle>
                     <Badge variant="secondary">{list.length} variant{list.length === 1 ? "" : "s"}</Badge>
+                    {t.service_category === "care_pathway" && (
+                      <Badge variant="outline" className="text-xs">Care pathway</Badge>
+                    )}
                   </div>
                   <div className="flex items-center gap-1">
                     <Button
                       size="icon"
                       variant="ghost"
                       className="h-8 w-8"
-                      onClick={(e) => { e.stopPropagation(); setEditingType({ id: t.id, name: t.name, color: t.color }); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingType({
+                          id: t.id,
+                          name: t.name,
+                          color: t.color,
+                          service_category: (t.service_category as any) ?? "infusion",
+                        });
+                      }}
                       title="Rename type"
                     >
                       <Pencil className="h-3.5 w-3.5" />
@@ -543,6 +563,24 @@ export default function CourseTemplatesTab() {
                   placeholder="e.g. Iron Infusion"
                   autoFocus
                 />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Service Category</Label>
+                <Select
+                  value={editingType.service_category}
+                  onValueChange={(v) =>
+                    setEditingType({ ...editingType, service_category: v as "infusion" | "care_pathway" })
+                  }
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="infusion">Infusion (fixed-session course)</SelectItem>
+                    <SelectItem value="care_pathway">Care pathway (ongoing nursing service)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Care pathways support ongoing visits with no fixed end (e.g. stoma therapy).
+                </p>
               </div>
               <div className="space-y-1.5">
                 <Label>Color</Label>

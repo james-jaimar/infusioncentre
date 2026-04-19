@@ -1,7 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-export type CourseFrequency = "single" | "weekly" | "twice_weekly" | "biweekly" | "monthly";
+export type CourseFrequency =
+  | "single"
+  | "weekly"
+  | "twice_weekly"
+  | "biweekly"
+  | "monthly"
+  | "as_needed"
+  | "custom_schedule";
+
+export type ServiceCategory = "infusion" | "care_pathway";
 
 export interface CourseTemplate {
   id: string;
@@ -9,14 +18,14 @@ export interface CourseTemplate {
   appointment_type_id: string;
   name: string;
   description: string | null;
-  default_sessions: number;
+  default_sessions: number | null;
   default_frequency: CourseFrequency;
   default_session_duration_mins: number | null;
   medication_name: string | null;
   medication_notes: string | null;
   is_active: boolean;
   display_order: number;
-  appointment_type?: { id: string; name: string; color: string };
+  appointment_type?: { id: string; name: string; color: string; service_category?: ServiceCategory };
   template_forms?: Array<{ id: string; form_template_id: string; form_template?: { id: string; name: string } }>;
 }
 
@@ -30,7 +39,7 @@ export function useCourseTemplates(appointmentTypeId?: string) {
         .from("treatment_course_templates" as any)
         .select(`
           *,
-          appointment_type:appointment_types!treatment_course_templates_appointment_type_id_fkey(id, name, color),
+          appointment_type:appointment_types!treatment_course_templates_appointment_type_id_fkey(id, name, color, service_category),
           template_forms:treatment_course_template_forms(id, form_template_id, form_template:form_templates(id, name))
         `)
         .order("display_order", { ascending: true });
@@ -68,7 +77,7 @@ export function useCourseTemplate(id?: string) {
         .from("treatment_course_templates" as any)
         .select(`
           *,
-          appointment_type:appointment_types!treatment_course_templates_appointment_type_id_fkey(id, name, color),
+          appointment_type:appointment_types!treatment_course_templates_appointment_type_id_fkey(id, name, color, service_category),
           template_forms:treatment_course_template_forms(id, form_template_id, form_template:form_templates(id, name))
         `)
         .eq("id", id!)

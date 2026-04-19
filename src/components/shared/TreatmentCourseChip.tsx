@@ -31,6 +31,8 @@ export function TreatmentCourseChip({
     color: safeColor,
   };
 
+  const isOngoing =
+    (totalSessions === null || totalSessions === undefined) && typeof sessionsCompleted === "number";
   const showProgress =
     typeof sessionsCompleted === "number" && typeof totalSessions === "number" && totalSessions > 0;
 
@@ -56,6 +58,15 @@ export function TreatmentCourseChip({
           style={{ backgroundColor: `${safeColor}26`, color: safeColor }}
         >
           {sessionsCompleted}/{totalSessions}
+        </span>
+      )}
+      {!showProgress && isOngoing && (
+        <span
+          className="ml-0.5 rounded-full px-1.5 py-px text-[10px]"
+          style={{ backgroundColor: `${safeColor}26`, color: safeColor }}
+          title="Ongoing pathway"
+        >
+          ∞
         </span>
       )}
     </span>
