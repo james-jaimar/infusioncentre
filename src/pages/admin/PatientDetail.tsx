@@ -72,7 +72,9 @@ import {
   StickyNote,
   Plus,
   MessageCircle,
+  Layers,
 } from "lucide-react";
+import PatientTreatmentCoursesTab from "@/components/admin/PatientTreatmentCoursesTab";
 import type { PatientStatus, DocumentType } from "@/types/patient";
 import type { FormField } from "@/components/forms/FormRenderer";
 import { openPrintableForm } from "@/components/forms/PrintableFormView";
@@ -413,6 +415,10 @@ export default function PatientDetail() {
           <TabsTrigger value="documents">
             <FileCheck className="mr-2 h-4 w-4" />
             Documents
+          </TabsTrigger>
+          <TabsTrigger value="treatment-course">
+            <Layers className="mr-2 h-4 w-4" />
+            Treatment Course
           </TabsTrigger>
           <TabsTrigger value="onboarding">
             <ClipboardList className="mr-2 h-4 w-4" />
