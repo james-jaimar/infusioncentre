@@ -8,7 +8,6 @@ import FormPackConfigTab from "@/components/admin/settings/FormPackConfigTab";
 import FeatureFlagsTab from "@/components/admin/settings/FeatureFlagsTab";
 import EmailNotificationsTab from "@/components/admin/settings/EmailNotificationsTab";
 import ClinicSettingsTab from "@/components/admin/settings/ClinicSettingsTab";
-import CourseTemplatesTab from "@/components/admin/settings/CourseTemplatesTab";
 
 export default function AdminSettings() {
   return (
@@ -24,7 +23,6 @@ export default function AdminSettings() {
             <TabsTrigger value="clinic">Clinic</TabsTrigger>
             <TabsTrigger value="chairs">Chairs</TabsTrigger>
             <TabsTrigger value="types">Appointment Types</TabsTrigger>
-            <TabsTrigger value="course-templates">Course Templates</TabsTrigger>
             <TabsTrigger value="protocols">Protocols</TabsTrigger>
             <TabsTrigger value="forms">Form Packs</TabsTrigger>
             <TabsTrigger value="statuses">Statuses</TabsTrigger>
@@ -37,7 +35,6 @@ export default function AdminSettings() {
         <TabsContent value="clinic"><ClinicSettingsTab /></TabsContent>
         <TabsContent value="chairs"><ChairsSettingsTab /></TabsContent>
         <TabsContent value="types"><AppointmentTypesTab /></TabsContent>
-        <TabsContent value="course-templates"><CourseTemplatesTab /></TabsContent>
         <TabsContent value="protocols"><ProtocolConfigTab /></TabsContent>
         <TabsContent value="forms"><FormPackConfigTab /></TabsContent>
         <TabsContent value="statuses"><StatusDictionaryTab /></TabsContent>
