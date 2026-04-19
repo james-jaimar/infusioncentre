@@ -76,6 +76,7 @@ export type Database = {
           name: string
           preparation_instructions: string | null
           requires_consent: boolean
+          service_category: Database["public"]["Enums"]["service_category"]
           tenant_id: string
           updated_at: string
         }
@@ -89,6 +90,7 @@ export type Database = {
           name: string
           preparation_instructions?: string | null
           requires_consent?: boolean
+          service_category?: Database["public"]["Enums"]["service_category"]
           tenant_id?: string
           updated_at?: string
         }
@@ -102,6 +104,7 @@ export type Database = {
           name?: string
           preparation_instructions?: string | null
           requires_consent?: boolean
+          service_category?: Database["public"]["Enums"]["service_category"]
           tenant_id?: string
           updated_at?: string
         }
@@ -2750,7 +2753,7 @@ export type Database = {
           started_at: string | null
           status: Database["public"]["Enums"]["treatment_course_status"]
           tenant_id: string
-          total_sessions_planned: number
+          total_sessions_planned: number | null
           treatment_type_id: string
           updated_at: string
         }
@@ -2769,7 +2772,7 @@ export type Database = {
           started_at?: string | null
           status?: Database["public"]["Enums"]["treatment_course_status"]
           tenant_id?: string
-          total_sessions_planned?: number
+          total_sessions_planned?: number | null
           treatment_type_id: string
           updated_at?: string
         }
@@ -2788,7 +2791,7 @@ export type Database = {
           started_at?: string | null
           status?: Database["public"]["Enums"]["treatment_course_status"]
           tenant_id?: string
-          total_sessions_planned?: number
+          total_sessions_planned?: number | null
           treatment_type_id?: string
           updated_at?: string
         }
@@ -3694,6 +3697,8 @@ export type Database = {
         | "twice_weekly"
         | "biweekly"
         | "monthly"
+        | "as_needed"
+        | "custom_schedule"
       doctor_report_status:
         | "pending"
         | "generating"
@@ -3755,6 +3760,7 @@ export type Database = {
       referral_urgency: "routine" | "urgent"
       reminder_status: "pending" | "sent" | "failed"
       reminder_type: "email" | "whatsapp" | "sms"
+      service_category: "infusion" | "care_pathway"
       subscription_plan: "free" | "starter" | "professional" | "enterprise"
       treatment_course_status:
         | "draft"
@@ -3961,6 +3967,8 @@ export const Constants = {
         "twice_weekly",
         "biweekly",
         "monthly",
+        "as_needed",
+        "custom_schedule",
       ],
       doctor_report_status: [
         "pending",
@@ -4030,6 +4038,7 @@ export const Constants = {
       referral_urgency: ["routine", "urgent"],
       reminder_status: ["pending", "sent", "failed"],
       reminder_type: ["email", "whatsapp", "sms"],
+      service_category: ["infusion", "care_pathway"],
       subscription_plan: ["free", "starter", "professional", "enterprise"],
       treatment_course_status: [
         "draft",
