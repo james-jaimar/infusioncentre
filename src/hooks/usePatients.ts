@@ -35,7 +35,7 @@ interface UsePatientListOptions {
   pageSize?: number;
 }
 
-const ACTIVE_COURSE_STATUSES = ['draft', 'active', 'scheduled'] as const;
+const ACTIVE_COURSE_STATUSES = ['draft', 'active', 'ready'] as const;
 
 export interface PatientCourseSummary {
   id: string;

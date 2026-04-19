@@ -66,7 +66,7 @@ export function useActivePatientsWithCourses(limit = 8) {
           patient:patients!treatment_courses_patient_id_fkey(id, first_name, last_name),
           appointment_type:appointment_types!treatment_courses_treatment_type_id_fkey(id, name, color)
         `)
-        .in("status", ["draft", "active", "scheduled"])
+        .in("status", ["draft", "active", "ready"])
         .order("updated_at", { ascending: false })
         .limit(limit);
       if (error) throw error;

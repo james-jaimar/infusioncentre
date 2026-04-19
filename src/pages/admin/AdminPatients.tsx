@@ -32,7 +32,7 @@ import {
 } from "lucide-react";
 import type { PatientStatus } from "@/types/patient";
 
-const ACTIVE_SET = new Set(["draft", "active", "scheduled"]);
+const ACTIVE_SET = new Set(["draft", "active", "ready"]);
 
 const COURSE_STATE_TABS: { value: CourseStateFilter; label: string }[] = [
   { value: "all", label: "All" },

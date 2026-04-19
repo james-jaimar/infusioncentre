@@ -23,7 +23,7 @@ function useDashboardStats() {
         supabase.from("patients").select("id", { count: "exact", head: true }).eq("status", "active"),
         supabase.from("appointments").select("id", { count: "exact", head: true }).gte("scheduled_start", weekStart).lte("scheduled_start", weekEnd),
         supabase.from("appointments").select("id, status, scheduled_start, patient:patients!inner(first_name, last_name), appointment_type:appointment_types!inner(name)").gte("scheduled_start", todayStart).lte("scheduled_start", todayEnd).order("scheduled_start", { ascending: true }).limit(5),
-        supabase.from("treatment_courses").select("id", { count: "exact", head: true }).in("status", ["draft", "active", "scheduled"]),
+        supabase.from("treatment_courses").select("id", { count: "exact", head: true }).in("status", ["draft", "active", "ready"] as any),
       ]);
 
       return {
