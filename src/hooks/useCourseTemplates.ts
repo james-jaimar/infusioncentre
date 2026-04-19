@@ -39,7 +39,7 @@ export function useCourseTemplates(appointmentTypeId?: string) {
         .from("treatment_course_templates" as any)
         .select(`
           *,
-          appointment_type:appointment_types!treatment_course_templates_appointment_type_id_fkey(id, name, color),
+          appointment_type:appointment_types!treatment_course_templates_appointment_type_id_fkey(id, name, color, service_category),
           template_forms:treatment_course_template_forms(id, form_template_id, form_template:form_templates(id, name))
         `)
         .order("display_order", { ascending: true });
@@ -77,7 +77,7 @@ export function useCourseTemplate(id?: string) {
         .from("treatment_course_templates" as any)
         .select(`
           *,
-          appointment_type:appointment_types!treatment_course_templates_appointment_type_id_fkey(id, name, color),
+          appointment_type:appointment_types!treatment_course_templates_appointment_type_id_fkey(id, name, color, service_category),
           template_forms:treatment_course_template_forms(id, form_template_id, form_template:form_templates(id, name))
         `)
         .eq("id", id!)
