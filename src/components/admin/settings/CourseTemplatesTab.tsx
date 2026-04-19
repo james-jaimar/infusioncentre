@@ -71,6 +71,7 @@ export default function CourseTemplatesTab() {
   const setForms = useSetTemplateForms();
 
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const [hasInitExpanded, setHasInitExpanded] = useState(false);
   const [editing, setEditing] = useState<EditState | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -83,6 +84,15 @@ export default function CourseTemplatesTab() {
     }
     return map;
   }, [templates]);
+
+  // Expand all type cards by default once types load
+  if (!hasInitExpanded && types.length > 0) {
+    setExpanded(new Set(types.map((t: any) => t.id)));
+    setHasInitExpanded(true);
+  }
+
+  const typesCount = types.length;
+  const variantsCount = templates.length;
 
   const toggle = (id: string) => {
     setExpanded((prev) => {
