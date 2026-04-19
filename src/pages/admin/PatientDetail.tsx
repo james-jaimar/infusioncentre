@@ -975,6 +975,11 @@ export default function PatientDetail() {
           </Card>
         </TabsContent>
 
+        {/* Treatment Course Tab */}
+        <TabsContent value="treatment-course" className="space-y-4">
+          <PatientTreatmentCoursesTab patientId={id!} />
+        </TabsContent>
+
         {/* Onboarding Tab */}
         <TabsContent value="onboarding" className="space-y-4">
           {/* Progress */}
