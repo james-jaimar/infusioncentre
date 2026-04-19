@@ -90,7 +90,7 @@ export function usePatientList(options: UsePatientListOptions = {}) {
 
       // Course state → translates to filter on the joined treatment_courses rows
       if (course_state === 'has_active') {
-        query = query.in('treatment_courses.status', ACTIVE_COURSE_STATUSES as unknown as string[]);
+        query = query.in('treatment_courses.status', ACTIVE_COURSE_STATUSES as any);
       } else if (course_state === 'awaiting_scheduling') {
         query = query.eq('treatment_courses.status', 'draft');
       } else if (course_state === 'completed') {
