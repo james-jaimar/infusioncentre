@@ -19,7 +19,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { useAppointmentTypes } from "@/hooks/useAppointmentTypes";
+import {
+  useAppointmentTypes,
+  useCreateAppointmentType,
+  useUpdateAppointmentType,
+  useDeleteAppointmentType,
+} from "@/hooks/useAppointmentTypes";
 import { useFormTemplates } from "@/hooks/useFormTemplates";
 import {
   useCourseTemplates, useCreateCourseTemplate, useUpdateCourseTemplate,
@@ -69,11 +74,16 @@ export default function CourseTemplatesTab() {
   const update = useUpdateCourseTemplate();
   const remove = useDeleteCourseTemplate();
   const setForms = useSetTemplateForms();
+  const createType = useCreateAppointmentType();
+  const updateType = useUpdateAppointmentType();
+  const deleteType = useDeleteAppointmentType();
 
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const [hasInitExpanded, setHasInitExpanded] = useState(false);
   const [editing, setEditing] = useState<EditState | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingType, setEditingType] = useState<{ id?: string; name: string; color: string } | null>(null);
+  const [deletingTypeId, setDeletingTypeId] = useState<string | null>(null);
 
   const grouped = useMemo(() => {
     const map = new Map<string, CourseTemplate[]>();
@@ -165,6 +175,43 @@ export default function CourseTemplatesTab() {
     }
   };
 
+  const saveType = async () => {
+    if (!editingType) return;
+    if (!editingType.name.trim()) {
+      toast.error("Name required");
+      return;
+    }
+    try {
+      if (editingType.id) {
+        await updateType.mutateAsync({
+          id: editingType.id,
+          data: { name: editingType.name.trim(), color: editingType.color } as any,
+        });
+        toast.success("Treatment type updated");
+      } else {
+        await createType.mutateAsync({
+          name: editingType.name.trim(),
+          color: editingType.color,
+        });
+        toast.success("Treatment type created");
+      }
+      setEditingType(null);
+    } catch (e: any) {
+      toast.error(e.message ?? "Save failed");
+    }
+  };
+
+  const confirmDeleteType = async () => {
+    if (!deletingTypeId) return;
+    try {
+      await deleteType.mutateAsync(deletingTypeId);
+      toast.success("Treatment type deleted");
+      setDeletingTypeId(null);
+    } catch (e: any) {
+      toast.error(e.message ?? "Delete failed (type may be in use)");
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-4">
@@ -183,9 +230,18 @@ export default function CourseTemplatesTab() {
             conversion, sessions, frequency and required forms are auto-populated.
           </p>
         </div>
-        <Button onClick={() => openNew("")} className="gap-1 shrink-0" disabled={typesCount === 0}>
-          <Plus className="h-4 w-4" /> New Template
-        </Button>
+        <div className="flex gap-2 shrink-0">
+          <Button
+            variant="outline"
+            onClick={() => setEditingType({ name: "", color: "#3E5B84" })}
+            className="gap-1"
+          >
+            <Plus className="h-4 w-4" /> New Type
+          </Button>
+          <Button onClick={() => openNew("")} className="gap-1" disabled={typesCount === 0}>
+            <Plus className="h-4 w-4" /> New Template
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -210,14 +266,34 @@ export default function CourseTemplatesTab() {
                     <CardTitle className="text-base">{t.name}</CardTitle>
                     <Badge variant="secondary">{list.length} variant{list.length === 1 ? "" : "s"}</Badge>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={(e) => { e.stopPropagation(); openNew(t.id); }}
-                    className="gap-1"
-                  >
-                    <Plus className="h-3.5 w-3.5" /> Variant
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={(e) => { e.stopPropagation(); setEditingType({ id: t.id, name: t.name, color: t.color }); }}
+                      title="Rename type"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={(e) => { e.stopPropagation(); setDeletingTypeId(t.id); }}
+                      title="Delete type"
+                    >
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => { e.stopPropagation(); openNew(t.id); }}
+                      className="gap-1 ml-1"
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Variant
+                    </Button>
+                  </div>
                 </CardHeader>
                 {isOpen && (
                   <CardContent className="pt-0">
@@ -445,6 +521,69 @@ export default function CourseTemplatesTab() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={!!editingType} onOpenChange={(o) => !o && setEditingType(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingType?.id ? "Rename Treatment Type" : "New Treatment Type"}</DialogTitle>
+            <DialogDescription>
+              Treatment types group course template variants (e.g. "Iron Infusion" contains Ferinject, Venofer, Monofer).
+            </DialogDescription>
+          </DialogHeader>
+          {editingType && (
+            <div className="space-y-3 py-2">
+              <div className="space-y-1.5">
+                <Label>Name</Label>
+                <Input
+                  value={editingType.name}
+                  onChange={(e) => setEditingType({ ...editingType, name: e.target.value })}
+                  placeholder="e.g. Iron Infusion"
+                  autoFocus
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Color</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="color"
+                    value={editingType.color}
+                    onChange={(e) => setEditingType({ ...editingType, color: e.target.value })}
+                    className="h-10 w-16 p-1 cursor-pointer"
+                  />
+                  <Input
+                    value={editingType.color}
+                    onChange={(e) => setEditingType({ ...editingType, color: e.target.value })}
+                    placeholder="#3E5B84"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingType(null)}>Cancel</Button>
+            <Button onClick={saveType} disabled={createType.isPending || updateType.isPending}>
+              {createType.isPending || updateType.isPending ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!deletingTypeId} onOpenChange={(o) => !o && setDeletingTypeId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this treatment type?</AlertDialogTitle>
+            <AlertDialogDescription>
+              All course template variants under this type will also be removed. Appointments and
+              referrals using this type will be blocked from deletion — deactivate it via Appointment Types
+              if it is in use.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteType}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
