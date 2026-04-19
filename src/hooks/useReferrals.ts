@@ -17,7 +17,6 @@ export function useReferrals(doctorId?: string) {
       const { data, error } = await query;
       if (error) throw error;
 
-      // Fetch profile names as fallback for doctors without practice_name
       const userIds = Array.from(
         new Set(
           (data || [])
@@ -54,6 +53,22 @@ export function useReferrals(doctorId?: string) {
           doctor_profile: profile || null,
         };
       });
+    },
+  });
+}
+
+export function useReferral(id?: string) {
+  return useQuery({
+    queryKey: ["referral", id],
+    enabled: !!id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("referrals")
+        .select("*, doctors(id, user_id, practice_name, email, specialisation)")
+        .eq("id", id!)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
     },
   });
 }
@@ -95,6 +110,24 @@ export function useCreateReferral() {
   });
 }
 
+export function useLinkReferralPatient() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ referralId, patientId }: { referralId: string; patientId: string | null }) => {
+      const { error } = await supabase
+        .from("referrals")
+        .update({ patient_id: patientId })
+        .eq("id", referralId);
+      if (error) throw error;
+      return { referralId, patientId };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["referrals"] });
+      queryClient.invalidateQueries({ queryKey: ["referral"] });
+    },
+  });
+}
+
 export function useUpdateReferralStatus() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -104,12 +137,14 @@ export function useUpdateReferralStatus() {
       patient_id,
       reviewed_by,
       notes,
+      from_status,
     }: {
       id: string;
       status: string;
       patient_id?: string;
       reviewed_by?: string;
       notes?: string;
+      from_status?: string;
     }) => {
       const update: Record<string, any> = { status, reviewed_at: new Date().toISOString() };
       if (patient_id !== undefined) update.patient_id = patient_id;
@@ -121,9 +156,46 @@ export function useUpdateReferralStatus() {
         .update(update)
         .eq("id", id);
       if (error) throw error;
+
+      // Best-effort audit log
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase.from("audit_log").insert({
+            user_id: user.id,
+            action: "referral_status_change",
+            details: {
+              referral_id: id,
+              from_status: from_status || null,
+              to_status: status,
+              notes: notes || null,
+            },
+          } as any);
+        }
+      } catch {
+        // non-blocking
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["referrals"] });
+      queryClient.invalidateQueries({ queryKey: ["referral"] });
+    },
+  });
+}
+
+export function useReferralAuditTrail(referralId?: string) {
+  return useQuery({
+    queryKey: ["referral-audit", referralId],
+    enabled: !!referralId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("audit_log")
+        .select("id, action, details, created_at, user_id")
+        .eq("action", "referral_status_change")
+        .filter("details->>referral_id", "eq", referralId!)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data || [];
     },
   });
 }
@@ -150,7 +222,6 @@ export function useCreatePatientFromReferral() {
       medicalAidNumber?: string | null;
       medicalAidMainMember?: string | null;
     }) => {
-      // Create the patient
       const { data: patient, error: patientError } = await supabase
         .from("patients")
         .insert({
@@ -167,7 +238,6 @@ export function useCreatePatientFromReferral() {
         .single();
       if (patientError) throw patientError;
 
-      // Link patient to referral
       const { error: linkError } = await supabase
         .from("referrals")
         .update({ patient_id: patient.id })
@@ -178,6 +248,7 @@ export function useCreatePatientFromReferral() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["referrals"] });
+      queryClient.invalidateQueries({ queryKey: ["referral"] });
       queryClient.invalidateQueries({ queryKey: ["patients"] });
     },
   });

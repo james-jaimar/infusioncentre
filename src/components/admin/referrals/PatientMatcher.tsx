@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { UserCheck, UserPlus } from "lucide-react";
+import { UserCheck, UserPlus, CheckCircle2, X } from "lucide-react";
 
 interface Props {
   firstName: string;
@@ -18,6 +18,29 @@ interface Props {
 export function PatientMatcher({ firstName, lastName, email, phone, currentPatientId, onMatch, onCreatePatient }: Props) {
   const [matches, setMatches] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
+  const [linkedPatient, setLinkedPatient] = useState<any | null>(null);
+  const autoLinkedRef = useRef(false);
+
+  // Fetch the linked patient details for the banner
+  useEffect(() => {
+    if (!currentPatientId) {
+      setLinkedPatient(null);
+      return;
+    }
+    const found = matches.find((m) => m.id === currentPatientId);
+    if (found) {
+      setLinkedPatient(found);
+      return;
+    }
+    (async () => {
+      const { data } = await supabase
+        .from("patients")
+        .select("id, first_name, last_name, email, phone, date_of_birth, status")
+        .eq("id", currentPatientId)
+        .maybeSingle();
+      if (data) setLinkedPatient(data);
+    })();
+  }, [currentPatientId, matches]);
 
   useEffect(() => {
     if (!firstName || !lastName) {
@@ -28,7 +51,6 @@ export function PatientMatcher({ firstName, lastName, email, phone, currentPatie
     const timeout = setTimeout(async () => {
       setSearching(true);
       try {
-        // Search by name similarity, email, or phone
         const conditions: string[] = [];
         conditions.push(`and(first_name.ilike.%${firstName}%,last_name.ilike.%${lastName}%)`);
         if (email) conditions.push(`email.eq.${email}`);
@@ -40,7 +62,21 @@ export function PatientMatcher({ firstName, lastName, email, phone, currentPatie
           .or(conditions.join(","))
           .limit(5);
 
-        setMatches(data || []);
+        const list = data || [];
+        setMatches(list);
+
+        // Auto-link on exact email/phone match (only once per referral, only if nothing linked yet)
+        if (!currentPatientId && !autoLinkedRef.current) {
+          const exact = list.find(
+            (p: any) =>
+              (email && p.email && p.email.toLowerCase() === email.toLowerCase()) ||
+              (phone && p.phone && p.phone === phone)
+          );
+          if (exact) {
+            autoLinkedRef.current = true;
+            onMatch(exact.id);
+          }
+        }
       } catch {
         setMatches([]);
       } finally {
@@ -49,14 +85,39 @@ export function PatientMatcher({ firstName, lastName, email, phone, currentPatie
     }, 300);
 
     return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [firstName, lastName, email, phone]);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
+      {linkedPatient && (
+        <div className="rounded-lg border border-primary bg-primary/5 p-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-5 w-5 text-primary" />
+            <div className="text-sm">
+              <p className="font-medium">
+                Linked to: {linkedPatient.first_name} {linkedPatient.last_name}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {[linkedPatient.email, linkedPatient.phone].filter(Boolean).join(" · ")}
+              </p>
+            </div>
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => onMatch(null)} className="gap-1">
+            <X className="h-4 w-4" /> Unlink
+          </Button>
+        </div>
+      )}
+
       <p className="text-sm font-medium text-foreground flex items-center gap-1">
         <UserCheck className="h-4 w-4" />
-        {searching ? "Searching for existing patients..." : matches.length > 0 ? `${matches.length} potential match${matches.length !== 1 ? "es" : ""} found` : "No existing patients matched"}
+        {searching
+          ? "Searching for existing patients..."
+          : matches.length > 0
+            ? `${matches.length} potential match${matches.length !== 1 ? "es" : ""} found`
+            : "No existing patients matched"}
       </p>
+
       {matches.map((p) => (
         <Card
           key={p.id}
