@@ -327,8 +327,8 @@ export function ReferralTriageDialog({ referral: referralProp, open, onOpenChang
             )}
 
             {referral.status === "under_review" && !linkedPatientId && (
-              <div className="rounded-lg border border-amber-500/40 bg-amber-50 dark:bg-amber-950/20 p-3 flex items-start gap-2">
-                <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+              <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
                 <div className="text-xs">
                   <p className="font-medium text-foreground">Link a patient before accepting</p>
                   <p className="text-muted-foreground">
