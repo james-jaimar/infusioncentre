@@ -117,13 +117,45 @@ export function ConvertReferralDialog({ open, onOpenChange, referral, patientId 
     }
   };
 
+  const handleAdhoc = () => {
+    if (!effectivePatientId) return;
+    onOpenChange(false);
+    toast.success("Add the work as line items on the next invoice", {
+      description: "Open the patient's billing tab to record the visit.",
+    });
+    navigate(`/admin/patients/${effectivePatientId}?tab=billing`);
+  };
+
+  const handlePromote = () => {
+    if (!referral) return;
+    const shortId = referral.id.slice(0, 8);
+    const name = customDesc || "Custom treatment";
+    onOpenChange(false);
+    window.open(
+      `/admin/settings?tab=course-templates&from_referral=${shortId}&name=${encodeURIComponent(name)}`,
+      "_blank"
+    );
+    toast.info("Opening Course Templates in a new tab", {
+      description: "Define the treatment type, then come back to convert.",
+    });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Convert Referral to Treatment Course</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            Convert Referral to Treatment Course
+            {isOther && (
+              <Badge variant="outline" className="gap-1 border-amber-400 bg-amber-50 text-amber-900 dark:bg-amber-950/30 dark:text-amber-200 dark:border-amber-700">
+                <Sparkles className="h-3 w-3" /> Custom
+              </Badge>
+            )}
+          </DialogTitle>
           <DialogDescription>
-            Configure the treatment course based on this referral.
+            {isOther
+              ? "This referral was flagged as a custom request. Choose how to handle it."
+              : "Configure the treatment course based on this referral."}
           </DialogDescription>
         </DialogHeader>
 
@@ -133,92 +165,133 @@ export function ConvertReferralDialog({ open, onOpenChange, referral, patientId 
               <p><strong>Patient:</strong> {referral.patient_first_name} {referral.patient_last_name}</p>
               <p><strong>Diagnosis:</strong> {referral.diagnosis || "—"}</p>
               <p><strong>Urgency:</strong> {referral.urgency || "—"}</p>
-              <p><strong>Treatment Requested:</strong> {referral.treatment_requested || "—"}</p>
+              <p><strong>Treatment Requested:</strong> {customDesc || "—"}</p>
               <p><strong>Prescription:</strong> {referral.prescription_notes || "—"}</p>
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label>Treatment Type</Label>
-            <Select
-              value={treatmentTypeId}
-              onValueChange={(v) => {
-                setTreatmentTypeId(v);
-                setCourseTemplateId("");
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select treatment type..." />
-              </SelectTrigger>
-              <SelectContent>
-                {appointmentTypes.map((t: any) => (
-                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {treatmentTypeId && variants.length > 0 && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Course Template</Label>
-                {referral?.course_template_id && courseTemplateId === referral.course_template_id && (
-                  <Badge variant="secondary" className="text-xs">From doctor</Badge>
-                )}
+          {isOther ? (
+            <>
+              <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-3">
+                <p className="text-xs font-semibold text-amber-900 dark:text-amber-200 mb-1 flex items-center gap-1">
+                  <Sparkles className="h-3 w-3" /> Doctor's request
+                </p>
+                <p className="text-sm whitespace-pre-wrap">{customDesc || "—"}</p>
               </div>
-              <Select value={courseTemplateId} onValueChange={setCourseTemplateId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select variant (optional)..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {variants.map((v) => (
-                    <SelectItem key={v.id} value={v.id}>
-                      {v.name} — {v.default_sessions} session{v.default_sessions === 1 ? "" : "s"}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {selectedTemplate?.description && (
-                <p className="text-xs text-muted-foreground">{selectedTemplate.description}</p>
+
+              <div className="space-y-2">
+                <Label>How should this be handled?</Label>
+                <RadioGroup value={otherAction} onValueChange={(v) => setOtherAction(v as any)} className="space-y-2">
+                  <label className="flex items-start gap-3 rounded-md border p-3 cursor-pointer hover:bg-muted/50">
+                    <RadioGroupItem value="adhoc" id="adhoc" className="mt-0.5" />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 font-medium text-sm">
+                        <Receipt className="h-4 w-4" /> Handle as ad-hoc billable item
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Skip creating a course. You'll add the work as line items on the patient's next invoice.
+                      </p>
+                    </div>
+                  </label>
+                  <label className="flex items-start gap-3 rounded-md border p-3 cursor-pointer hover:bg-muted/50">
+                    <RadioGroupItem value="promote" id="promote" className="mt-0.5" />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 font-medium text-sm">
+                        <FilePlus2 className="h-4 w-4" /> Create a new treatment type from this
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Opens Course Templates in a new tab, pre-filled. Save it, then return here to convert.
+                      </p>
+                    </div>
+                  </label>
+                </RadioGroup>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <Label>Treatment Type</Label>
+                <Select
+                  value={treatmentTypeId}
+                  onValueChange={(v) => {
+                    setTreatmentTypeId(v);
+                    setCourseTemplateId("");
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select treatment type..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {appointmentTypes.map((t: any) => (
+                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {treatmentTypeId && variants.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Course Template</Label>
+                    {referral?.course_template_id && courseTemplateId === referral.course_template_id && (
+                      <Badge variant="secondary" className="text-xs">From doctor</Badge>
+                    )}
+                  </div>
+                  <Select value={courseTemplateId} onValueChange={setCourseTemplateId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select variant (optional)..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {variants.map((v) => (
+                        <SelectItem key={v.id} value={v.id}>
+                          {v.name} — {v.default_sessions} session{v.default_sessions === 1 ? "" : "s"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {selectedTemplate?.description && (
+                    <p className="text-xs text-muted-foreground">{selectedTemplate.description}</p>
+                  )}
+                </div>
               )}
-            </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Total Sessions Planned</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={totalSessions}
+                    onChange={(e) => {
+                      setTouchedSessions(true);
+                      setTotalSessions(parseInt(e.target.value) || 1);
+                    }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Expected End Date</Label>
+                  <Input
+                    type="date"
+                    value={expectedEndDate}
+                    onChange={(e) => setExpectedEndDate(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Notes</Label>
+                <Textarea
+                  value={notes}
+                  onChange={(e) => {
+                    setTouchedNotes(true);
+                    setNotes(e.target.value);
+                  }}
+                  placeholder="Optional notes for this treatment course..."
+                  rows={4}
+                />
+              </div>
+            </>
           )}
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Total Sessions Planned</Label>
-              <Input
-                type="number"
-                min={1}
-                value={totalSessions}
-                onChange={(e) => {
-                  setTouchedSessions(true);
-                  setTotalSessions(parseInt(e.target.value) || 1);
-                }}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Expected End Date</Label>
-              <Input
-                type="date"
-                value={expectedEndDate}
-                onChange={(e) => setExpectedEndDate(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Notes</Label>
-            <Textarea
-              value={notes}
-              onChange={(e) => {
-                setTouchedNotes(true);
-                setNotes(e.target.value);
-              }}
-              placeholder="Optional notes for this treatment course..."
-              rows={4}
-            />
-          </div>
 
           {!effectivePatientId && (
             <p className="text-sm text-destructive">
@@ -229,12 +302,21 @@ export function ConvertReferralDialog({ open, onOpenChange, referral, patientId 
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button
-            onClick={handleConvert}
-            disabled={!referral || !effectivePatientId || !treatmentTypeId || convertMutation.isPending}
-          >
-            {convertMutation.isPending ? "Converting..." : "Convert to Course"}
-          </Button>
+          {isOther ? (
+            <Button
+              onClick={otherAction === "adhoc" ? handleAdhoc : handlePromote}
+              disabled={!referral || !effectivePatientId}
+            >
+              {otherAction === "adhoc" ? "Go to billing" : "Open template editor"}
+            </Button>
+          ) : (
+            <Button
+              onClick={handleConvert}
+              disabled={!referral || !effectivePatientId || !treatmentTypeId || convertMutation.isPending}
+            >
+              {convertMutation.isPending ? "Converting..." : "Convert to Course"}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
