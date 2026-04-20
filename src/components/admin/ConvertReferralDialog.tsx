@@ -132,7 +132,7 @@ export function ConvertReferralDialog({ open, onOpenChange, referral, patientId 
     const name = customDesc || "Custom treatment";
     onOpenChange(false);
     window.open(
-      `/admin/settings?tab=course-templates&from_referral=${shortId}&name=${encodeURIComponent(name)}`,
+      `/admin/course-templates?from_referral=${shortId}&name=${encodeURIComponent(name)}`,
       "_blank"
     );
     toast.info("Opening Course Templates in a new tab", {
