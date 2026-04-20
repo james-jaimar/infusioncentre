@@ -19,6 +19,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, Upload, X, FileText, Save } from "lucide-react";
+import { isCustomType, tagCustomRequest } from "@/lib/customReferral";
 
 export default function DoctorNewReferral() {
   const { data: doctor } = useDoctorProfile();
@@ -46,6 +47,7 @@ export default function DoctorNewReferral() {
     reason_for_referral: "",
     treatment_type_id: "",
     course_template_id: "",
+    custom_description: "",
   });
 
   const [files, setFiles] = useState<File[]>([]);
@@ -104,11 +106,22 @@ export default function DoctorNewReferral() {
       return;
     }
 
+    const selectedType = activeTypes.find((t: any) => t.id === form.treatment_type_id);
+    const isOther = isCustomType(selectedType?.name);
+    if (!asDraft && isOther && !form.custom_description.trim()) {
+      toast({ title: "Please describe the requested treatment", variant: "destructive" });
+      return;
+    }
+
     setSaving(true);
     try {
       const icd10Array = form.icd10_codes
         ? form.icd10_codes.split(",").map((s) => s.trim()).filter(Boolean)
         : [];
+
+      const treatmentRequestedFinal = isOther && form.custom_description.trim()
+        ? tagCustomRequest(form.custom_description.trim() + (form.treatment_requested ? ` — ${form.treatment_requested}` : ""))
+        : (form.treatment_requested || null);
 
       const referralData: any = {
         doctor_id: doctor.id,
@@ -117,7 +130,7 @@ export default function DoctorNewReferral() {
         patient_email: form.patient_email || null,
         patient_phone: form.patient_phone || null,
         diagnosis: form.diagnosis || null,
-        treatment_requested: form.treatment_requested || null,
+        treatment_requested: treatmentRequestedFinal,
         prescription_notes: form.prescription_notes || null,
         urgency: form.urgency,
         status: asDraft ? "draft" : "pending",
@@ -255,42 +268,65 @@ export default function DoctorNewReferral() {
             <CardTitle className="text-lg">Treatment Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {activeTypes.length > 0 && (
-              <div>
-                <Label>Treatment Type</Label>
-                <Select value={form.treatment_type_id} onValueChange={(v) => update("treatment_type_id", v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select treatment type..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {activeTypes.map((t: any) => (
-                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            {form.treatment_type_id && variants.length > 0 && (
-              <div>
-                <Label>Treatment Variant</Label>
-                <Select value={form.course_template_id} onValueChange={(v) => update("course_template_id", v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select variant / medication..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {variants.map((v) => (
-                      <SelectItem key={v.id} value={v.id}>
-                        {v.name}
-                        {v.default_sessions > 1 ? ` — ${v.default_sessions} sessions` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Pre-configured by the clinic. Selecting a variant pre-fills sessions, frequency and required forms.
-                </p>
-              </div>
-            )}
+            {activeTypes.length > 0 && (() => {
+              const selectedType = activeTypes.find((t: any) => t.id === form.treatment_type_id);
+              const isOther = isCustomType(selectedType?.name);
+              return (
+                <>
+                  <div>
+                    <Label>Treatment Type</Label>
+                    <Select value={form.treatment_type_id} onValueChange={(v) => update("treatment_type_id", v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select treatment type..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {activeTypes.map((t: any) => (
+                          <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {isOther && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Use this if the treatment you need isn't listed. Our team will contact you to confirm.
+                      </p>
+                    )}
+                  </div>
+                  {isOther && (
+                    <div className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900 p-3">
+                      <Label>Describe the requested treatment *</Label>
+                      <Textarea
+                        value={form.custom_description}
+                        onChange={(e) => update("custom_description", e.target.value)}
+                        rows={3}
+                        placeholder="Tell us what you need — medication, indication, anything specific..."
+                        required
+                      />
+                    </div>
+                  )}
+                  {!isOther && form.treatment_type_id && variants.length > 0 && (
+                    <div>
+                      <Label>Treatment Variant</Label>
+                      <Select value={form.course_template_id} onValueChange={(v) => update("course_template_id", v)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select variant / medication..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {variants.map((v) => (
+                            <SelectItem key={v.id} value={v.id}>
+                              {v.name}
+                              {v.default_sessions > 1 ? ` — ${v.default_sessions} sessions` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Pre-configured by the clinic. Selecting a variant pre-fills sessions, frequency and required forms.
+                      </p>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
             <div>
               <Label>Treatment Requested</Label>
               <Input value={form.treatment_requested} onChange={(e) => update("treatment_requested", e.target.value)} placeholder="e.g. Infliximab infusion, Iron infusion..." />

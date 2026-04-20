@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useCreateReferral } from "@/hooks/useReferrals";
 import { useAppointmentTypes } from "@/hooks/useAppointmentTypes";
 import { FilePlus2 } from "lucide-react";
+import { isCustomType, tagCustomRequest } from "@/lib/customReferral";
 
 interface FollowUpReferralDialogProps {
   open: boolean;
@@ -44,12 +45,23 @@ export function FollowUpReferralDialog({
   const [prescription, setPrescription] = useState("");
   const [reason, setReason] = useState("");
   const [urgency, setUrgency] = useState<"routine" | "urgent">("routine");
+  const [customDescription, setCustomDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  const selectedType = activeTypes.find((t: any) => t.id === treatmentTypeId);
+  const isOther = isCustomType(selectedType?.name);
+
   const handleSubmit = async () => {
+    if (isOther && !customDescription.trim()) {
+      toast({ title: "Please describe the requested treatment", variant: "destructive" });
+      return;
+    }
     setSubmitting(true);
     try {
       const icdArr = icd10 ? icd10.split(",").map(s => s.trim()).filter(Boolean) : [];
+      const treatmentRequestedFinal = isOther
+        ? tagCustomRequest(customDescription.trim() + (treatmentRequested ? ` — ${treatmentRequested}` : ""))
+        : (treatmentRequested || undefined);
       await createReferral.mutateAsync({
         doctor_id: doctorId,
         patient_first_name: patient.first_name,
@@ -57,7 +69,7 @@ export function FollowUpReferralDialog({
         patient_email: patient.email || undefined,
         patient_phone: patient.phone || undefined,
         diagnosis: diagnosis || undefined,
-        treatment_requested: treatmentRequested || undefined,
+        treatment_requested: treatmentRequestedFinal,
         prescription_notes: prescription || undefined,
         urgency,
         status: "pending",
@@ -68,10 +80,6 @@ export function FollowUpReferralDialog({
         reason_for_referral: reason || null,
         treatment_type_id: treatmentTypeId || null,
       } as any);
-
-      // Link the referral to the existing patient record
-      // (createReferral returns the row, but our mutation hook wraps it — easiest is to re-fetch).
-      // For simplicity, we tag it via reason text; admin can match it to the patient on triage.
 
       toast({ title: "Follow-up referral submitted" });
       onOpenChange(false);
@@ -118,6 +126,22 @@ export function FollowUpReferralDialog({
                   ))}
                 </SelectContent>
               </Select>
+              {isOther && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Use this if the treatment isn't listed. Our team will contact you to confirm.
+                </p>
+              )}
+            </div>
+          )}
+          {isOther && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900 p-3">
+              <Label>Describe the requested treatment *</Label>
+              <Textarea
+                value={customDescription}
+                onChange={(e) => setCustomDescription(e.target.value)}
+                rows={3}
+                placeholder="Tell us what you need — medication, indication, anything specific..."
+              />
             </div>
           )}
           <div>

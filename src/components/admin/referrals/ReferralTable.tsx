@@ -10,7 +10,9 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { useStatusDisplay } from "@/hooks/useStatusDictionaries";
+import { isCustomRequest } from "@/lib/customReferral";
 import { format } from "date-fns";
+import { Sparkles } from "lucide-react";
 
 interface Props {
   referrals: any[];
@@ -58,7 +60,14 @@ export function ReferralTable({ referrals, isLoading, onReview }: Props) {
               return (
                 <TableRow key={ref.id} className={ref.urgency === "urgent" && ref.status === "pending" ? "bg-clinical-danger-soft/30" : ""}>
                   <TableCell className="font-medium">
-                    {ref.patient_first_name} {ref.patient_last_name}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span>{ref.patient_first_name} {ref.patient_last_name}</span>
+                      {isCustomRequest(ref.treatment_requested) && (
+                        <Badge variant="outline" className="gap-1 border-amber-400 bg-amber-50 text-amber-900 dark:bg-amber-950/30 dark:text-amber-200 dark:border-amber-700 text-[10px] px-1.5 py-0">
+                          <Sparkles className="h-2.5 w-2.5" /> Custom request
+                        </Badge>
+                      )}
+                    </div>
                     {ref.patient_email && (
                       <span className="block text-xs text-muted-foreground">{ref.patient_email}</span>
                     )}
