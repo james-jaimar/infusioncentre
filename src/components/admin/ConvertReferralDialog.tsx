@@ -39,6 +39,7 @@ interface Props {
 }
 
 export function ConvertReferralDialog({ open, onOpenChange, referral, patientId }: Props) {
+  const navigate = useNavigate();
   const { data: appointmentTypes = [] } = useAppointmentTypes();
   const convertMutation = useConvertReferralToCourse();
 
@@ -49,8 +50,15 @@ export function ConvertReferralDialog({ open, onOpenChange, referral, patientId 
   const [notes, setNotes] = useState("");
   const [touchedSessions, setTouchedSessions] = useState(false);
   const [touchedNotes, setTouchedNotes] = useState(false);
+  const [otherAction, setOtherAction] = useState<"adhoc" | "promote">("adhoc");
 
   const { data: variants = [] } = useActiveCourseTemplatesByType(treatmentTypeId || undefined);
+
+  const sourceType = appointmentTypes.find((t: any) => t.id === referral?.treatment_type_id);
+  const isOther = isCustomType(sourceType?.name) || isCustomRequest(referral?.treatment_requested);
+  const customDesc = isCustomRequest(referral?.treatment_requested)
+    ? stripCustomTag(referral?.treatment_requested)
+    : (referral?.treatment_requested || "");
 
   // Initialize / reset on open
   useEffect(() => {
