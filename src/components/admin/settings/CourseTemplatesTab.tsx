@@ -577,6 +577,11 @@ export default function CourseTemplatesTab() {
           </DialogHeader>
           {editingType && (
             <div className="space-y-3 py-2">
+              {!editingType.id && fromReferral && (
+                <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-2 text-xs text-amber-900 dark:text-amber-200">
+                  Creating from referral #{fromReferral}. Save this type, add variants if needed, then return to convert.
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label>Name</Label>
                 <Input
