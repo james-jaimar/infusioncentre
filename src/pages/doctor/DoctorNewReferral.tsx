@@ -19,6 +19,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, Upload, X, FileText, Save } from "lucide-react";
+import { isCustomType, tagCustomRequest } from "@/lib/customReferral";
 
 export default function DoctorNewReferral() {
   const { data: doctor } = useDoctorProfile();
@@ -46,6 +47,7 @@ export default function DoctorNewReferral() {
     reason_for_referral: "",
     treatment_type_id: "",
     course_template_id: "",
+    custom_description: "",
   });
 
   const [files, setFiles] = useState<File[]>([]);
@@ -104,11 +106,22 @@ export default function DoctorNewReferral() {
       return;
     }
 
+    const selectedType = activeTypes.find((t: any) => t.id === form.treatment_type_id);
+    const isOther = isCustomType(selectedType?.name);
+    if (!asDraft && isOther && !form.custom_description.trim()) {
+      toast({ title: "Please describe the requested treatment", variant: "destructive" });
+      return;
+    }
+
     setSaving(true);
     try {
       const icd10Array = form.icd10_codes
         ? form.icd10_codes.split(",").map((s) => s.trim()).filter(Boolean)
         : [];
+
+      const treatmentRequestedFinal = isOther && form.custom_description.trim()
+        ? tagCustomRequest(form.custom_description.trim() + (form.treatment_requested ? ` — ${form.treatment_requested}` : ""))
+        : (form.treatment_requested || null);
 
       const referralData: any = {
         doctor_id: doctor.id,
@@ -117,7 +130,7 @@ export default function DoctorNewReferral() {
         patient_email: form.patient_email || null,
         patient_phone: form.patient_phone || null,
         diagnosis: form.diagnosis || null,
-        treatment_requested: form.treatment_requested || null,
+        treatment_requested: treatmentRequestedFinal,
         prescription_notes: form.prescription_notes || null,
         urgency: form.urgency,
         status: asDraft ? "draft" : "pending",
