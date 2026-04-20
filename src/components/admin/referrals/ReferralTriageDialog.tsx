@@ -24,7 +24,8 @@ import { PatientMatcher } from "./PatientMatcher";
 import { ReferralStatusTimeline } from "./ReferralStatusTimeline";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
-import { CheckCircle, XCircle, MessageSquare, ArrowRight, AlertCircle, Loader2 } from "lucide-react";
+import { CheckCircle, XCircle, MessageSquare, ArrowRight, AlertCircle, Loader2, Sparkles } from "lucide-react";
+import { isCustomRequest, stripCustomTag } from "@/lib/customReferral";
 
 interface Props {
   referral: any;
@@ -160,11 +161,14 @@ export function ReferralTriageDialog({ referral: referralProp, open, onOpenChang
 
   const canConvert = referral.status === "accepted" && !!linkedPatientId;
 
+  const customRequest = isCustomRequest(referral.treatment_requested);
+  const customDescription = customRequest ? stripCustomTag(referral.treatment_requested) : "";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-3">
+          <DialogTitle className="flex items-center gap-3 flex-wrap">
             Review Referral
             <Badge
               style={{ backgroundColor: status.color + "20", color: status.color, borderColor: status.color }}
@@ -172,6 +176,11 @@ export function ReferralTriageDialog({ referral: referralProp, open, onOpenChang
             >
               {status.label}
             </Badge>
+            {customRequest && (
+              <Badge variant="outline" className="gap-1 border-amber-400 bg-amber-50 text-amber-900 dark:bg-amber-950/30 dark:text-amber-200 dark:border-amber-700">
+                <Sparkles className="h-3 w-3" /> Custom request
+              </Badge>
+            )}
             {linkedPatientId && (
               <Badge variant="outline" className="gap-1">
                 <CheckCircle className="h-3 w-3" /> Patient linked
@@ -238,7 +247,18 @@ export function ReferralTriageDialog({ referral: referralProp, open, onOpenChang
                 <p className="text-sm">{referral.diagnosis}</p>
               </div>
             )}
-            {referral.treatment_requested && (
+            {customRequest && (
+              <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-3">
+                <p className="text-xs font-semibold text-amber-900 dark:text-amber-200 mb-1 flex items-center gap-1">
+                  <Sparkles className="h-3 w-3" /> Custom Treatment Request
+                </p>
+                <p className="text-sm text-foreground whitespace-pre-wrap">{customDescription}</p>
+                <p className="text-[11px] text-muted-foreground mt-2">
+                  Doctor flagged this as not in our standard catalogue. Decide on conversion how to handle it.
+                </p>
+              </div>
+            )}
+            {!customRequest && referral.treatment_requested && (
               <div>
                 <p className="text-muted-foreground text-xs mb-1">Treatment Requested</p>
                 <p className="text-sm">{referral.treatment_requested}</p>
