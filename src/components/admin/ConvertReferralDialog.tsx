@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,9 +12,12 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Sparkles, Receipt, FilePlus2 } from "lucide-react";
 import { useAppointmentTypes } from "@/hooks/useAppointmentTypes";
 import { useConvertReferralToCourse } from "@/hooks/useTreatmentCourses";
 import { useActiveCourseTemplatesByType } from "@/hooks/useCourseTemplates";
+import { isCustomType, isCustomRequest, stripCustomTag } from "@/lib/customReferral";
 
 interface Props {
   open: boolean;
