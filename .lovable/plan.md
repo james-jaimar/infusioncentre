@@ -1,38 +1,69 @@
 
 
-## Add "Wound Care" as care pathway service
+## Add "Other / Custom" treatment type for doctor referrals
 
-Same pattern as Stoma Therapy — pure data seed, no schema or code changes.
+Lets doctors submit a referral when the exact treatment isn't yet configured. Gail then decides on triage whether to handle it ad-hoc or promote it into a real treatment type / course template.
 
-### Migration: seed Wound Care + starter templates
+### 1. Seed an "Other" appointment type
 
-**Appointment type**
-- Name: `Wound Care`
-- `service_category`: `care_pathway`
-- Duration: 45 min, color e.g. `#B85C5C` (clinical clay)
-- `display_order`: 110 (after Stoma at 100)
+New row in `appointment_types`:
 
-**Starter templates** (all `as_needed` frequency, single session each, ongoing courses)
+| Field | Value |
+|---|---|
+| name | `Other / Custom` |
+| service_category | `care_pathway` (ongoing, no fixed sessions) |
+| default_duration_minutes | 60 |
+| color | `#6B7280` (neutral grey — visually flags it as "not standard") |
+| display_order | 999 (always last) |
+| is_active | true |
+| requires_consent | false |
 
-| # | Template | Duration | Purpose |
-|---|---|---|---|
-| 0 | Initial Wound Assessment | 60 min | First visit: wound measurement, photo, baseline TIME assessment, dressing plan |
-| 1 | Dressing Change | 30 min | Routine dressing change, cleansing, reassessment |
-| 2 | Wound Review | 45 min | Periodic progress review, photo, plan adjustment |
-| 3 | Compression Therapy | 45 min | Application/replacement of compression bandaging (venous ulcers) |
-| 4 | Discharge / Healed Review | 30 min | Final review when wound healed; education on prevention |
+Idempotent guard (skip if already exists), same pattern as the Stoma / Wound Care migrations.
 
-Idempotent (skip if Wound Care already exists, skip templates if any already linked) — same guard pattern as the Stoma migration.
+No course templates seeded — the whole point is that the doctor describes it free-text. Gail can add templates later if it becomes recurring.
 
-### What stays the same
-- All UI (CourseTemplatesTab already renders care pathways with the badge, ongoing chip, as_needed handling)
-- All hooks/types (already support `care_pathway` + `as_needed`)
-- No frontend changes needed
+### 2. Doctor referral form behaviour
+
+In `DoctorNewReferral` (and `FollowUpReferralDialog`), when the doctor picks **Other / Custom** from the Treatment Type dropdown:
+
+- Reveal a required **"Describe the requested treatment"** textarea (3 rows) directly under the dropdown.
+- On submit, prepend `[OTHER / CUSTOM]` to the existing `treatment_requested` field so it's instantly visible in the admin referral queue (no schema change needed — reuses the existing column).
+- Helper text under the dropdown: *"Use this if the treatment you need isn't listed. Our team will contact you to confirm."*
+
+### 3. Admin triage surface
+
+In `ReferralTable` and `ReferralTriageDialog`:
+
+- When the referral's `treatment_type_id` matches the "Other / Custom" type, render a small amber **"Custom request"** badge next to the patient name so Gail spots it immediately.
+- In the triage dialog, show the doctor's free-text description in a highlighted callout block (amber-tinted card) above the existing notes field.
+
+### 4. Convert-to-course flow
+
+In `ConvertReferralDialog`, when the source referral is "Other / Custom":
+
+- Skip the "pick a course template" step (no templates exist for this type).
+- Offer two clear paths via radio buttons:
+  - **Handle as ad-hoc billable item** — closes the dialog, returns Gail to the patient's billing tab with a toast: *"Add the work as line items on the next invoice."*
+  - **Create a new treatment type from this** — opens the Course Templates settings page in a new tab pre-filled with the doctor's description (via URL query params `?from_referral=<id>&name=<text>`), so Gail can formalise it once and then convert.
+
+### 5. Settings tab — small affordance
+
+In `CourseTemplatesTab`, when the URL has `?from_referral=...`, auto-open the "New Treatment Type" editor with the name pre-filled and a small banner: *"Creating from referral #<short-id>"*. This closes the loop without forcing Gail to retype.
 
 ### Files
+
 | File | Change |
 |---|---|
-| New migration `supabase/migrations/<ts>_wound_care_seed.sql` | Insert appointment type + 5 templates |
+| New `supabase/migrations/<ts>_other_custom_type_seed.sql` | Insert the "Other / Custom" appointment type (idempotent) |
+| `src/pages/doctor/DoctorNewReferral.tsx` | Conditional textarea + helper text when "Other" is selected; prepend tag on submit |
+| `src/components/doctor/FollowUpReferralDialog.tsx` | Same conditional textarea behaviour |
+| `src/components/admin/referrals/ReferralTable.tsx` | "Custom request" badge for Other-type referrals |
+| `src/components/admin/referrals/ReferralTriageDialog.tsx` | Amber callout showing the free-text description |
+| `src/components/admin/ConvertReferralDialog.tsx` | Branch for Other-type: ad-hoc vs promote-to-type |
+| `src/components/admin/settings/CourseTemplatesTab.tsx` | Read `?from_referral` / `?name` query params and auto-open type editor |
 
-After this, Gail can edit/rename/add/delete the wound care templates from Settings → Course Templates exactly like Stoma.
+### What stays the same
+- No schema changes — reuses existing `treatment_requested` text column for the description.
+- All hooks/types already support `care_pathway` + `as_needed` from the previous Stoma/Wound work.
+- Course templates remain empty for "Other" by design.
 
