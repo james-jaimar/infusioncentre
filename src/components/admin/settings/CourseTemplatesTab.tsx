@@ -90,6 +90,27 @@ export default function CourseTemplatesTab() {
   const [editingType, setEditingType] = useState<TypeEditState | null>(null);
   const [deletingTypeId, setDeletingTypeId] = useState<string | null>(null);
 
+  // Auto-open the "New Treatment Type" editor when arriving from a custom referral
+  const [searchParams, setSearchParams] = useSearchParams();
+  const fromReferral = searchParams.get("from_referral");
+  const prefilledName = searchParams.get("name");
+  const [hasConsumedQuery, setHasConsumedQuery] = useState(false);
+  useEffect(() => {
+    if (!hasConsumedQuery && fromReferral && prefilledName) {
+      setEditingType({
+        name: prefilledName.slice(0, 80),
+        color: "#3E5B84",
+        service_category: "care_pathway",
+      });
+      setHasConsumedQuery(true);
+      // Strip the params so a refresh doesn't re-open the dialog
+      const next = new URLSearchParams(searchParams);
+      next.delete("from_referral");
+      next.delete("name");
+      setSearchParams(next, { replace: true });
+    }
+  }, [fromReferral, prefilledName, hasConsumedQuery, searchParams, setSearchParams]);
+
   const grouped = useMemo(() => {
     const map = new Map<string, CourseTemplate[]>();
     for (const t of templates) {
