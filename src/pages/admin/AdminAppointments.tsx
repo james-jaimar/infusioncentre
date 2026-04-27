@@ -256,41 +256,21 @@ function DroppableCell({
   day,
   chairId,
   pxPerHour,
-  onSlotClick,
   children,
-  showNowLine,
-  nowLineHeightPx,
 }: {
   day: Date;
   chairId: string;
   pxPerHour: number;
-  onSlotClick: (date: Date) => void;
   children: React.ReactNode;
-  showNowLine?: boolean;
-  nowLineHeightPx?: number;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `${chairId}|${day.toISOString()}`,
     data: { day, chairId },
   });
 
-  const handleSlotClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    // Only fire when the click landed on the dedicated background layer.
-    const target = e.target as HTMLElement;
-    if (!target.dataset || target.dataset.slotBg !== "1") return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const yPx = e.clientY - rect.top;
-    const minutes = Math.round((yPx / pxPerHour) * 60);
-    const snapped = Math.round(minutes / SLOT_MINUTES) * SLOT_MINUTES;
-    const totalMin = DAY_START_MIN + snapped;
-    const slot = setMinutes(setHours(day, Math.floor(totalMin / 60)), totalMin % 60);
-    onSlotClick(slot);
-  };
-
   return (
     <div
       ref={setNodeRef}
-      onClick={handleSlotClick}
       className={cn(
         "relative flex-1 border-r min-w-[120px]",
         isToday(day) && "bg-primary/5",
@@ -298,12 +278,6 @@ function DroppableCell({
       )}
       style={{ height: `${HOURS.length * pxPerHour}px` }}
     >
-      {/* Dedicated click surface — clicks here mean "create at this time". */}
-      <div
-        data-slot-bg="1"
-        className="absolute inset-0"
-        aria-hidden
-      />
       {/* Hour grid lines */}
       {HOURS.map((hour, i) => (
         <div
@@ -312,41 +286,13 @@ function DroppableCell({
           style={{ top: `${i * pxPerHour}px` }}
         />
       ))}
-      {/* Now line — rendered once per day column, on the top chair row, spanning all chair rows */}
-      {showNowLine && isToday(day) && (
-        <NowLine pxPerHour={pxPerHour} spanHeightPx={nowLineHeightPx} />
-      )}
       {children}
     </div>
   );
 }
 
-function NowLine({
-  pxPerHour,
-  spanHeightPx,
-}: {
-  pxPerHour: number;
-  spanHeightPx?: number;
-}) {
-  const [now, setNow] = useState(new Date());
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 60_000);
-    return () => clearInterval(id);
-  }, []);
-  const min = now.getHours() * 60 + now.getMinutes();
-  if (min < DAY_START_MIN || min > DAY_START_MIN + HOURS.length * 60) return null;
-  const top = ((min - DAY_START_MIN) / 60) * pxPerHour;
-  return (
-    <div
-      className="absolute left-0 right-0 z-20 border-t-2 border-red-500 pointer-events-none overflow-visible"
-      style={{ top: `${top}px`, height: spanHeightPx ? `${spanHeightPx}px` : undefined }}
-    >
-      <div className="absolute -left-1 -top-1.5 h-3 w-3 rounded-full bg-red-500" />
-    </div>
-  );
-}
-
 export default function AdminAppointments() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [viewMode, setViewMode] = useState<ViewMode>(
     (searchParams.get("view") as ViewMode) || "week"
