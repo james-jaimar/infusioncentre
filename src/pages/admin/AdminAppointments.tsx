@@ -213,6 +213,7 @@ function DraggableEvent({
             style={{
               transform: CSS.Translate.toString(transform),
               zIndex: isDragging ? 50 : 1,
+              opacity: isDragging ? 0.85 : 1,
             }}
             onPointerDown={(e) => {
               e.stopPropagation();
