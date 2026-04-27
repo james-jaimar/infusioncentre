@@ -1,69 +1,56 @@
+## Make scheduled sessions individually editable before booking
 
+Right now `RecurringSessionDialog` auto-generates a tidy preview (e.g. weekly Mondays at 9am) and Gail has only one button: **Create N Appointments**. Real life is messier — a patient might want session 2 a day later, session 3 in the afternoon, etc. This change turns the static preview into an editable list.
 
-## Add "Other / Custom" treatment type for doctor referrals
+### Behaviour
 
-Lets doctors submit a referral when the exact treatment isn't yet configured. Gail then decides on triage whether to handle it ad-hoc or promote it into a real treatment type / course template.
+1. **Suggestion stays the same.** Pick start date + frequency + time → the dialog still seeds the same N suggested slots. This is the "starting point" Gail confirms with the patient on the phone.
 
-### 1. Seed an "Other" appointment type
+2. **Each suggested slot becomes editable.** The preview area changes from read-only badges to a tidy list of rows. Each row shows:
+   - Session number (`#1`, `#2`, …)
+   - A **date picker** (popover calendar, same control as the Start Date field)
+   - A **time picker** (same 30-min select as the Time field)
+   - A small **Remove** (trash) icon button on the right
 
-New row in `appointment_types`:
+3. **Add another session** button under the list — appends a new row defaulted to "1 week after the last one, same time", which Gail can then adjust.
 
-| Field | Value |
-|---|---|
-| name | `Other / Custom` |
-| service_category | `care_pathway` (ongoing, no fixed sessions) |
-| default_duration_minutes | 60 |
-| color | `#6B7280` (neutral grey — visually flags it as "not standard") |
-| display_order | 999 (always last) |
-| is_active | true |
-| requires_consent | false |
+4. **Re-seed safely.** If Gail changes Start Date / Frequency / Preferred Day / Time / Sessions-to-schedule **after** she's manually tweaked rows, show a small inline notice: *"You've customised some sessions. Regenerate from new settings?"* with a **Regenerate** button. This avoids silently wiping her edits.
 
-Idempotent guard (skip if already exists), same pattern as the Stoma / Wound Care migrations.
+5. **Validation before submit.**
+   - Each row must have a date and a time (both already required by the controls).
+   - Warn (non-blocking, amber text) if any two rows are on the same date — clinics occasionally do this deliberately, so don't block.
+   - Block submit (red text) if any row is in the past.
+   - Re-sort rows chronologically right before submit so session numbers stay in order.
 
-No course templates seeded — the whole point is that the doctor describes it free-text. Gail can add templates later if it becomes recurring.
+6. **Submit** uses the edited list verbatim — same `createBulk.mutateAsync` call, just sourced from the editable state instead of the recomputed `generateDates()`.
 
-### 2. Doctor referral form behaviour
+### Layout sketch
 
-In `DoctorNewReferral` (and `FollowUpReferralDialog`), when the doctor picks **Other / Custom** from the Treatment Type dropdown:
+```text
+Preview (4 sessions)                         [Regenerate from settings]
 
-- Reveal a required **"Describe the requested treatment"** textarea (3 rows) directly under the dropdown.
-- On submit, prepend `[OTHER / CUSTOM]` to the existing `treatment_requested` field so it's instantly visible in the admin referral queue (no schema change needed — reuses the existing column).
-- Helper text under the dropdown: *"Use this if the treatment you need isn't listed. Our team will contact you to confirm."*
+#1   [📅 Tue, Apr 28, 2026  ▾]   [🕘 9:00 AM ▾]   🗑
+#2   [📅 Tue, May  5, 2026  ▾]   [🕘 9:00 AM ▾]   🗑
+#3   [📅 Wed, May 13, 2026  ▾]   [🕘 2:30 PM ▾]   🗑   ← edited
+#4   [📅 Tue, May 19, 2026  ▾]   [🕘 9:00 AM ▾]   🗑
 
-### 3. Admin triage surface
+[+ Add another session]
+```
 
-In `ReferralTable` and `ReferralTriageDialog`:
+The list scrolls inside the existing `max-h-48` preview region (bumped to `max-h-72` to fit the controls comfortably).
 
-- When the referral's `treatment_type_id` matches the "Other / Custom" type, render a small amber **"Custom request"** badge next to the patient name so Gail spots it immediately.
-- In the triage dialog, show the doctor's free-text description in a highlighted callout block (amber-tinted card) above the existing notes field.
+### Technical changes (single file)
 
-### 4. Convert-to-course flow
+**`src/components/admin/RecurringSessionDialog.tsx`**
 
-In `ConvertReferralDialog`, when the source referral is "Other / Custom":
-
-- Skip the "pick a course template" step (no templates exist for this type).
-- Offer two clear paths via radio buttons:
-  - **Handle as ad-hoc billable item** — closes the dialog, returns Gail to the patient's billing tab with a toast: *"Add the work as line items on the next invoice."*
-  - **Create a new treatment type from this** — opens the Course Templates settings page in a new tab pre-filled with the doctor's description (via URL query params `?from_referral=<id>&name=<text>`), so Gail can formalise it once and then convert.
-
-### 5. Settings tab — small affordance
-
-In `CourseTemplatesTab`, when the URL has `?from_referral=...`, auto-open the "New Treatment Type" editor with the name pre-filled and a small banner: *"Creating from referral #<short-id>"*. This closes the loop without forcing Gail to retype.
-
-### Files
-
-| File | Change |
-|---|---|
-| New `supabase/migrations/<ts>_other_custom_type_seed.sql` | Insert the "Other / Custom" appointment type (idempotent) |
-| `src/pages/doctor/DoctorNewReferral.tsx` | Conditional textarea + helper text when "Other" is selected; prepend tag on submit |
-| `src/components/doctor/FollowUpReferralDialog.tsx` | Same conditional textarea behaviour |
-| `src/components/admin/referrals/ReferralTable.tsx` | "Custom request" badge for Other-type referrals |
-| `src/components/admin/referrals/ReferralTriageDialog.tsx` | Amber callout showing the free-text description |
-| `src/components/admin/ConvertReferralDialog.tsx` | Branch for Other-type: ad-hoc vs promote-to-type |
-| `src/components/admin/settings/CourseTemplatesTab.tsx` | Read `?from_referral` / `?name` query params and auto-open type editor |
+- Replace the derived `previewDates` with a `useState<Date[]>` called `sessionDates`, plus `customised: boolean` flag.
+- A `useEffect` on `[startDate, frequency, preferredDay, secondDay, time, numSessions]` regenerates `sessionDates` **only when `customised` is false**. First time the user edits a row → set `customised = true`.
+- New small subcomponent (inline) renders each row: `Popover` + `Calendar` for date, existing `Select` + `TIME_SLOTS` for time, `Button variant="ghost" size="icon"` with `Trash2` for remove.
+- "Add another session" button appends `addWeeks(last, 1)` at the same time-of-day as the last row.
+- "Regenerate from settings" pill button (only visible when `customised` is true) re-runs `generateDates()` and clears the flag.
+- Submit handler sorts `sessionDates` chronologically, recomputes `session_number` as `sessions_completed + index + 1`, and passes them to `createBulk.mutateAsync` exactly as today.
+- No schema, no hook, no other UI changes.
 
 ### What stays the same
-- No schema changes — reuses existing `treatment_requested` text column for the description.
-- All hooks/types already support `care_pathway` + `as_needed` from the previous Stoma/Wound work.
-- Course templates remain empty for "Other" by design.
-
+- Frequency presets, chair/nurse selection, ongoing-vs-fixed-course logic, the `useCreateBulkAppointments` mutation, toast messages.
+- The dialog still feels one-click-fast for the common "yes, weekly Mondays is fine" case — Gail just hits **Create** without touching any row.
