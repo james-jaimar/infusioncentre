@@ -1,429 +1,370 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useMemo, useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { useStaff, useStaffMutations, type StaffMember } from "@/hooks/useStaff";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
-import { Search, UserCog, Shield, Stethoscope, Plus, Pencil, Trash2, Briefcase } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Search, Shield, Stethoscope, Briefcase, UserCog, Plus, MoreVertical,
+  Pencil, KeyRound, UserX, UserCheck, Trash2, Copy, Mail,
+} from "lucide-react";
+import { format, formatDistanceToNow } from "date-fns";
+import { StaffFormDialog } from "@/components/admin/staff/StaffFormDialog";
+import { ResetPasswordDialog } from "@/components/admin/staff/ResetPasswordDialog";
 
-const roleIcons: Record<string, any> = {
-  admin: Shield,
-  nurse: Stethoscope,
-  doctor: Briefcase,
-};
-
+const roleIcons = { admin: Shield, nurse: Stethoscope, doctor: Briefcase } as const;
 const roleColors: Record<string, string> = {
   admin: "bg-primary/10 text-primary",
   nurse: "bg-accent text-accent-foreground",
   doctor: "bg-green-100 text-green-800",
 };
 
-function useStaffMembers(roleFilter: string) {
-  return useQuery({
-    queryKey: ["staff-members", roleFilter],
-    queryFn: async () => {
-      const filterRoles: ("admin" | "nurse" | "doctor")[] =
-        roleFilter === "all" ? ["admin", "nurse", "doctor"] : [roleFilter as "admin" | "nurse" | "doctor"];
-      const { data: roles, error: rolesError } = await supabase
-        .from("user_roles")
-        .select("user_id, role")
-        .in("role", filterRoles);
-
-      if (rolesError) throw rolesError;
-      if (!roles?.length) return [];
-
-      const userIds = roles.map((r) => r.user_id);
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("*")
-        .in("user_id", userIds);
-
-      if (profilesError) throw profilesError;
-
-      return (profiles || []).map((p) => ({
-        ...p,
-        role: roles.find((r) => r.user_id === p.user_id)?.role || "unknown",
-      }));
-    },
-  });
+function statusBadge(m: StaffMember) {
+  if (m.is_disabled) return <Badge variant="destructive">Disabled</Badge>;
+  if (!m.email_confirmed_at) return <Badge variant="secondary">Email unconfirmed</Badge>;
+  return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Active</Badge>;
 }
 
-type StaffFormData = {
-  first_name: string;
-  last_name: string;
-  phone: string;
-  email: string;
-  password: string;
-  role: "admin" | "nurse" | "doctor";
-  practice_name: string;
-  practice_number: string;
-  specialisation: string;
-};
-
-const emptyForm: StaffFormData = {
-  first_name: "",
-  last_name: "",
-  phone: "",
-  email: "",
-  password: "",
-  role: "nurse",
-  practice_name: "",
-  practice_number: "",
-  specialisation: "",
-};
-
 export default function AdminStaff() {
-  const [roleFilter, setRoleFilter] = useState("all");
-  const [search, setSearch] = useState("");
-  const { data: staff, isLoading } = useStaffMembers(roleFilter);
+  const { data: staff, isLoading } = useStaff();
+  const { create, update, resetPassword, setStatus, remove } = useStaffMutations();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
-  // Dialog states
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [statusDialog, setStatusDialog] = useState<{ open: boolean; disable: boolean }>({ open: false, disable: false });
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [formData, setFormData] = useState<StaffFormData>(emptyForm);
-  const [editData, setEditData] = useState<{ first_name: string; last_name: string; phone: string; role: string }>({
-    first_name: "",
-    last_name: "",
-    phone: "",
-    role: "nurse",
-  });
-  const [selectedMember, setSelectedMember] = useState<any>(null);
-  const [saving, setSaving] = useState(false);
+  const [selected, setSelected] = useState<StaffMember | null>(null);
 
-  // Create staff via edge function
-  const handleCreate = async () => {
-    if (!formData.email || !formData.password || !formData.role) {
-      toast({ title: "Email, password, and role are required", variant: "destructive" });
-      return;
-    }
-    setSaving(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await supabase.functions.invoke("create-staff", {
-        body: {
-          email: formData.email,
-          password: formData.password,
-          first_name: formData.first_name,
-          last_name: formData.last_name,
-          phone: formData.phone,
-          role: formData.role,
-          practice_name: formData.practice_name,
-          practice_number: formData.practice_number,
-          specialisation: formData.specialisation,
-        },
-      });
-      if (res.error || res.data?.error) {
-        throw new Error(res.data?.error || res.error?.message || "Failed to create staff");
+  const filtered = useMemo(() => {
+    if (!staff) return [];
+    return staff.filter((m) => {
+      if (roleFilter !== "all" && m.role !== roleFilter) return false;
+      if (statusFilter === "active" && (m.is_disabled || !m.email_confirmed_at)) return false;
+      if (statusFilter === "disabled" && !m.is_disabled) return false;
+      if (statusFilter === "unconfirmed" && (m.is_disabled || m.email_confirmed_at)) return false;
+      if (search) {
+        const hay = `${m.first_name || ""} ${m.last_name || ""} ${m.email || ""} ${m.phone || ""}`.toLowerCase();
+        if (!hay.includes(search.toLowerCase())) return false;
       }
-      toast({ title: "Staff member created successfully" });
-      queryClient.invalidateQueries({ queryKey: ["staff-members"] });
-      setCreateOpen(false);
-      setFormData(emptyForm);
-    } catch (e: any) {
-      toast({ title: e.message, variant: "destructive" });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // Edit staff profile + role
-  const handleEdit = async () => {
-    if (!selectedMember) return;
-    setSaving(true);
-    try {
-      // Update profile
-      await supabase
-        .from("profiles")
-        .update({
-          first_name: editData.first_name || null,
-          last_name: editData.last_name || null,
-          phone: editData.phone || null,
-        })
-        .eq("user_id", selectedMember.user_id);
-
-      // Update role if changed
-      if (editData.role !== selectedMember.role) {
-        await supabase
-          .from("user_roles")
-          .update({ role: editData.role as "admin" | "nurse" })
-          .eq("user_id", selectedMember.user_id);
-      }
-
-      toast({ title: "Staff member updated" });
-      queryClient.invalidateQueries({ queryKey: ["staff-members"] });
-      setEditOpen(false);
-    } catch (e: any) {
-      toast({ title: e.message, variant: "destructive" });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // Delete staff (remove role + profile)
-  const handleDelete = async () => {
-    if (!selectedMember) return;
-    setSaving(true);
-    try {
-      await supabase.from("user_roles").delete().eq("user_id", selectedMember.user_id);
-      toast({ title: "Staff member removed" });
-      queryClient.invalidateQueries({ queryKey: ["staff-members"] });
-      setDeleteOpen(false);
-    } catch (e: any) {
-      toast({ title: e.message, variant: "destructive" });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const openEdit = (member: any) => {
-    setSelectedMember(member);
-    setEditData({
-      first_name: member.first_name || "",
-      last_name: member.last_name || "",
-      phone: member.phone || "",
-      role: member.role,
+      return true;
     });
-    setEditOpen(true);
+  }, [staff, search, roleFilter, statusFilter]);
+
+  const counts = useMemo(() => {
+    const c = { admin: 0, nurse: 0, doctor: 0, total: staff?.length || 0 };
+    staff?.forEach((s) => { c[s.role] = (c[s.role] || 0) + 1; });
+    return c;
+  }, [staff]);
+
+  const handleCreate = async (v: any) => {
+    try {
+      await create.mutateAsync({
+        email: v.email,
+        password: v.send_invite ? undefined : v.password,
+        first_name: v.first_name,
+        last_name: v.last_name,
+        phone: v.phone,
+        role: v.role,
+        practice_name: v.practice_name,
+        practice_number: v.practice_number,
+        specialisation: v.specialisation,
+        send_invite: v.send_invite,
+      });
+      toast({ title: "Staff member created", description: v.send_invite ? "Invite email sent." : undefined });
+      setCreateOpen(false);
+    } catch (e: any) { toast({ title: e.message, variant: "destructive" }); }
   };
 
-  const openDelete = (member: any) => {
-    setSelectedMember(member);
-    setDeleteOpen(true);
+  const handleEdit = async (v: any) => {
+    if (!selected) return;
+    try {
+      await update.mutateAsync({
+        user_id: selected.user_id,
+        first_name: v.first_name,
+        last_name: v.last_name,
+        phone: v.phone,
+        email: v.email !== selected.email ? v.email : undefined,
+        role: v.role,
+        practice_name: v.practice_name,
+        practice_number: v.practice_number,
+        specialisation: v.specialisation,
+      });
+      toast({ title: "Staff member updated" });
+      setEditOpen(false);
+    } catch (e: any) { toast({ title: e.message, variant: "destructive" }); }
   };
 
-  const filtered = staff?.filter((s: any) => {
-    if (!search) return true;
-    const name = `${s.first_name || ""} ${s.last_name || ""}`.toLowerCase();
-    return name.includes(search.toLowerCase());
-  });
+  const handleReset = async (mode: "set" | "email", data: any) => {
+    if (!selected) return;
+    try {
+      await resetPassword.mutateAsync({ user_id: selected.user_id, mode, ...data });
+      toast({ title: mode === "email" ? "Reset email sent" : "Password updated" });
+      setResetOpen(false);
+    } catch (e: any) { toast({ title: e.message, variant: "destructive" }); }
+  };
+
+  const handleSetStatus = async () => {
+    if (!selected) return;
+    try {
+      await setStatus.mutateAsync({ user_id: selected.user_id, disable: statusDialog.disable });
+      toast({ title: statusDialog.disable ? "Account disabled" : "Account enabled" });
+      setStatusDialog({ open: false, disable: false });
+    } catch (e: any) { toast({ title: e.message, variant: "destructive" }); }
+  };
+
+  const handleDelete = async () => {
+    if (!selected) return;
+    try {
+      await remove.mutateAsync(selected.user_id);
+      toast({ title: "Staff member deleted" });
+      setDeleteOpen(false);
+    } catch (e: any) { toast({ title: e.message, variant: "destructive" }); }
+  };
+
+  const copyEmail = (email: string | null) => {
+    if (!email) return;
+    navigator.clipboard.writeText(email);
+    toast({ title: "Email copied" });
+  };
+
+  const renderActions = (m: StaffMember) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" aria-label="Open actions">
+          <MoreVertical className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuItem onClick={() => { setSelected(m); setEditOpen(true); }}>
+          <Pencil className="h-4 w-4 mr-2" /> Edit profile
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => { setSelected(m); setResetOpen(true); }}>
+          <KeyRound className="h-4 w-4 mr-2" /> Reset password
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        {m.is_disabled ? (
+          <DropdownMenuItem onClick={() => { setSelected(m); setStatusDialog({ open: true, disable: false }); }}>
+            <UserCheck className="h-4 w-4 mr-2" /> Enable account
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem onClick={() => { setSelected(m); setStatusDialog({ open: true, disable: true }); }}>
+            <UserX className="h-4 w-4 mr-2" /> Disable account
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={() => { setSelected(m); setDeleteOpen(true); }}
+          className="text-destructive focus:text-destructive"
+        >
+          <Trash2 className="h-4 w-4 mr-2" /> Delete permanently
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Staff Management</h1>
-          <p className="text-muted-foreground">{staff?.length || 0} staff members</p>
+          <p className="text-sm text-muted-foreground">
+            {counts.total} total · {counts.admin} admin · {counts.nurse} nurse · {counts.doctor} doctor
+          </p>
         </div>
-        <Button onClick={() => { setFormData(emptyForm); setCreateOpen(true); }} className="gap-2">
+        <Button onClick={() => setCreateOpen(true)} className="gap-2">
           <Plus className="h-4 w-4" /> Add Staff
         </Button>
       </div>
 
-      <div className="flex gap-3">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex gap-3 flex-wrap items-center">
+        <div className="relative flex-1 min-w-64 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search staff..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Input placeholder="Search name, email, phone..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <Select value={roleFilter} onValueChange={setRoleFilter}>
-          <SelectTrigger className="w-36">
-            <SelectValue placeholder="Role" />
-          </SelectTrigger>
+          <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Roles</SelectItem>
+            <SelectItem value="all">All roles</SelectItem>
             <SelectItem value="admin">Admin</SelectItem>
             <SelectItem value="nurse">Nurse</SelectItem>
             <SelectItem value="doctor">Doctor</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All statuses</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="disabled">Disabled</SelectItem>
+            <SelectItem value="unconfirmed">Email unconfirmed</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
-      {isLoading ? (
-        <div className="text-center py-12 text-muted-foreground">Loading...</div>
-      ) : !filtered?.length ? (
-        <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">No staff members found.</CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((member: any) => {
-            const RoleIcon = roleIcons[member.role] || UserCog;
-            return (
-              <Card key={member.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-5">
-                  <div className="flex items-start gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 shrink-0">
-                      <RoleIcon className="h-6 w-6 text-primary" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-foreground">
-                        {member.first_name || "—"} {member.last_name || ""}
-                      </p>
-                      {member.phone && <p className="text-sm text-muted-foreground">{member.phone}</p>}
-                      <div className="mt-2">
-                        <Badge className={roleColors[member.role] || ""}>{member.role}</Badge>
+      <Tabs defaultValue="cards">
+        <TabsList>
+          <TabsTrigger value="cards">Cards</TabsTrigger>
+          <TabsTrigger value="table">Table</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="cards" className="mt-4">
+          {isLoading ? (
+            <div className="text-center py-12 text-muted-foreground">Loading...</div>
+          ) : !filtered.length ? (
+            <Card><CardContent className="py-12 text-center text-muted-foreground">No staff members found.</CardContent></Card>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {filtered.map((m) => {
+                const RoleIcon = roleIcons[m.role] || UserCog;
+                return (
+                  <Card key={m.user_id} className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-5">
+                      <div className="flex items-start gap-4">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 shrink-0">
+                          <RoleIcon className="h-6 w-6 text-primary" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="font-semibold text-foreground truncate">
+                                {m.first_name || "—"} {m.last_name || ""}
+                              </p>
+                              {m.email && (
+                                <button
+                                  onClick={() => copyEmail(m.email)}
+                                  className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1 truncate max-w-full"
+                                  title="Copy email"
+                                >
+                                  <Mail className="h-3 w-3 shrink-0" />
+                                  <span className="truncate">{m.email}</span>
+                                  <Copy className="h-3 w-3 shrink-0 opacity-60" />
+                                </button>
+                              )}
+                              {m.phone && <p className="text-xs text-muted-foreground mt-0.5">{m.phone}</p>}
+                            </div>
+                            {renderActions(m)}
+                          </div>
+                          <div className="flex flex-wrap gap-2 mt-3">
+                            <Badge className={roleColors[m.role] || ""}>{m.role}</Badge>
+                            {statusBadge(m)}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-3 space-y-0.5">
+                            <p>Last sign-in: {m.last_sign_in_at ? formatDistanceToNow(new Date(m.last_sign_in_at), { addSuffix: true }) : "Never"}</p>
+                            <p>Joined {format(new Date(m.created_at), "dd MMM yyyy")}</p>
+                          </div>
+                        </div>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Joined {format(new Date(member.created_at), "dd MMM yyyy")}
-                      </p>
-                    </div>
-                    <div className="flex gap-1 shrink-0">
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(member)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => openDelete(member)} className="text-destructive hover:text-destructive">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
 
-      {/* Create Dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Staff Member</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>First Name</Label>
-                <Input value={formData.first_name} onChange={(e) => setFormData({ ...formData, first_name: e.target.value })} />
+        <TabsContent value="table" className="mt-4">
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
+                    <tr>
+                      <th className="px-4 py-3 font-medium">Name</th>
+                      <th className="px-4 py-3 font-medium">Email</th>
+                      <th className="px-4 py-3 font-medium">Role</th>
+                      <th className="px-4 py-3 font-medium">Status</th>
+                      <th className="px-4 py-3 font-medium">Last sign-in</th>
+                      <th className="px-4 py-3 font-medium">Joined</th>
+                      <th className="px-4 py-3 font-medium w-12"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((m) => (
+                      <tr key={m.user_id} className="border-t border-border hover:bg-muted/30">
+                        <td className="px-4 py-3 font-medium text-foreground">{m.first_name} {m.last_name}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{m.email}</td>
+                        <td className="px-4 py-3"><Badge className={roleColors[m.role] || ""}>{m.role}</Badge></td>
+                        <td className="px-4 py-3">{statusBadge(m)}</td>
+                        <td className="px-4 py-3 text-muted-foreground">
+                          {m.last_sign_in_at ? formatDistanceToNow(new Date(m.last_sign_in_at), { addSuffix: true }) : "Never"}
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">{format(new Date(m.created_at), "dd MMM yyyy")}</td>
+                        <td className="px-4 py-3 text-right">{renderActions(m)}</td>
+                      </tr>
+                    ))}
+                    {!filtered.length && !isLoading && (
+                      <tr><td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">No staff members found.</td></tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
-              <div>
-                <Label>Last Name</Label>
-                <Input value={formData.last_name} onChange={(e) => setFormData({ ...formData, last_name: e.target.value })} />
-              </div>
-            </div>
-            <div>
-              <Label>Email *</Label>
-              <Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
-            </div>
-            <div>
-              <Label>Password *</Label>
-              <Input type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
-            </div>
-            <div>
-              <Label>Phone</Label>
-              <Input value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
-            </div>
-            <div>
-              <Label>Role *</Label>
-              <Select value={formData.role} onValueChange={(v) => setFormData({ ...formData, role: v as "admin" | "nurse" | "doctor" })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="nurse">Nurse</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="doctor">Doctor</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {formData.role === "doctor" && (
-              <>
-                <div>
-                  <Label>Practice Name</Label>
-                  <Input value={formData.practice_name} onChange={(e) => setFormData({ ...formData, practice_name: e.target.value })} />
-                </div>
-                <div>
-                  <Label>Practice Number (HPCSA)</Label>
-                  <Input value={formData.practice_number} onChange={(e) => setFormData({ ...formData, practice_number: e.target.value })} />
-                </div>
-                <div>
-                  <Label>Specialisation</Label>
-                  <Input value={formData.specialisation} onChange={(e) => setFormData({ ...formData, specialisation: e.target.value })} />
-                </div>
-              </>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
-            <Button onClick={handleCreate} disabled={saving}>{saving ? "Creating..." : "Create"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
-      {/* Edit Dialog */}
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Staff Member</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>First Name</Label>
-                <Input value={editData.first_name} onChange={(e) => setEditData({ ...editData, first_name: e.target.value })} />
-              </div>
-              <div>
-                <Label>Last Name</Label>
-                <Input value={editData.last_name} onChange={(e) => setEditData({ ...editData, last_name: e.target.value })} />
-              </div>
-            </div>
-            <div>
-              <Label>Phone</Label>
-              <Input value={editData.phone} onChange={(e) => setEditData({ ...editData, phone: e.target.value })} />
-            </div>
-            <div>
-              <Label>Role</Label>
-              <Select value={editData.role} onValueChange={(v) => setEditData({ ...editData, role: v })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="nurse">Nurse</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="doctor">Doctor</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
-            <Button onClick={handleEdit} disabled={saving}>{saving ? "Saving..." : "Save"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <StaffFormDialog
+        open={createOpen} onOpenChange={setCreateOpen} mode="create"
+        onSubmit={handleCreate} saving={create.isPending}
+      />
+      <StaffFormDialog
+        open={editOpen} onOpenChange={setEditOpen} mode="edit" member={selected}
+        onSubmit={handleEdit} saving={update.isPending}
+      />
+      <ResetPasswordDialog
+        open={resetOpen} onOpenChange={setResetOpen} member={selected}
+        onSubmit={handleReset} saving={resetPassword.isPending}
+      />
 
-      {/* Delete Confirmation */}
+      <AlertDialog open={statusDialog.open} onOpenChange={(o) => setStatusDialog({ ...statusDialog, open: o })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{statusDialog.disable ? "Disable account?" : "Enable account?"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {statusDialog.disable
+                ? `${selected?.first_name} ${selected?.last_name} will no longer be able to sign in. All their data is preserved.`
+                : `${selected?.first_name} ${selected?.last_name} will be able to sign in again.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSetStatus} className={statusDialog.disable ? "bg-destructive hover:bg-destructive/90" : ""}>
+              {statusDialog.disable ? "Disable" : "Enable"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove Staff Member</AlertDialogTitle>
+            <AlertDialogTitle>Delete staff member permanently?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove {selectedMember?.first_name} {selectedMember?.last_name}'s role. They will no longer have staff access.
+              This will permanently delete {selected?.first_name} {selected?.last_name}'s login, profile,
+              role and {selected?.role === "doctor" ? "doctor record" : "any related staff data"}.
+              This cannot be undone. To preserve data, use <strong>Disable account</strong> instead.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
-              {saving ? "Removing..." : "Remove"}
+              Delete permanently
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
