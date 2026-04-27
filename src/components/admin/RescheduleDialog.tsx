@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { format, setHours, setMinutes, addMinutes, parseISO } from "date-fns";
+import { format, setHours, setMinutes, addMinutes, parseISO, startOfDay } from "date-fns";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -72,9 +72,10 @@ export function RescheduleDialog({ open, onOpenChange, appointment }: Reschedule
       });
       toast.success("Appointment rescheduled");
       onOpenChange(false);
-    } catch (error) {
-      toast.error("Failed to reschedule");
-      console.error(error);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Failed to reschedule";
+      toast.error(msg);
+      console.error("Reschedule failed:", error);
     }
   };
 
@@ -104,7 +105,7 @@ export function RescheduleDialog({ open, onOpenChange, appointment }: Reschedule
                   mode="single"
                   selected={newDate}
                   onSelect={setNewDate}
-                  disabled={(date) => date < new Date()}
+                  disabled={(date) => startOfDay(date) < startOfDay(new Date())}
                   initialFocus
                   className="pointer-events-auto"
                 />
