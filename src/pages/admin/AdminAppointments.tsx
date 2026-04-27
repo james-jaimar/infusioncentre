@@ -29,7 +29,6 @@ import {
   useDraggable,
   useDroppable,
   type DragEndEvent,
-  DragOverlay,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
@@ -77,7 +76,7 @@ import {
 } from "@/types/appointment";
 import { cn } from "@/lib/utils";
 import { AppointmentQuickEditDialog } from "@/components/admin/AppointmentQuickEditDialog";
-import { AppointmentQuickCreateDialog } from "@/components/admin/AppointmentQuickCreateDialog";
+import { useNavigate } from "react-router-dom";
 
 const HOURS = Array.from({ length: 12 }, (_, i) => i + 7); // 7am to 6pm
 const SLOT_MINUTES = 30; // drag snap
