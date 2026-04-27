@@ -36,17 +36,17 @@ export default function ChangePassword() {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
 
-      // Clear the must_change_password flag on the doctors table
+      // Clear the must_change_password flag on both profiles and doctors
       if (user) {
-        await supabase
-          .from("doctors")
-          .update({ must_change_password: false })
-          .eq("user_id", user.id);
+        await Promise.all([
+          supabase.from("profiles").update({ must_change_password: false }).eq("user_id", user.id),
+          supabase.from("doctors").update({ must_change_password: false }).eq("user_id", user.id),
+        ]);
       }
 
       clearMustChangePassword();
       toast({ title: "Password updated", description: "Your password has been changed successfully." });
-      navigate("/doctor", { replace: true });
+      navigate("/", { replace: true });
     } catch (err: any) {
       toast({ variant: "destructive", title: "Failed to update password", description: err.message });
     } finally {
