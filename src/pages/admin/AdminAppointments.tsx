@@ -31,6 +31,7 @@ import {
   type DragEndEvent,
   DragOverlay,
 } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -106,11 +107,23 @@ function CalendarEventCard({
   pxPerHour,
   isDragging,
   compact,
+  innerRef,
+  style: extraStyle,
+  listeners,
+  attributes,
+  onPointerDown,
+  onClick,
 }: {
   apt: AppointmentWithRelations;
   pxPerHour: number;
   isDragging?: boolean;
   compact?: boolean;
+  innerRef?: (el: HTMLElement | null) => void;
+  style?: React.CSSProperties;
+  listeners?: Record<string, unknown>;
+  attributes?: Record<string, unknown>;
+  onPointerDown?: (e: React.PointerEvent) => void;
+  onClick?: (e: React.MouseEvent) => void;
 }) {
   const start = parseISO(apt.scheduled_start);
   const end = parseISO(apt.scheduled_end);
@@ -122,8 +135,13 @@ function CalendarEventCard({
 
   return (
     <div
+      ref={innerRef}
+      onPointerDown={onPointerDown}
+      onClick={onClick}
+      {...(listeners ?? {})}
+      {...(attributes ?? {})}
       className={cn(
-        "absolute left-1 right-1 rounded-md border-l-4 px-2 py-1 text-xs cursor-grab overflow-hidden shadow-sm hover:shadow-md transition-shadow",
+        "absolute left-1 right-1 rounded-md border-l-4 px-2 py-1 text-xs cursor-grab overflow-hidden shadow-sm hover:shadow-md transition-shadow select-none touch-none",
         STATUS_BG[apt.status],
         isDragging && "opacity-50 cursor-grabbing"
       )}
@@ -131,6 +149,7 @@ function CalendarEventCard({
         top: `${Math.max(0, top)}px`,
         height: `${height}px`,
         borderLeftColor: apt.appointment_type.color,
+        ...extraStyle,
       }}
     >
       <div className="flex items-start justify-between gap-1">
@@ -174,30 +193,44 @@ function DraggableEvent({
   pxPerHour: number;
   onClick: () => void;
 }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, isDragging, transform } = useDraggable({
     id: apt.id,
     data: { apt },
   });
+
+  const downRef = useRef<{ x: number; y: number } | null>(null);
 
   return (
     <TooltipProvider delayDuration={300}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div
-            ref={setNodeRef}
-            {...listeners}
-            {...attributes}
-            onClick={(e) => {
-              // dnd-kit triggers click after pointer up; only treat as click if not dragging
-              if (!isDragging) onClick();
+          <CalendarEventCard
+            apt={apt}
+            pxPerHour={pxPerHour}
+            isDragging={isDragging}
+            innerRef={setNodeRef}
+            listeners={listeners as Record<string, unknown>}
+            attributes={attributes as Record<string, unknown>}
+            style={{
+              transform: CSS.Translate.toString(transform),
+              zIndex: isDragging ? 50 : 1,
             }}
-          >
-            <CalendarEventCard
-              apt={apt}
-              pxPerHour={pxPerHour}
-              isDragging={isDragging}
-            />
-          </div>
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              downRef.current = { x: e.clientX, y: e.clientY };
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              const d = downRef.current;
+              downRef.current = null;
+              if (isDragging) return;
+              if (d) {
+                const moved = Math.hypot(e.clientX - d.x, e.clientY - d.y);
+                if (moved > 4) return;
+              }
+              onClick();
+            }}
+          />
         </TooltipTrigger>
         <TooltipContent side="right" className="max-w-xs">
           <div className="font-medium">
@@ -238,7 +271,9 @@ function DroppableCell({
   });
 
   const handleSlotClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.target !== e.currentTarget) return;
+    // Only fire when the click landed on the dedicated background layer.
+    const target = e.target as HTMLElement;
+    if (!target.dataset || target.dataset.slotBg !== "1") return;
     const rect = e.currentTarget.getBoundingClientRect();
     const yPx = e.clientY - rect.top;
     const minutes = Math.round((yPx / pxPerHour) * 60);
@@ -259,6 +294,12 @@ function DroppableCell({
       )}
       style={{ height: `${HOURS.length * pxPerHour}px` }}
     >
+      {/* Dedicated click surface — clicks here mean "create at this time". */}
+      <div
+        data-slot-bg="1"
+        className="absolute inset-0"
+        aria-hidden
+      />
       {/* Hour grid lines */}
       {HOURS.map((hour, i) => (
         <div
@@ -267,10 +308,6 @@ function DroppableCell({
           style={{ top: `${i * pxPerHour}px` }}
         />
       ))}
-      {/* Now line */}
-      {isToday(day) && (
-        <NowLine pxPerHour={pxPerHour} />
-      )}
       {children}
     </div>
   );
