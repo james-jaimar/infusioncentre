@@ -310,6 +310,17 @@ export default function NurseJobCard() {
           {/* Pre-Assessment (check-in stage) */}
           {showPreAssessment && (
             <>
+              {isRecoverablePending && (
+                <div className="rounded-lg border border-clinical-warning/40 bg-clinical-warning-soft/40 px-4 py-3 flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-clinical-warning flex-shrink-0 mt-0.5" />
+                  <div className="text-sm">
+                    <p className="font-medium text-foreground">Resuming previous attempt</p>
+                    <p className="text-muted-foreground">
+                      A treatment was started but didn't complete. Re-submit the pre-assessment to continue — your prior progress will be reused.
+                    </p>
+                  </div>
+                </div>
+              )}
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">Pre-Treatment Checklist</CardTitle>
