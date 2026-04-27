@@ -1,93 +1,46 @@
-# Nurse Command Centre Overhaul + Stuck-Treatment Fix
+## Goal
 
-Two things are wrong:
+Empower the nurse to facilitate patient form completion in-clinic — either filling out a form *with* the patient on the nurse's tablet, or handing over a tablet for the patient to self-complete — directly from the Job Card and Today's Schedule. This unblocks treatments when patients arrive with missing onboarding forms.
 
-1. **Treatment is stuck in a loop.** The previous "Start Treatment" attempt created a `treatments` row with `status='pending'` and `started_at=null` (because the trigger error fired before the in_progress update). The Job Card now hides pre-assessment (treatment exists) and also doesn't show the active treatment view (status isn't `in_progress`) — so there's no button to move forward.
-2. **Command Centre is empty / not operational.** Today's appointments don't show against chairs, the nurse can't see the schedule, and they're forced to detour via "Today's Patients" to find a job card.
+## What the nurse will be able to do
 
----
+1. **See exactly what's missing** on the Job Card sidebar — the existing Onboarding card already lists pending forms but they're not actionable.
+2. **Tap a pending form** → choose one of two flows:
+   - **"Complete with patient"** — opens the form full-screen, signed by the patient, submitted by the nurse.
+   - **"Hand to patient"** — launches a **Patient Kiosk Mode**: locks the tablet to that single form, hides nurse navigation, requires patient signature, and returns to the Job Card on submit (or after timeout / nurse PIN to exit early).
+3. **Resume** any in-progress draft the patient started elsewhere.
+4. **See readiness on Today's Schedule** — a small "⚠ 2 forms outstanding" chip on each appointment row, with a quick "Help with forms" action that jumps straight into the same flow without opening the full Job Card.
 
-## Part 1 — Fix the stuck treatment (immediate unblock)
+## Technical changes
 
-**Job Card recovery logic** (`src/pages/nurse/NurseJobCard.tsx`):
-- When a treatment exists but `status === 'pending'` (the broken intermediate state), treat it as if no treatment exists — show pre-assessment UI again.
-- Update `handleStartTreatment` to **reuse** an existing `pending` treatment instead of always creating a new one (idempotent: if treatment row exists for this appointment, skip `createTreatment` and just attach vitals/assessment, then transition to `in_progress` + set `started_at`). This recovers any future failure mid-flow without manual intervention.
-- Add a small "Recover session" notice if a pending treatment is detected, so the nurse knows the previous attempt is being resumed.
+### New components
+- `src/components/nurse/JobCardOnboarding.tsx` — replaces the read-only Onboarding card in `JobCardSidebar.tsx`. Lists each required form with status pill + actions (`Complete with patient` / `Hand to patient` / `View`).
+- `src/components/nurse/PatientKioskMode.tsx` — full-screen overlay wrapping `FullScreenFormDialog` with:
+  - Hidden nurse chrome (no sidebar, no back-to-job-card button).
+  - Header showing patient name only ("Hi James, please complete this form").
+  - Exit guarded by a 4-digit nurse PIN (stored per-session in memory, set on first kiosk launch).
+  - Submission attributed to the patient's `user_id` if linked; else `submitted_by = nurse user_id` with a flag in `data.completed_with_nurse_assistance = true`.
 
-**One-time data fix** for the currently stuck record (treatment `561264f0…`): leave the row in place — the new recovery logic above will resume it cleanly when the nurse re-opens the job card.
+### Modified files
+- `src/components/nurse/JobCardSidebar.tsx` — swap the static onboarding block for the new `JobCardOnboarding`.
+- `src/pages/nurse/NurseJobCard.tsx` — wire in kiosk launching; on form-submit invalidate the readiness query so the "Start Treatment" button unlocks immediately.
+- `src/components/nurse/command-centre/TodaysSchedule.tsx` — add a forms-readiness chip per row using `useOnboardingReadiness`, plus a "Help with forms" quick action that opens the kiosk picker without navigating away.
+- `src/hooks/useFormSubmissions.ts` — extend `useCreateFormSubmission` to accept the assistance flag and include it in `data`.
 
----
+### Permissions / data
+No schema changes required. Existing RLS already allows:
+- Nurses to insert/update `form_submissions` (verified in the schema).
+- Nurses to update `onboarding_checklists`.
 
-## Part 2 — Rebuild the Nurse Command Centre
+The `form_submissions.submitted_by` column will record the nurse's user_id when assisting; the form payload will carry `completed_with_nurse_assistance: true` for audit clarity. Patient signature is still captured on the signature canvas.
 
-Goal: the command centre becomes the **single screen a nurse uses all day**, suitable for a wall monitor *and* tablet operation. No more bouncing to "Today's Patients".
+### Kiosk PIN
+Stored in `sessionStorage` (cleared on tab close). First kiosk launch in a session prompts the nurse to set a 4-digit PIN. Exit-kiosk requires the PIN. This is intentionally lightweight — it's a UX guard to stop a curious patient from poking around mid-form, not a security boundary.
 
-### New layout (12-col grid, full-width, designed for big screens)
+### Feature flag
+Add a new `feature_flags` row `nurse_can_assist_forms` (default `true`) so Gail can disable this from Settings later, as you mentioned. Read via existing `useClinicSettings`/feature-flag hook in `JobCardOnboarding` to hide the actions if disabled.
 
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│  Clinical Operations              13:07   ● 2 Active   4 Chairs │
-├──────────────────────────────────┬──────────────────────────────┤
-│  CHAIR FLOOR (8 cols)            │  TODAY'S SCHEDULE (4 cols)   │
-│  ┌──────────┐  ┌──────────┐     │  ┌────────────────────────┐  │
-│  │ Chair 1  │  │ Chair 2  │     │  │ 09:00  Jane Smith      │  │
-│  │ Jane S.  │  │ Available│     │  │        Iron · Chair 1  │  │
-│  │ Iron 45m │  │  [Assign]│     │  │        ● In Progress   │  │
-│  │ ▓▓▓▓░░   │  │          │     │  ├────────────────────────┤  │
-│  │ [Open]   │  │          │     │  │ 10:30  John Doe        │  │
-│  └──────────┘  └──────────┘     │  │        Ketamine        │  │
-│  ┌──────────┐  ┌──────────┐     │  │        ⊙ Checked-in    │  │
-│  │ Chair 3  │  │ Chair 4  │     │  │        [Open Job Card] │  │
-│  │ ...      │  │ ...      │     │  ├────────────────────────┤  │
-│  └──────────┘  └──────────┘     │  │ 13:00  ...             │  │
-│                                  │  └────────────────────────┘  │
-│  UNASSIGNED (warning strip)      │                              │
-│  • Sarah J. — Biologic [Assign▼] │  LIVE ALERTS                 │
-│                                  │  • Chair 1 vitals overdue 3m │
-│                                  │  QUICK STATS                 │
-└──────────────────────────────────┴──────────────────────────────┘
-```
-
-### Key changes
-
-**Today's Schedule panel (replaces the small "Upcoming Sessions" card)**
-- Shows **every appointment for today** in chronological order — scheduled, confirmed, checked-in, in-progress, completed.
-- Each row: time · patient · treatment type · chair · status pill · action button.
-- Action button is context-aware:
-  - `scheduled`/`confirmed` → "Open Job Card" (lets nurse check-in from job card)
-  - `checked_in` → "Pre-Assessment" (highlighted, primary action)
-  - `in_progress` → "Resume" (goes straight to active treatment)
-  - `completed` → "View"
-- Eliminates the need for the separate "Today's Patients" page for the daily workflow.
-
-**Chair Floor improvements**
-- Available chairs get an inline **"+ Assign Patient"** button → opens a small popover listing today's unassigned + checked-in patients to drop into that chair (mirrors current unassigned-sidebar logic but reversed: pick a patient *for* a chair).
-- Occupied chair card shows the **stage chip** more prominently (Pre-Assessment / Running / Observing) so nurse sees workflow phase at a glance.
-- "Open Session" button stays — primary tablet target.
-
-**Header refinements**
-- Add second metric pill: "**X / Y chairs occupied**" alongside Active count.
-- Date displayed under the live clock (useful on a wall monitor).
-
-**Sidebar refinements** (Live Alerts + Quick Stats)
-- Keep Live Alerts at the top — make it more prominent (larger when there are alerts, collapsed when none).
-- Quick Stats stays at the bottom but adds: "Next arrival in Xm" derived from upcoming sessions.
-- Remove the "Unassigned" sidebar block — handled in the chair floor warning strip and the schedule panel now.
-
-### Data layer (`src/hooks/useCommandCentre.ts`)
-- Extend `treatmentsQuery` to include `status='pending'` so checked-in patients with a pending treatment row also appear linked to a chair (prevents the same stuck-state from disappearing the patient from the board).
-- Add a `todaysAppointments` query (all of today regardless of status) to power the new schedule panel — replaces the narrower `upcomingQuery`.
-
-### Files affected
-- `src/pages/nurse/NurseCommandCentre.tsx` — new layout
-- `src/components/nurse/command-centre/ChairPanel.tsx` — add assign-patient popover for available chairs, prominent stage chip
-- `src/components/nurse/command-centre/MonitoringSidebar.tsx` — drop unassigned block, refine alerts/stats
-- `src/components/nurse/command-centre/TodaysSchedule.tsx` — **new**, chronological day view with context actions
-- `src/components/nurse/command-centre/AssignPatientPopover.tsx` — **new**, picks a patient for a chair
-- `src/hooks/useCommandCentre.ts` — broader treatment query, today's appointments query
-- `src/pages/nurse/NurseJobCard.tsx` — recovery from `pending` treatment state
-
-### Out of scope for this round
-- The "Today's Patients" page itself stays (admin/historical view) but is no longer part of the daily nurse loop.
-- No changes to the Job Card stepper visual itself beyond the recovery fix.
-- Wall-monitor-only "presentation mode" (huge fonts, no nav) — can come next if you want it.
+## Out of scope
+- Changing the patient self-onboarding portal flow.
+- Editing already-submitted forms (admins still own amendments).
+- Reworking signatures (existing signature canvas is reused).
