@@ -53,11 +53,17 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { email, password, first_name, last_name, phone, role, practice_name, practice_number, specialisation } = body;
+    const { email, password, first_name, last_name, phone, role, practice_name, practice_number, specialisation, send_invite } = body;
 
-    if (!email || !password || !role) {
+    if (!email || !role) {
       return new Response(
-        JSON.stringify({ error: "email, password, and role are required" }),
+        JSON.stringify({ error: "email and role are required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    if (!send_invite && !password) {
+      return new Response(
+        JSON.stringify({ error: "password is required when not sending an invite email" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -73,10 +79,14 @@ Deno.serve(async (req) => {
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
     // Create auth user — pass user_metadata so the handle_new_user trigger
-    // creates the profile with the correct name
+    // creates the profile with the correct name. If sending invite, set a
+    // random password the user will overwrite via the reset link.
+    const tempPassword = send_invite
+      ? crypto.randomUUID() + "Aa1!"
+      : password;
     const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
       email,
-      password,
+      password: tempPassword,
       email_confirm: true,
       user_metadata: {
         first_name: first_name || null,
@@ -118,8 +128,24 @@ Deno.serve(async (req) => {
         phone: phone || null,
         email: email,
         specialisation: specialisation || null,
-        must_change_password: true,
+        must_change_password: !send_invite,
       });
+    }
+
+    // If invite mode, trigger a password reset email so the user can set their own password
+    if (send_invite) {
+      try {
+        await fetch(`${supabaseUrl}/functions/v1/password-reset`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
+          },
+          body: JSON.stringify({ email }),
+        });
+      } catch (e) {
+        console.error("Failed to send invite email:", e);
+      }
     }
 
     return new Response(
