@@ -309,7 +309,6 @@ export default function AdminAppointments() {
 
   // Modal state
   const [editingApt, setEditingApt] = useState<AppointmentWithRelations | null>(null);
-  const [createSlot, setCreateSlot] = useState<{ date: Date; chairId: string | null } | null>(null);
   const [activeDragApt, setActiveDragApt] = useState<AppointmentWithRelations | null>(null);
 
   const pxPerHour = DENSITY_PX[density];
@@ -349,6 +348,8 @@ export default function AdminAppointments() {
 
   const appointments = useMemo(() => {
     return rawAppointments.filter((a) => {
+      // Hide stale "rescheduled" copies from the working board
+      if (a.status === "rescheduled") return false;
       if (chairFilter.size && (!a.chair_id || !chairFilter.has(a.chair_id))) return false;
       if (typeFilter.size && !typeFilter.has(a.appointment_type_id)) return false;
       if (statusFilter.size && !statusFilter.has(a.status)) return false;
@@ -486,18 +487,13 @@ export default function AdminAppointments() {
         <div>
           <h1 className="text-3xl font-semibold text-foreground">Appointments</h1>
           <p className="text-muted-foreground">
-            Drag to reschedule · click to edit · click an empty slot to book
+            Click an appointment to edit · drag to move it to another time or chair
           </p>
         </div>
         <Button
-          onClick={() =>
-            setCreateSlot({
-              date: setMinutes(setHours(currentDate, 9), 0),
-              chairId: chairs[0]?.id ?? null,
-            })
-          }
+          onClick={() => navigate("/admin/patients")}
         >
-          <Plus className="mr-2 h-4 w-4" /> New appointment
+          <Plus className="mr-2 h-4 w-4" /> Schedule from patient
         </Button>
       </div>
 
