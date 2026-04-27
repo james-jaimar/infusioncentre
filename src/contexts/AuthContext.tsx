@@ -100,8 +100,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function fetchUserData(userId: string) {
     try {
-      // Fetch profile and role in parallel
-      const [profileResult, roleResult] = await Promise.all([
+      // Fetch profile and roles in parallel
+      const [profileResult, rolesResult] = await Promise.all([
         supabase
           .from("profiles")
           .select("*")
@@ -110,10 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         supabase
           .from("user_roles")
           .select("role")
-          .eq("user_id", userId)
-          .order("created_at", { ascending: true })
-          .limit(1)
-          .maybeSingle(),
+          .eq("user_id", userId),
       ]);
 
       if (profileResult.data) {
@@ -123,8 +120,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      if (roleResult.data) {
-        const userRole = roleResult.data.role as AppRole;
+      const roles = (rolesResult.data ?? []).map((r: any) => r.role as AppRole);
+      // Staff roles take precedence over patient to prevent mis-routing
+      const userRole: AppRole | null =
+        (roles.includes("admin") && "admin") ||
+        (roles.includes("nurse") && "nurse") ||
+        (roles.includes("doctor") && "doctor") ||
+        (roles.includes("patient") && "patient") ||
+        null;
+
+      if (userRole) {
         setRole(userRole);
 
         // If doctor, also check doctors.must_change_password
