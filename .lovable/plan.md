@@ -1,58 +1,95 @@
-## Calendar stabilisation plan
+# Staff Management Overhaul
 
-This pass will simplify the appointment calendar back into a reliable scheduling board: view, edit, and move existing sessions only. New appointments will remain tied to the patient/treatment-course workflow.
+Bring the Staff Management page (`/admin/staff`) up to a full administrative console — exposing email/login data, password management, account status, last sign-in, and richer profile fields, with proper CRUD via secure edge functions.
 
-### 1. Remove empty-slot appointment creation from the calendar
-- Remove the “click empty slot to book” behaviour from the week/day grid.
-- Remove the quick-create modal from the calendar page.
-- Change the header guidance to reflect the real workflow: click an appointment to edit; drag appointments to move them.
-- Replace the “New appointment” calendar button with a safe navigation action to the proper patient/treatment flow, such as Patients / Treatment Courses, rather than opening an ad-hoc appointment modal.
-- Keep the existing patient/course scheduling tools intact, especially `Schedule Sessions` inside the patient’s Treatment Course tab.
+## Current Gaps
 
-### 2. Remove the red “now” line
-- Delete the `NowLine` rendering entirely from the appointment calendar.
-- Remove the related props and state from calendar cells.
-- Keep today highlighting if useful, but no red horizontal line across the grid.
+- Email is not displayed (only stored in `auth.users`, never fetched on list).
+- No way to reset a staff member's password.
+- No way to disable / re-enable an account (only "remove role").
+- Edit dialog can't change the email address.
+- No last sign-in / status indicators.
+- "Delete" only strips the role — leaves the auth user, profile, and (for doctors) the doctors row dangling.
+- Doctor-specific fields (practice name/number, specialisation) aren't editable after creation.
+- Card UI is sparse; no table view, no quick filters by status.
 
-### 3. Fix rescheduling so it moves the original appointment instead of leaving a grey copy
-- Change the reschedule action from “mark old appointment as rescheduled + insert a new appointment” to a direct update of the same appointment’s `scheduled_start`, `scheduled_end`, `chair_id`, and nurse/session metadata as needed.
-- Keep the reschedule reason by writing it to `reschedule_reason` on the same appointment.
-- Do not create `rescheduled_from_id` records for this UI flow.
-- Hide any existing `rescheduled` appointments from the calendar by default so historical greyed-out records do not clutter Gail’s working schedule.
+## What We'll Build
 
-### 4. Fix drag-and-drop behaviour
-- Remove the `DragOverlay` clone, because it is causing the “two representations” effect.
-- Use the real appointment card as the only dragged visual element.
-- Rework the draggable card structure so `useDraggable` is applied to the actual appointment card and the transform is applied consistently.
-- Keep the click-vs-drag separation so a normal click opens the appointment modal, while a deliberate drag moves the appointment.
-- Make drop calculation deterministic:
-  - day comes from the target column,
-  - chair comes from the target row,
-  - time is calculated from the pointer/drop position and snapped to 30-minute slots,
-  - duration stays unchanged.
-- Keep conflict checks before saving and show a clear toast if the chair/time is occupied.
+### 1. New/updated edge functions (admin-only, service-role)
 
-### 5. Tighten appointment filtering and cache updates
-- Exclude `cancelled`, `no_show`, and `rescheduled` from drag conflict checks where appropriate.
-- Keep completed appointments visible unless filtered out, but only active/upcoming statuses should be draggable if that is safer.
-- Ensure the appointment query and optimistic cache update keep the visible card in the new slot immediately after a successful drag or reschedule.
+| Function | Purpose |
+|---|---|
+| `list-staff` (new) | Returns staff merged with `auth.users` (email, last_sign_in_at, banned_until, email_confirmed_at) + profile + role + doctor record. Replaces the client-side join in `useStaffMembers`. |
+| `update-staff` (new) | Update profile (name/phone), role (with cascade — remove from `doctors` if leaving doctor role, insert if becoming doctor), email (`auth.admin.updateUserById`), and doctor-specific fields. |
+| `reset-staff-password` (new) | Two modes: (a) set a new password directly via `auth.admin.updateUserById`, or (b) send a recovery email via `auth.admin.generateLink({ type: 'recovery' })` routed through existing SMTP. |
+| `set-staff-status` (new) | Ban/unban via `auth.admin.updateUserById({ ban_duration: '876000h' \| 'none' })` to disable login without deleting data. |
+| `delete-staff` (existing) | Already does full cascade (doctors → user_roles → profiles → auth user). Keep as-is. |
+| `create-staff` (existing) | Keep, plus add option to send an invite email instead of admin-set password. |
 
-### 6. Validation after implementation
-- Run TypeScript/build checks.
-- Review the calendar code path for the four reported regressions:
-  1. no red line,
-  2. empty grid clicks do nothing,
-  3. reschedule leaves only the new slot,
-  4. drag shows one card and persists the move.
+All functions verify caller is `admin` via `user_roles` (same pattern as existing `create-staff`/`delete-staff`).
 
-## Main files to change
-- `src/pages/admin/AdminAppointments.tsx`
-- `src/hooks/useAppointments.ts`
-- `src/components/admin/RescheduleDialog.tsx`
-- `src/components/admin/AppointmentQuickEditDialog.tsx`
-- Potentially remove or stop using `src/components/admin/AppointmentQuickCreateDialog.tsx`
+### 2. Redesigned `AdminStaff.tsx` page
 
-## Technical notes
-- The current grey leftover is caused by `useRescheduleAppointment()` inserting a new row and setting the old one to `status = 'rescheduled'`.
-- The current double-drag visual is caused by rendering both the transformed source card and a `DragOverlay` clone.
-- The empty-slot create behaviour is caused by `DroppableCell` calling `onSlotClick`, which sets `createSlot` and opens `AppointmentQuickCreateDialog`.
+**Header**
+- Title + total count + per-role counts (Admin / Nurse / Doctor).
+- Search (name, email, phone) + role filter + status filter (Active / Disabled / Pending email confirmation).
+- View toggle: **Cards** (default, current visual style) and **Table** (denser, sortable).
+- "Add Staff" button (existing) — extended dialog (see §3).
+
+**Each staff row/card shows**
+- Avatar (role icon), full name, role badge.
+- Email (with copy-to-clipboard).
+- Phone.
+- Status pill: Active / Disabled / Email unconfirmed.
+- Last sign-in (relative, e.g. "2 days ago" / "Never").
+- Joined date.
+- Action menu (kebab): Edit, Reset password, Send password-reset email, Disable/Enable account, Delete.
+
+**Table view columns**: Name · Email · Role · Status · Last sign-in · Joined · Actions.
+
+### 3. Dialogs
+
+- **Add Staff** (extend existing): adds a "Send invite email" toggle — when on, password field hides and a recovery email is sent on creation. Doctor-specific fields stay conditional.
+- **Edit Staff** (expand): editable email, name, phone, role; doctor section with practice name/number/specialisation when role = doctor. Warns when changing email (user must reconfirm).
+- **Reset Password** (new): two tabs — "Set new password" (admin types it, optional "force change on next login" → sets `doctors.must_change_password` for doctors / a profile flag otherwise) and "Email reset link" (one-click).
+- **Disable / Enable confirmation**: explains effect (login blocked, data preserved).
+- **Delete confirmation** (rewrite): clearly states full cascade — auth user, profile, role, doctor record all deleted. Distinguish from Disable.
+
+### 4. Schema additions
+
+Minimal — most data already exists.
+- Add `must_change_password boolean default false` to `profiles` (doctors table already has it). This lets admins force a password change for non-doctor staff after a manual reset.
+
+No other schema changes needed — `auth.users` already has `email`, `last_sign_in_at`, `banned_until`, `email_confirmed_at`.
+
+### 5. Login enforcement
+
+In `AuthContext` post-login flow, check `profiles.must_change_password` (in addition to existing `doctors.must_change_password`) and redirect to `/change-password` if true. Clear the flag after successful change.
+
+## Files Affected
+
+**New**
+- `supabase/functions/list-staff/index.ts`
+- `supabase/functions/update-staff/index.ts`
+- `supabase/functions/reset-staff-password/index.ts`
+- `supabase/functions/set-staff-status/index.ts`
+- `src/components/admin/staff/StaffTable.tsx`
+- `src/components/admin/staff/StaffCard.tsx`
+- `src/components/admin/staff/StaffFormDialog.tsx` (shared create/edit)
+- `src/components/admin/staff/ResetPasswordDialog.tsx`
+- `src/hooks/useStaff.ts` (list + mutations)
+
+**Edited**
+- `src/pages/admin/AdminStaff.tsx` (rewritten)
+- `supabase/functions/create-staff/index.ts` (add invite-email mode)
+- `src/contexts/AuthContext.tsx` (honor `profiles.must_change_password`)
+- `supabase/config.toml` (register new functions)
+
+**Migration**
+- Add `profiles.must_change_password boolean default false`.
+
+## Out of Scope (ask if you want these)
+
+- Granular per-feature permissions (we keep the existing `app_role` enum: admin/nurse/doctor/patient).
+- 2FA enrollment management.
+- Audit log UI for staff changes (events are still written via existing audit triggers where applicable).
