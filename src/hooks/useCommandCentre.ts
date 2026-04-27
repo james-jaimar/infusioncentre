@@ -39,6 +39,20 @@ export interface UpcomingSession {
   chairName: string | null;
 }
 
+export interface ScheduledAppointment {
+  appointmentId: string;
+  patientId: string;
+  patientName: string;
+  treatmentType: string;
+  treatmentTypeColor: string;
+  scheduledStart: string;
+  scheduledEnd: string;
+  chairId: string | null;
+  chairName: string | null;
+  status: string;
+  hasTreatment: boolean;
+}
+
 export function useCommandCentre() {
   const queryClient = useQueryClient();
   const today = new Date();
@@ -76,7 +90,7 @@ export function useCommandCentre() {
           ),
           treatment_type:appointment_types!inner(name, color)
         `)
-        .in("status", ["pre_assessment", "in_progress", "post_assessment"])
+        .in("status", ["pending", "pre_assessment", "in_progress", "post_assessment"])
         .gte("created_at", dayStart)
         .lte("created_at", dayEnd);
 
@@ -145,9 +159,10 @@ export function useCommandCentre() {
       startedAt: t.started_at,
     }));
 
-  // Upcoming sessions: today's scheduled/confirmed appointments not yet started
-  const upcomingQuery = useQuery({
-    queryKey: ["command-centre", "upcoming", today.toDateString()],
+  // All of today's appointments (every status) — drives the schedule panel and the
+  // legacy upcomingSessions list.
+  const dayAppointmentsQuery = useQuery({
+    queryKey: ["command-centre", "day-appointments", today.toDateString()],
     queryFn: async () => {
       const dayStart = startOfDay(today).toISOString();
       const dayEnd = endOfDay(today).toISOString();
@@ -156,14 +171,14 @@ export function useCommandCentre() {
         .from("appointments")
         .select(`
           id,
+          status,
           scheduled_start,
           scheduled_end,
           chair_id,
-          patient:patients!inner(first_name, last_name),
-          appointment_type:appointment_types!inner(name),
+          patient:patients!inner(id, first_name, last_name),
+          appointment_type:appointment_types!inner(name, color),
           chair:treatment_chairs(name)
         `)
-        .in("status", ["scheduled", "confirmed"])
         .gte("scheduled_start", dayStart)
         .lte("scheduled_start", dayEnd)
         .order("scheduled_start", { ascending: true });
@@ -174,14 +189,37 @@ export function useCommandCentre() {
     refetchInterval: 30000,
   });
 
-  const upcomingSessions: UpcomingSession[] = (upcomingQuery.data || []).map((a: any) => ({
-    appointmentId: a.id,
-    patientName: `${a.patient.first_name} ${a.patient.last_name}`,
-    treatmentType: a.appointment_type.name,
-    scheduledStart: a.scheduled_start,
-    scheduledEnd: a.scheduled_end,
-    chairName: a.chair?.name || null,
-  }));
+  const treatedApptIds = new Set(
+    (treatmentsQuery.data || []).map((t: any) => t.appointment_id)
+  );
+
+  const todaysAppointments: ScheduledAppointment[] = (dayAppointmentsQuery.data || []).map(
+    (a: any) => ({
+      appointmentId: a.id,
+      patientId: a.patient.id,
+      patientName: `${a.patient.first_name} ${a.patient.last_name}`,
+      treatmentType: a.appointment_type.name,
+      treatmentTypeColor: a.appointment_type.color,
+      scheduledStart: a.scheduled_start,
+      scheduledEnd: a.scheduled_end,
+      chairId: a.chair_id || null,
+      chairName: a.chair?.name || null,
+      status: a.status,
+      hasTreatment: treatedApptIds.has(a.id),
+    })
+  );
+
+  // Legacy "upcoming" list — only future scheduled/confirmed.
+  const upcomingSessions: UpcomingSession[] = todaysAppointments
+    .filter((a) => a.status === "scheduled" || a.status === "confirmed")
+    .map((a) => ({
+      appointmentId: a.appointmentId,
+      patientName: a.patientName,
+      treatmentType: a.treatmentType,
+      scheduledStart: a.scheduledStart,
+      scheduledEnd: a.scheduledEnd,
+      chairName: a.chairName,
+    }));
 
   const assignChair = useMutation({
     mutationFn: async ({ appointmentId, chairId }: { appointmentId: string; chairId: string }) => {
@@ -198,5 +236,5 @@ export function useCommandCentre() {
 
   const isLoading = chairsQuery.isLoading || treatmentsQuery.isLoading;
 
-  return { chairs, unassigned, upcomingSessions, isLoading, assignChair };
+  return { chairs, unassigned, upcomingSessions, todaysAppointments, isLoading, assignChair };
 }
