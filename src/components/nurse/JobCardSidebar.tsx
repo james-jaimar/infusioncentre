@@ -3,14 +3,13 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { usePatientMedicalHistory } from "@/hooks/usePatientMedicalHistory";
-import { useOnboardingChecklist } from "@/hooks/useOnboardingChecklist";
 import TreatmentHistory from "./TreatmentHistory";
+import JobCardOnboarding from "./JobCardOnboarding";
 import {
   ChevronDown,
   Phone,
   UserCircle,
   Stethoscope,
-  FileText,
   AlertTriangle,
 } from "lucide-react";
 import { useState } from "react";
@@ -18,6 +17,8 @@ import { useState } from "react";
 interface JobCardSidebarProps {
   patientId: string;
   patient: {
+    first_name?: string | null;
+    last_name?: string | null;
     emergency_contact_name?: string | null;
     emergency_contact_phone?: string | null;
     emergency_contact_relationship?: string | null;
@@ -31,12 +32,9 @@ interface JobCardSidebarProps {
 
 export default function JobCardSidebar({ patientId, patient }: JobCardSidebarProps) {
   const { data: medHistory } = usePatientMedicalHistory(patientId);
-  const { data: checklist } = useOnboardingChecklist(patientId);
   const [medOpen, setMedOpen] = useState(true);
 
-  const completedForms = checklist?.filter((c) => c.status === "completed").length || 0;
-  const totalForms = checklist?.length || 0;
-  const progressPct = totalForms > 0 ? Math.round((completedForms / totalForms) * 100) : 0;
+  const patientName = `${patient.first_name || ""} ${patient.last_name || ""}`.trim() || "Patient";
 
   return (
     <div className="space-y-4">
@@ -132,31 +130,7 @@ export default function JobCardSidebar({ patientId, patient }: JobCardSidebarPro
       </Collapsible>
 
       {/* Onboarding Status */}
-      {totalForms > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <FileText className="h-4 w-4 text-muted-foreground" /> Onboarding
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Progress value={progressPct} className="h-1.5" />
-            <p className="text-xs text-muted-foreground">{completedForms}/{totalForms} forms completed</p>
-            <div className="space-y-1.5">
-              {checklist?.map((item) => (
-                <div key={item.id} className="flex items-center justify-between text-xs">
-                  <span className={item.status === "completed" ? "text-clinical-success" : "text-muted-foreground"}>
-                    {item.form_templates?.name || "Form"}
-                  </span>
-                  <Badge variant={item.status === "completed" ? "success" : "outline"} className="text-xs">
-                    {item.status}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <JobCardOnboarding patientId={patientId} patientName={patientName} />
 
       {/* Treatment History */}
       <TreatmentHistory patientId={patientId} />
