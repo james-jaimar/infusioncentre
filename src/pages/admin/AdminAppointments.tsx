@@ -29,7 +29,6 @@ import {
   useDraggable,
   useDroppable,
   type DragEndEvent,
-  DragOverlay,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
@@ -77,7 +76,7 @@ import {
 } from "@/types/appointment";
 import { cn } from "@/lib/utils";
 import { AppointmentQuickEditDialog } from "@/components/admin/AppointmentQuickEditDialog";
-import { AppointmentQuickCreateDialog } from "@/components/admin/AppointmentQuickCreateDialog";
+import { useNavigate } from "react-router-dom";
 
 const HOURS = Array.from({ length: 12 }, (_, i) => i + 7); // 7am to 6pm
 const SLOT_MINUTES = 30; // drag snap
@@ -214,6 +213,7 @@ function DraggableEvent({
             style={{
               transform: CSS.Translate.toString(transform),
               zIndex: isDragging ? 50 : 1,
+              opacity: isDragging ? 0.85 : 1,
             }}
             onPointerDown={(e) => {
               e.stopPropagation();
@@ -256,41 +256,21 @@ function DroppableCell({
   day,
   chairId,
   pxPerHour,
-  onSlotClick,
   children,
-  showNowLine,
-  nowLineHeightPx,
 }: {
   day: Date;
   chairId: string;
   pxPerHour: number;
-  onSlotClick: (date: Date) => void;
   children: React.ReactNode;
-  showNowLine?: boolean;
-  nowLineHeightPx?: number;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `${chairId}|${day.toISOString()}`,
     data: { day, chairId },
   });
 
-  const handleSlotClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    // Only fire when the click landed on the dedicated background layer.
-    const target = e.target as HTMLElement;
-    if (!target.dataset || target.dataset.slotBg !== "1") return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const yPx = e.clientY - rect.top;
-    const minutes = Math.round((yPx / pxPerHour) * 60);
-    const snapped = Math.round(minutes / SLOT_MINUTES) * SLOT_MINUTES;
-    const totalMin = DAY_START_MIN + snapped;
-    const slot = setMinutes(setHours(day, Math.floor(totalMin / 60)), totalMin % 60);
-    onSlotClick(slot);
-  };
-
   return (
     <div
       ref={setNodeRef}
-      onClick={handleSlotClick}
       className={cn(
         "relative flex-1 border-r min-w-[120px]",
         isToday(day) && "bg-primary/5",
@@ -298,12 +278,6 @@ function DroppableCell({
       )}
       style={{ height: `${HOURS.length * pxPerHour}px` }}
     >
-      {/* Dedicated click surface — clicks here mean "create at this time". */}
-      <div
-        data-slot-bg="1"
-        className="absolute inset-0"
-        aria-hidden
-      />
       {/* Hour grid lines */}
       {HOURS.map((hour, i) => (
         <div
@@ -312,41 +286,13 @@ function DroppableCell({
           style={{ top: `${i * pxPerHour}px` }}
         />
       ))}
-      {/* Now line — rendered once per day column, on the top chair row, spanning all chair rows */}
-      {showNowLine && isToday(day) && (
-        <NowLine pxPerHour={pxPerHour} spanHeightPx={nowLineHeightPx} />
-      )}
       {children}
     </div>
   );
 }
 
-function NowLine({
-  pxPerHour,
-  spanHeightPx,
-}: {
-  pxPerHour: number;
-  spanHeightPx?: number;
-}) {
-  const [now, setNow] = useState(new Date());
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 60_000);
-    return () => clearInterval(id);
-  }, []);
-  const min = now.getHours() * 60 + now.getMinutes();
-  if (min < DAY_START_MIN || min > DAY_START_MIN + HOURS.length * 60) return null;
-  const top = ((min - DAY_START_MIN) / 60) * pxPerHour;
-  return (
-    <div
-      className="absolute left-0 right-0 z-20 border-t-2 border-red-500 pointer-events-none overflow-visible"
-      style={{ top: `${top}px`, height: spanHeightPx ? `${spanHeightPx}px` : undefined }}
-    >
-      <div className="absolute -left-1 -top-1.5 h-3 w-3 rounded-full bg-red-500" />
-    </div>
-  );
-}
-
 export default function AdminAppointments() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [viewMode, setViewMode] = useState<ViewMode>(
     (searchParams.get("view") as ViewMode) || "week"
@@ -363,7 +309,6 @@ export default function AdminAppointments() {
 
   // Modal state
   const [editingApt, setEditingApt] = useState<AppointmentWithRelations | null>(null);
-  const [createSlot, setCreateSlot] = useState<{ date: Date; chairId: string | null } | null>(null);
   const [activeDragApt, setActiveDragApt] = useState<AppointmentWithRelations | null>(null);
 
   const pxPerHour = DENSITY_PX[density];
@@ -403,6 +348,8 @@ export default function AdminAppointments() {
 
   const appointments = useMemo(() => {
     return rawAppointments.filter((a) => {
+      // Hide stale "rescheduled" copies from the working board
+      if (a.status === "rescheduled") return false;
       if (chairFilter.size && (!a.chair_id || !chairFilter.has(a.chair_id))) return false;
       if (typeFilter.size && !typeFilter.has(a.appointment_type_id)) return false;
       if (statusFilter.size && !statusFilter.has(a.status)) return false;
@@ -540,18 +487,13 @@ export default function AdminAppointments() {
         <div>
           <h1 className="text-3xl font-semibold text-foreground">Appointments</h1>
           <p className="text-muted-foreground">
-            Drag to reschedule · click to edit · click an empty slot to book
+            Click an appointment to edit · drag to move it to another time or chair
           </p>
         </div>
         <Button
-          onClick={() =>
-            setCreateSlot({
-              date: setMinutes(setHours(currentDate, 9), 0),
-              chairId: chairs[0]?.id ?? null,
-            })
-          }
+          onClick={() => navigate("/admin/patients")}
         >
-          <Plus className="mr-2 h-4 w-4" /> New appointment
+          <Plus className="mr-2 h-4 w-4" /> Schedule from patient
         </Button>
       </div>
 
@@ -751,7 +693,7 @@ export default function AdminAppointments() {
                     </div>
 
                     {/* Chair rows */}
-                    {visibleChairs.map((chair, chairIdx) => (
+                    {visibleChairs.map((chair) => (
                       <div key={chair.id} className="flex border-b">
                         {weekDays.map((day) => {
                           const dayAppts = appointments.filter(
@@ -765,13 +707,6 @@ export default function AdminAppointments() {
                               day={day}
                               chairId={chair.id}
                               pxPerHour={pxPerHour}
-                              onSlotClick={(slot) =>
-                                setCreateSlot({ date: slot, chairId: chair.id })
-                              }
-                              showNowLine={chairIdx === 0}
-                              nowLineHeightPx={
-                                visibleChairs.length * HOURS.length * pxPerHour
-                              }
                             >
                               {dayAppts.map((apt) => (
                                 <DraggableEvent
@@ -795,16 +730,6 @@ export default function AdminAppointments() {
                   </div>
                 </div>
               </div>
-              <DragOverlay>
-                {activeDragApt && (
-                  <div className="w-48">
-                    <CalendarEventCard
-                      apt={activeDragApt}
-                      pxPerHour={pxPerHour}
-                    />
-                  </div>
-                )}
-              </DragOverlay>
             </DndContext>
           )}
         </CardContent>
@@ -832,14 +757,6 @@ export default function AdminAppointments() {
         onOpenChange={(o) => !o && setEditingApt(null)}
         appointment={editingApt}
       />
-      {createSlot && (
-        <AppointmentQuickCreateDialog
-          open={!!createSlot}
-          onOpenChange={(o) => !o && setCreateSlot(null)}
-          defaultDate={createSlot.date}
-          defaultChairId={createSlot.chairId}
-        />
-      )}
     </div>
   );
 }

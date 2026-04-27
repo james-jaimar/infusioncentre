@@ -250,35 +250,21 @@ export function useRescheduleAppointment() {
       };
       reason: string;
     }) => {
-      // Mark original as rescheduled
-      const { error: updateError } = await supabase
+      // Move the SAME appointment to the new slot — no duplicate row.
+      const { data, error } = await supabase
         .from("appointments")
         .update({
-          status: "rescheduled" as any,
-          reschedule_reason: reason,
-        })
-        .eq("id", originalAppointmentId);
-
-      if (updateError) throw updateError;
-
-      // Create new appointment linked to original
-      const { data, error: insertError } = await supabase
-        .from("appointments")
-        .insert({
-          patient_id: newData.patient_id,
-          appointment_type_id: newData.appointment_type_id,
-          treatment_course_id: newData.treatment_course_id,
-          chair_id: newData.chair_id,
-          assigned_nurse_id: newData.assigned_nurse_id,
           scheduled_start: newData.scheduled_start.toISOString(),
           scheduled_end: newData.scheduled_end.toISOString(),
-          rescheduled_from_id: originalAppointmentId,
-          session_number: newData.session_number,
+          chair_id: newData.chair_id,
+          assigned_nurse_id: newData.assigned_nurse_id,
+          reschedule_reason: reason,
         })
+        .eq("id", originalAppointmentId)
         .select()
         .single();
 
-      if (insertError) throw insertError;
+      if (error) throw error;
       return data;
     },
     onSuccess: () => {
