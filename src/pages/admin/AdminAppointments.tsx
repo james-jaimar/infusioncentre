@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   format,
@@ -210,7 +210,7 @@ function DraggableEvent({
             isDragging={isDragging}
             innerRef={setNodeRef}
             listeners={listeners as Record<string, unknown>}
-            attributes={attributes as Record<string, unknown>}
+            attributes={attributes as unknown as Record<string, unknown>}
             style={{
               transform: CSS.Translate.toString(transform),
               zIndex: isDragging ? 50 : 1,
