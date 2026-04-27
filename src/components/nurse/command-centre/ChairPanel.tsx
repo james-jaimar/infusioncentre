@@ -1,10 +1,11 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { ChairData } from "@/hooks/useCommandCentre";
+import { ChairData, ScheduledAppointment } from "@/hooks/useCommandCentre";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Armchair, Clock, Activity, ShieldAlert, Wrench, CalendarClock } from "lucide-react";
 import { ElapsedTimer } from "./ElapsedTimer";
 import { VitalsCountdown } from "./VitalsCountdown";
+import { AssignPatientPopover } from "./AssignPatientPopover";
 
 const EXPECTED_DURATION_MS = 2 * 60 * 60 * 1000;
 
@@ -82,7 +83,13 @@ function mapStatus(status: string): ChairState {
   }
 }
 
-export function ChairPanel({ chair }: { chair: ChairData }) {
+interface ChairPanelProps {
+  chair: ChairData;
+  assignCandidates?: ScheduledAppointment[];
+  onAssignPatient?: (appointmentId: string, chairId: string) => void;
+}
+
+export function ChairPanel({ chair, assignCandidates = [], onAssignPatient }: ChairPanelProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const isAdmin = location.pathname.startsWith("/admin");
@@ -132,6 +139,12 @@ export function ChairPanel({ chair }: { chair: ChairData }) {
         <Armchair className="h-8 w-8 text-muted-foreground/20 mb-2" />
         <span className="text-sm font-medium text-muted-foreground">{chair.name}</span>
         <span className="text-xs text-muted-foreground/60 mt-0.5">Available</span>
+        {onAssignPatient && (
+          <AssignPatientPopover
+            candidates={assignCandidates}
+            onAssign={(appointmentId) => onAssignPatient(appointmentId, chair.id)}
+          />
+        )}
       </div>
     );
   }

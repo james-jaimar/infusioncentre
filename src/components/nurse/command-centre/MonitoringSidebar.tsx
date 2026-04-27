@@ -1,7 +1,6 @@
-import { ChairData, UnassignedTreatment } from "@/hooks/useCommandCentre";
+import { ChairData } from "@/hooks/useCommandCentre";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertTriangle, Clock, Droplets, Armchair } from "lucide-react";
+import { Droplets, Armchair } from "lucide-react";
 import { formatDuration, getElapsedMs } from "./ElapsedTimer";
 
 const EXPECTED_DURATION_MS = 2 * 60 * 60 * 1000;
@@ -51,12 +50,9 @@ function computeAvgDuration(chairs: ChairData[]): string {
 
 interface MonitoringSidebarProps {
   chairs: ChairData[];
-  unassigned: UnassignedTreatment[];
-  availableChairs: ChairData[];
-  onAssign: (appointmentId: string, chairId: string) => void;
 }
 
-export function MonitoringSidebar({ chairs, unassigned, availableChairs, onAssign }: MonitoringSidebarProps) {
+export function MonitoringSidebar({ chairs }: MonitoringSidebarProps) {
   const alerts = computeAlerts(chairs);
   const activeCount = chairs.filter((c) => c.occupant).length;
   const availableCount = chairs.filter((c) => !c.occupant).length;
@@ -91,37 +87,6 @@ export function MonitoringSidebar({ chairs, unassigned, availableChairs, onAssig
           </div>
         )}
       </div>
-
-      {/* Unassigned Treatments */}
-      {unassigned.length > 0 && (
-        <div className="rounded-xl border border-clinical-warning/30 bg-clinical-warning-soft/30 shadow-clinical-sm p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Clock className="h-4 w-4 text-clinical-warning" />
-            <h3 className="text-sm font-semibold text-foreground">Unassigned</h3>
-            <Badge variant="warning">{unassigned.length}</Badge>
-          </div>
-          <div className="space-y-3">
-            {unassigned.map((t) => (
-              <div key={t.treatmentId} className="space-y-1.5">
-                <div>
-                  <p className="text-sm font-medium text-foreground truncate">{t.patientName}</p>
-                  <p className="text-xs text-muted-foreground">{t.treatmentType}</p>
-                </div>
-                <Select onValueChange={(chairId) => onAssign(t.appointmentId, chairId)}>
-                  <SelectTrigger className="w-full min-h-[44px] text-xs">
-                    <SelectValue placeholder="Assign chair…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableChairs.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Quick Stats */}
       <div className="rounded-xl border border-border/40 bg-card shadow-clinical-sm p-4">

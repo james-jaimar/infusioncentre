@@ -137,6 +137,10 @@ export default function NurseJobCard() {
   const treatmentStatus = treatment?.status || "";
   const isCompleted = treatmentStatus === "completed" || treatmentStatus === "cancelled";
   const isKetamine = appointment?.appointment_type?.name?.toLowerCase().includes("ketamine");
+  // A treatment row in `pending` with no started_at is a half-created record from a
+  // previously-failed Start Treatment attempt. Treat it as recoverable: show the
+  // pre-assessment UI again and reuse the existing row when re-submitting.
+  const isRecoverablePending = !!treatment && treatment.status === "pending" && !treatment.started_at;
 
   // Determine effective stepper status
   const getStepperStatus = useCallback(() => {
@@ -163,12 +167,16 @@ export default function NurseJobCard() {
     if (!user?.id || !appointment) return;
     setSubmitting(true);
     try {
-      const t = await createTreatment.mutateAsync({
-        appointment_id: appointment.id,
-        patient_id: appointment.patient.id,
-        nurse_id: user.id,
-        treatment_type_id: appointment.appointment_type.id,
-      });
+      // Reuse a pending treatment row if one already exists (recovery from a prior
+      // failed attempt); otherwise create a new one.
+      const t = treatment
+        ? treatment
+        : await createTreatment.mutateAsync({
+            appointment_id: appointment.id,
+            patient_id: appointment.patient.id,
+            nurse_id: user.id,
+            treatment_type_id: appointment.appointment_type.id,
+          });
 
       if (hasPreVitals) {
         await addVitals.mutateAsync({
@@ -232,7 +240,8 @@ export default function NurseJobCard() {
   }
 
   const patient = fullPatient || appointment.patient;
-  const showPreAssessment = appointment.status === "checked_in" && !treatment;
+  const showPreAssessment =
+    appointment.status === "checked_in" && (!treatment || isRecoverablePending);
 
   // Use <=1024 as "tablet or smaller" — sidebar becomes a sheet
   const useSheetSidebar = isMobile || typeof window !== "undefined" && window.innerWidth < 1024;
@@ -301,6 +310,17 @@ export default function NurseJobCard() {
           {/* Pre-Assessment (check-in stage) */}
           {showPreAssessment && (
             <>
+              {isRecoverablePending && (
+                <div className="rounded-lg border border-clinical-warning/40 bg-clinical-warning-soft/40 px-4 py-3 flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-clinical-warning flex-shrink-0 mt-0.5" />
+                  <div className="text-sm">
+                    <p className="font-medium text-foreground">Resuming previous attempt</p>
+                    <p className="text-muted-foreground">
+                      A treatment was started but didn't complete. Re-submit the pre-assessment to continue — your prior progress will be reused.
+                    </p>
+                  </div>
+                </div>
+              )}
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">Pre-Treatment Checklist</CardTitle>
