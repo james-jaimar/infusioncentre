@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Appointment, AppointmentWithRelations, AppointmentFormData } from "@/types/appointment";
-import { addMinutes } from "date-fns";
+import { addMinutes, endOfDay } from "date-fns";
 
 interface BulkAppointmentData {
   patient_id: string;
@@ -33,7 +33,8 @@ export function useAppointments(startDate?: Date, endDate?: Date) {
         query = query.gte("scheduled_start", startDate.toISOString());
       }
       if (endDate) {
-        query = query.lte("scheduled_start", endDate.toISOString());
+        // Use end-of-day so events on the last day of the range are included
+        query = query.lte("scheduled_start", endOfDay(endDate).toISOString());
       }
 
       const { data, error } = await query;
@@ -119,6 +120,25 @@ export function useUpdateAppointment() {
 
       if (error) throw error;
       return result;
+    },
+    onMutate: async ({ id, data }) => {
+      await queryClient.cancelQueries({ queryKey: ["appointments"] });
+      const previous = queryClient.getQueriesData({ queryKey: ["appointments"] });
+      queryClient.setQueriesData<AppointmentWithRelations[]>(
+        { queryKey: ["appointments"] },
+        (old) => {
+          if (!old) return old;
+          return old.map((a) => (a.id === id ? { ...a, ...data } as AppointmentWithRelations : a));
+        }
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous) {
+        for (const [key, value] of ctx.previous) {
+          queryClient.setQueryData(key, value);
+        }
+      }
     },
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
