@@ -68,9 +68,19 @@ Deno.serve(async (req) => {
       })
     );
 
+    // Apply role precedence: admin > nurse > doctor (so multi-row users
+    // surface their highest staff role, never 'patient').
+    function pickRole(userId: string): string {
+      const userRoles = roles.filter((r) => r.user_id === userId).map((r) => r.role);
+      if (userRoles.includes("admin")) return "admin";
+      if (userRoles.includes("nurse")) return "nurse";
+      if (userRoles.includes("doctor")) return "doctor";
+      return userRoles[0] || "unknown";
+    }
+
     const staff = (profiles || []).map((p: any) => {
       const au = authUsers[p.user_id];
-      const role = roles.find((r) => r.user_id === p.user_id)?.role || "unknown";
+      const role = pickRole(p.user_id);
       const doc = (doctors || []).find((d: any) => d.user_id === p.user_id);
       const banned = au?.banned_until && new Date(au.banned_until) > new Date();
       return {
