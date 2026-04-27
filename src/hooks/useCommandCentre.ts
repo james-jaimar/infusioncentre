@@ -43,6 +43,7 @@ export interface ScheduledAppointment {
   appointmentId: string;
   patientId: string;
   patientName: string;
+  appointmentTypeId: string;
   treatmentType: string;
   treatmentTypeColor: string;
   scheduledStart: string;
@@ -198,6 +199,7 @@ export function useCommandCentre() {
       appointmentId: a.id,
       patientId: a.patient.id,
       patientName: `${a.patient.first_name} ${a.patient.last_name}`,
+      appointmentTypeId: a.appointment_type.id,
       treatmentType: a.appointment_type.name,
       treatmentTypeColor: a.appointment_type.color,
       scheduledStart: a.scheduled_start,

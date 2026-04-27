@@ -2,8 +2,33 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { ScheduledAppointment } from "@/hooks/useCommandCentre";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CalendarClock, ArrowRight } from "lucide-react";
+import { CalendarClock, ArrowRight, FileWarning } from "lucide-react";
 import { format, differenceInMinutes } from "date-fns";
+import { useOnboardingReadiness } from "@/hooks/useOnboardingChecklist";
+
+/** Chip showing outstanding-form count for a given appointment. Hidden when ready. */
+function FormsReadinessChip({
+  patientId,
+  appointmentTypeId,
+  onJump,
+}: {
+  patientId: string;
+  appointmentTypeId: string;
+  onJump: () => void;
+}) {
+  const r = useOnboardingReadiness(patientId, appointmentTypeId);
+  if (r.isLoading || r.isReady || r.required.length === 0) return null;
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); onJump(); }}
+      className="inline-flex items-center gap-1 rounded-full bg-clinical-warning-soft text-clinical-warning px-2 py-0.5 text-[10px] font-semibold hover:brightness-95 transition"
+      title="Open job card to help with outstanding forms"
+    >
+      <FileWarning className="h-3 w-3" />
+      {r.pending.length} form{r.pending.length === 1 ? "" : "s"} outstanding
+    </button>
+  );
+}
 
 interface TodaysScheduleProps {
   appointments: ScheduledAppointment[];
@@ -88,6 +113,13 @@ export function TodaysSchedule({ appointments }: TodaysScheduleProps) {
                       {format(new Date(a.scheduledStart), "HH:mm")}
                     </p>
                   </div>
+                </div>
+                <div className="mb-1.5">
+                  <FormsReadinessChip
+                    patientId={a.patientId}
+                    appointmentTypeId={a.appointmentTypeId}
+                    onJump={() => navigate(`${jobCardBase}/${a.appointmentId}`)}
+                  />
                 </div>
                 <div className="flex items-center justify-between gap-2">
                   <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${meta.pill}`}>
