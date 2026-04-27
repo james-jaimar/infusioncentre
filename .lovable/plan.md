@@ -1,84 +1,102 @@
+# Calendar Bug Fixes — Full Review
 
-## Make the Appointments calendar a real scheduling cockpit
+A code review of `AdminAppointments.tsx`, `AppointmentQuickEditDialog.tsx`, and `RescheduleDialog.tsx` surfaced four real bugs plus a couple of related issues. Here is what's broken, why, and how each will be fixed.
 
-Today the calendar is read-only: clicking an event navigates away to a separate edit page. We'll turn it into the kind of "all-singing, all-dancing" calendar Gail expects — click for a quick-edit modal, drag to reschedule, drop into a different chair, and richer at-a-glance info on each card.
+---
 
-### What Gail will be able to do
+## Bug 1 — Red "now" line shows on every chair row
 
-1. **Click a card → Quick-Edit modal opens in place.**
-   - Patient name + treatment header (links to full patient/appointment page if she wants the deep view).
-   - Inline-editable: status, chair, assigned nurse, start time, duration, notes.
-   - Buttons: **Save**, **Reschedule** (opens existing `RescheduleDialog`), **Cancel appointment**, **Open full page**.
-   - Close without saving = no change.
+**Cause:** The current layout stacks one chair-row per chair, each row is a full 12-hour-tall droppable cell, and each cell renders its own `NowLine`. So if there are 3 chairs, the now-line is drawn 3 times (once per row), one above the other.
 
-2. **Drag an event to a new time slot** (same chair lane) → confirms via toast and saves.
-3. **Drag an event to a different chair row / different day column** → same flow, updates `chair_id` and `scheduled_start` together.
-4. **Click an empty slot** → opens a "New appointment" modal pre-filled with that day/time/chair (instead of going to the `/admin/appointments/new` page for every booking). Big "Open full form" button for complex cases.
-5. **Resize handle at the bottom of each card** → drag to change duration.
+**Fix:** Move the now-line out of `DroppableCell` and render it **once per day column**, as an overlay that spans the full height of all chair rows for that day. Use a single absolutely-positioned wrapper around the whole day column.
 
-### Toolbar upgrades
+---
 
-- **View switcher:** Day / Week / **Month** (new month grid showing per-day appointment counts + dots per chair).
-- **Filters** (popover): by chair, by appointment type, by nurse, by status. Multi-select chips, persisted in URL.
-- **"Today" highlight** stays; add a small **Jump to date** popover (calendar icon).
-- **Density toggle:** Compact / Comfortable (changes `64px per hour` → `48` or `80`).
-- **Legend:** small inline legend of status colours + appointment-type colours.
+## Bug 2 — Clicking an empty slot opens the edit modal of a nearby appointment
 
-### Card visual upgrades
+**Cause:** `DraggableEvent` wraps `CalendarEventCard` in a zero-sized wrapper div that holds the `onClick`, while the card itself is `position: absolute`. The wrapper has no size, but its `onClick` listener still fires for any bubbled click coming from the absolutely-positioned card. Worse — dnd-kit's `useDraggable` listeners on the empty wrapper sometimes intercept clicks across the whole droppable region depending on pointer activation, so clicks land on the wrapper and open the wrong modal.
 
-- Coloured left border = appointment type, background tint = status.
-- Show: patient name, type, time range (e.g. `10:00 – 11:30`), session number badge if part of a course (`#2 of 6`), chair name only in day-view, small icons for `nurse assigned`, `consent missing`, `no-show risk` (last visit cancelled).
-- Hover → tooltip with full notes preview.
-- "Now" line: a thin red horizontal line at current time on today's column.
+**Fix:**
+1. Move `setNodeRef`, `listeners`, `attributes`, and `onClick` directly onto the `CalendarEventCard` (the absolutely-positioned element). Drop the empty wrapper.
+2. Use dnd-kit's recommended pattern: track pointer-down vs pointer-up positions; only treat as a click when delta < 4px AND `isDragging === false`.
+3. Stop propagation on the card's pointerdown so the underlying cell never receives it.
+4. In `DroppableCell.handleSlotClick`, replace the brittle `e.target !== e.currentTarget` check with a positive check that the click landed on the cell's background layer (use a dedicated child `<div>` as the click surface with `data-slot-bg` and check that attribute).
 
-### Conflict + safety
+---
 
-- Drag-drop calls `useCheckConflicts` (already exists) before commit. If conflict → toast "Chair X is busy from 10:00–11:00" and snap back.
-- Past-time drops blocked with an inline confirm ("Schedule in the past?") to avoid fat-finger errors.
-- Optimistic update on the calendar so it feels instant; rollback on error.
+## Bug 3 — Drag-and-drop doesn't work
 
-### Layout sketch
+**Cause (same root as Bug 2):** dnd-kit listeners are attached to the zero-sized wrapper, so the pointer rarely lands on the draggable surface. When it does start, the activation distance of 6px combined with the wrapper's lack of a layout box means the drag aborts immediately.
+
+**Fix:** Once `setNodeRef`/`listeners` move onto the actual card (Bug 2 fix), drag will activate from the visible card. Also:
+- Add `touch-action: none` to the card so touch drags don't scroll the page.
+- Use `transform` from `useDraggable` so the card visually follows the pointer during drag (currently the card stays put because the transform is never applied).
+- Keep the existing `DragOverlay` so the user sees a clean drag preview.
+
+---
+
+## Bug 4 — Reschedule (new date + new time) silently fails
+
+**Causes:**
+1. `RescheduleDialog` initializes `newChairId` to `appointment.chair_id || ""`. The `<Select>` uses `value={newChairId || "none"}`, but writes back the original empty string. If the user never touches the chair field, the insert sends `chair_id: null` (because `newChairId || null`) — fine. But if the original appointment had no chair, the Select shows "No chair" and never stores a real value. Not the main issue.
+2. `useRescheduleAppointment` updates the original row to `status: "rescheduled"` then inserts a new row. The new row inherits a unique constraint conflict if `treatment_course_id` + `session_number` already exists (we have a uniqueness index on the courses table). The insert fails silently in the toast handler (only `console.error`).
+3. The Calendar `disabled={(date) => date < new Date()}` blocks today's date entirely (because `new Date()` is later today), so picking "today" is impossible. Users hitting this assume the picker is broken.
+4. The dialog's `onOpenChange` from inside `AppointmentQuickEditDialog` closes the parent edit modal before the reschedule mutation resolves, hiding error toasts behind a closed UI.
+
+**Fix:**
+1. Compare dates by start-of-day in the `disabled` predicate so today is selectable.
+2. In `useRescheduleAppointment`, surface insert errors clearly and avoid touching `session_number` if it would collide — instead just carry the original session number and let the original row keep it (the rescheduled row gets `null` to avoid the unique conflict, since the original is preserved with status `rescheduled`).
+3. Don't auto-close the parent edit dialog when the reschedule dialog closes; close only on success.
+4. Add a Sonner error toast that includes the underlying Postgres message for visibility.
+
+---
+
+## Bonus issues caught during review
+
+- **Quick-edit "Save" doesn't refresh the calendar position** because the optimistic cache in `useUpdateAppointment` doesn't merge new start/end into the cached list. Add a small optimistic update mirroring `useMoveAppointment`.
+- **`AppointmentQuickCreateDialog` ignores the time the user clicked** — it uses `format(defaultDate, "HH:mm")` correctly, but then the `time` Select shows the closest preset which may snap to "09:00" if the click resolved to e.g. 09:07. Round the `defaultDate` to the nearest 30-min slot before seeding `time`.
+- **`useAppointments` filter `lte("scheduled_start", endDate)`** misses appointments that start before `endDate` but spill across midnight. Switch to `lt("scheduled_start", endOfDay(endDate))` so end-of-week appointments render in the week view.
+
+---
+
+## Files to edit
+
+- `src/pages/admin/AdminAppointments.tsx` — restructure now-line, fix `DraggableEvent`/`DroppableCell` event handling, add transform.
+- `src/components/admin/AppointmentQuickEditDialog.tsx` — don't auto-close parent on reschedule open.
+- `src/components/admin/RescheduleDialog.tsx` — fix today-disabled bug, error toasts, chair default.
+- `src/hooks/useAppointments.ts` — optimistic update in `useUpdateAppointment`, surface errors in `useRescheduleAppointment`, widen date range query.
+
+No new dependencies, no DB migrations.
+
+---
+
+## Technical summary (for engineers)
 
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│  ◀ Today ▶   📅 Jump to date   Apr 27 – May 3, 2026             │
-│  [Day|Week|Month]  Filters ▾  Density ▾  Legend ▾  + New        │
-├─────┬───────┬───────┬───────┬───────┬───────┬───────┬───────────┤
-│Chair│ Mon27 │ Tue28 │ Wed29 │ Thu30 │ Fri 1 │ Sat 2 │ Sun 3     │
-├─────┼───────┼───────┼───────┼───────┼───────┼───────┼───────────┤
-│  1  │       │ ┃Hawk │       │       │       │       │           │
-│     │       │ ┃ Iron│       │       │       │       │           │
-│     │       │ ┃#2/6 │       │       │       │       │           │
-├─────┼───────┼───────┼───────┼───────┼───────┼───────┼───────────┤
-│  2  │       │       │       │       │       │       │           │
-└─────┴───────┴───────┴───────┴───────┴───────┴───────┴───────────┘
+DraggableEvent (before)
+  <div ref> ← 0×0, has onClick + dnd listeners
+    <CalendarEventCard absolute />   ← visible, no handlers
 
-  Click card → Quick Edit modal
-  Drag card  → Reschedule (with conflict check)
-  Click slot → New appointment modal
+DraggableEvent (after)
+  <CalendarEventCard absolute ref onClick {...listeners} />  ← single node
 ```
 
-### Technical changes
+Click vs drag disambiguation:
+```ts
+const downRef = useRef<{x:number,y:number}|null>(null);
+onPointerDown = e => { downRef.current = {x:e.clientX,y:e.clientY}; }
+onClick = e => {
+  const d = downRef.current;
+  if (!d) return;
+  const moved = Math.hypot(e.clientX-d.x, e.clientY-d.y);
+  if (moved < 4 && !isDragging) onEdit();
+}
+```
 
-| File | Change |
-|------|--------|
-| `src/pages/admin/AdminAppointments.tsx` | Major refactor — toolbar, filters state (URL-synced via `useSearchParams`), density, month view, "now" line, click-slot handler, click-card handler that opens modal instead of navigating. |
-| `src/components/admin/AppointmentQuickEditDialog.tsx` *(new)* | Modal with inline edit fields. Uses `useUpdateAppointment` for save, `useDeleteAppointment` for cancel, and re-uses `RescheduleDialog`. |
-| `src/components/admin/AppointmentQuickCreateDialog.tsx` *(new)* | Lightweight create modal (patient picker + type + duration + notes), pre-filled from clicked slot. Falls through to `/admin/appointments/new` for power-user flow. |
-| `src/components/admin/CalendarEventCard.tsx` *(new)* | Reusable card with status/type colours, session badge, icons, tooltip — used in both week and month views. |
-| `src/components/admin/CalendarMonthView.tsx` *(new)* | Month grid showing per-day appointment count + colour dots + click-to-zoom-into-day. |
-| `src/hooks/useAppointments.ts` | Add `useMoveAppointment` mutation that updates `chair_id` + `scheduled_start` + `scheduled_end` together with optimistic cache update. |
-| `package.json` | Add `@dnd-kit/core` + `@dnd-kit/utilities` for drag-drop (matches Lovable stack — no React-DnD). |
-
-### What stays the same
-
-- Backing tables (`appointments`, `appointment_types`, `treatment_chairs`) and RLS — no schema changes.
-- `RescheduleDialog`, `RecurringSessionDialog`, `useCheckConflicts` are reused as-is.
-- Existing detail page at `/admin/appointments/:id` remains for deep-linking and complex edits.
-
-### Out of scope (can be follow-ups)
-
-- Nurse-lane view (group by nurse instead of chair) — easy to add once filters land.
-- Patient-side iCal feed.
-- Recurring-rule editing from the calendar (still done from the patient's course tab).
-
+Now-line refactor:
+```text
+DayColumn
+ ├─ <NowLine /> (absolute, spans full chair-stack height)
+ └─ for chair in chairs:
+      <DroppableCell />   ← no NowLine
+```

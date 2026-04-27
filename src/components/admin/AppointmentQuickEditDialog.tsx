@@ -358,10 +358,7 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment }: 
       {showReschedule && (
         <RescheduleDialog
           open={showReschedule}
-          onOpenChange={(o) => {
-            setShowReschedule(o);
-            if (!o) onOpenChange(false);
-          }}
+          onOpenChange={setShowReschedule}
           appointment={appointment}
         />
       )}
