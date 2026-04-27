@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { format, addDays, addWeeks, setHours, setMinutes } from "date-fns";
+import { format, addDays, addWeeks, setHours, setMinutes, isBefore, startOfDay, isSameDay } from "date-fns";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -10,8 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, Loader2 } from "lucide-react";
+import { CalendarIcon, Loader2, Trash2, Plus, RefreshCw, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTreatmentChairs } from "@/hooks/useTreatmentChairs";
 import { useNurseStaff } from "@/hooks/useNurseStaff";
@@ -74,6 +73,9 @@ export function RecurringSessionDialog({ open, onOpenChange, treatmentCourse }: 
   const { data: nurses = [] } = useNurseStaff();
   const createBulk = useCreateBulkAppointments();
 
+  const [sessionDates, setSessionDates] = useState<Date[]>([]);
+  const [customised, setCustomised] = useState(false);
+
   const generateDates = (): Date[] => {
     if (!startDate) return [];
     const dates: Date[] = [];
@@ -105,17 +107,77 @@ export function RecurringSessionDialog({ open, onOpenChange, treatmentCourse }: 
     return dates;
   };
 
-  const previewDates = generateDates();
+  // Re-seed from settings only while the user hasn't manually customised any row.
+  useEffect(() => {
+    if (customised) return;
+    setSessionDates(generateDates());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startDate, frequency, preferredDay, secondDay, time, numSessions, customised]);
+
+  const updateDateAt = (index: number, newDate: Date | undefined) => {
+    if (!newDate) return;
+    setCustomised(true);
+    setSessionDates((prev) => {
+      const next = [...prev];
+      const old = next[index];
+      next[index] = setMinutes(setHours(newDate, old.getHours()), old.getMinutes());
+      return next;
+    });
+  };
+
+  const updateTimeAt = (index: number, newTime: string) => {
+    const [h, m] = newTime.split(":").map(Number);
+    setCustomised(true);
+    setSessionDates((prev) => {
+      const next = [...prev];
+      next[index] = setMinutes(setHours(next[index], h), m);
+      return next;
+    });
+  };
+
+  const removeAt = (index: number) => {
+    setCustomised(true);
+    setSessionDates((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const addAnother = () => {
+    setCustomised(true);
+    setSessionDates((prev) => {
+      if (prev.length === 0) {
+        const [h, m] = time.split(":").map(Number);
+        return [setMinutes(setHours(startDate ?? new Date(), h), m)];
+      }
+      const last = prev[prev.length - 1];
+      return [...prev, addWeeks(last, 1)];
+    });
+  };
+
+  const regenerate = () => {
+    setCustomised(false);
+    setSessionDates(generateDates());
+  };
+
+  const today = startOfDay(new Date());
+  const hasPastDate = sessionDates.some((d) => isBefore(d, today));
+  const hasDuplicateDay = sessionDates.some((d, i) =>
+    sessionDates.some((other, j) => j !== i && isSameDay(d, other))
+  );
 
   const handleSubmit = async () => {
-    if (!startDate || previewDates.length === 0) {
+    if (sessionDates.length === 0) {
       toast.error("Please select a start date");
       return;
     }
+    if (hasPastDate) {
+      toast.error("One or more sessions are in the past");
+      return;
+    }
+
+    const sorted = [...sessionDates].sort((a, b) => a.getTime() - b.getTime());
 
     try {
       await createBulk.mutateAsync({
-        appointments: previewDates.map((date, idx) => ({
+        appointments: sorted.map((date, idx) => ({
           patient_id: treatmentCourse.patient_id,
           appointment_type_id: treatmentCourse.treatment_type_id,
           treatment_course_id: treatmentCourse.id,
@@ -129,7 +191,7 @@ export function RecurringSessionDialog({ open, onOpenChange, treatmentCourse }: 
             : `Session ${treatmentCourse.sessions_completed + idx + 1} of ${treatmentCourse.total_sessions_planned}`,
         })),
       });
-      toast.success(`${previewDates.length} appointments created`);
+      toast.success(`${sorted.length} appointments created`);
       onOpenChange(false);
     } catch (error) {
       toast.error("Failed to create appointments");
@@ -283,27 +345,106 @@ export function RecurringSessionDialog({ open, onOpenChange, treatmentCourse }: 
           </div>
         </div>
 
-        {/* Preview */}
-        {previewDates.length > 0 && (
-          <div className="border rounded-lg p-4 space-y-2 max-h-48 overflow-y-auto">
-            <p className="text-sm font-medium text-foreground">Preview ({previewDates.length} sessions)</p>
-            <div className="flex flex-wrap gap-2">
-              {previewDates.map((d, i) => (
-                <Badge key={i} variant="outline" className="text-xs">
-                  #{treatmentCourse.sessions_completed + i + 1} — {format(d, "EEE, MMM d")} at {format(d, "h:mm a")}
-                </Badge>
+        {/* Editable preview */}
+        {sessionDates.length > 0 && (
+          <div className="border rounded-lg p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-foreground">
+                Sessions ({sessionDates.length}) — adjust any individually
+              </p>
+              {customised && (
+                <Button type="button" variant="ghost" size="sm" onClick={regenerate} className="h-8 gap-1.5">
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Regenerate from settings
+                </Button>
+              )}
+            </div>
+
+            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+              {sessionDates.map((d, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-muted-foreground w-8 shrink-0">
+                    #{treatmentCourse.sessions_completed + i + 1}
+                  </span>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={cn(
+                          "flex-1 justify-start text-left font-normal h-9",
+                          isBefore(d, today) && "border-destructive text-destructive"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                        {format(d, "EEE, MMM d, yyyy")}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={d}
+                        onSelect={(date) => updateDateAt(i, date)}
+                        initialFocus
+                        className={cn("p-3 pointer-events-auto")}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <Select value={format(d, "HH:mm")} onValueChange={(v) => updateTimeAt(i, v)}>
+                    <SelectTrigger className="w-[110px] h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {TIME_SLOTS.map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {format(new Date(`2000-01-01T${t}`), "h:mm a")}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 text-muted-foreground hover:text-destructive"
+                    onClick={() => removeAt(i)}
+                    aria-label={`Remove session ${i + 1}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               ))}
             </div>
+
+            <Button type="button" variant="outline" size="sm" onClick={addAnother} className="w-full gap-1.5">
+              <Plus className="h-3.5 w-3.5" />
+              Add another session
+            </Button>
+
+            {(hasPastDate || hasDuplicateDay) && (
+              <div className="space-y-1 text-xs">
+                {hasPastDate && (
+                  <p className="flex items-center gap-1.5 text-destructive">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                    One or more sessions are in the past — adjust before creating.
+                  </p>
+                )}
+                {hasDuplicateDay && !hasPastDate && (
+                  <p className="flex items-center gap-1.5 text-amber-600">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                    Two or more sessions are on the same day — confirm this is intended.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         )}
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={createBulk.isPending || !startDate}>
+          <Button onClick={handleSubmit} disabled={createBulk.isPending || sessionDates.length === 0 || hasPastDate}>
             {createBulk.isPending ? (
               <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating...</>
             ) : (
-              `Create ${previewDates.length} Appointments`
+              `Create ${sessionDates.length} Appointment${sessionDates.length === 1 ? "" : "s"}`
             )}
           </Button>
         </DialogFooter>
