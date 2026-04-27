@@ -258,12 +258,16 @@ function DroppableCell({
   pxPerHour,
   onSlotClick,
   children,
+  showNowLine,
+  nowLineHeightPx,
 }: {
   day: Date;
   chairId: string;
   pxPerHour: number;
   onSlotClick: (date: Date) => void;
   children: React.ReactNode;
+  showNowLine?: boolean;
+  nowLineHeightPx?: number;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `${chairId}|${day.toISOString()}`,
@@ -308,12 +312,22 @@ function DroppableCell({
           style={{ top: `${i * pxPerHour}px` }}
         />
       ))}
+      {/* Now line — rendered once per day column, on the top chair row, spanning all chair rows */}
+      {showNowLine && isToday(day) && (
+        <NowLine pxPerHour={pxPerHour} spanHeightPx={nowLineHeightPx} />
+      )}
       {children}
     </div>
   );
 }
 
-function NowLine({ pxPerHour }: { pxPerHour: number }) {
+function NowLine({
+  pxPerHour,
+  spanHeightPx,
+}: {
+  pxPerHour: number;
+  spanHeightPx?: number;
+}) {
   const [now, setNow] = useState(new Date());
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 60_000);
@@ -324,8 +338,8 @@ function NowLine({ pxPerHour }: { pxPerHour: number }) {
   const top = ((min - DAY_START_MIN) / 60) * pxPerHour;
   return (
     <div
-      className="absolute left-0 right-0 z-10 border-t-2 border-red-500 pointer-events-none"
-      style={{ top: `${top}px` }}
+      className="absolute left-0 right-0 z-20 border-t-2 border-red-500 pointer-events-none overflow-visible"
+      style={{ top: `${top}px`, height: spanHeightPx ? `${spanHeightPx}px` : undefined }}
     >
       <div className="absolute -left-1 -top-1.5 h-3 w-3 rounded-full bg-red-500" />
     </div>
