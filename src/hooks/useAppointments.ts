@@ -296,3 +296,75 @@ export function useNurseWorkload(startDate?: Date, endDate?: Date) {
     enabled: !!startDate && !!endDate,
   });
 }
+
+/**
+ * Move an appointment (drag-drop) — updates start/end and optionally chair.
+ * Optimistic cache update so the calendar feels instant.
+ */
+export function useMoveAppointment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      newStart,
+      durationMinutes,
+      newChairId,
+    }: {
+      id: string;
+      newStart: Date;
+      durationMinutes: number;
+      newChairId?: string | null;
+    }) => {
+      const newEnd = addMinutes(newStart, durationMinutes);
+      const updates: Record<string, unknown> = {
+        scheduled_start: newStart.toISOString(),
+        scheduled_end: newEnd.toISOString(),
+      };
+      if (newChairId !== undefined) updates.chair_id = newChairId;
+
+      const { data, error } = await supabase
+        .from("appointments")
+        .update(updates)
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onMutate: async ({ id, newStart, durationMinutes, newChairId }) => {
+      // Cancel outgoing refetches so they don't overwrite our optimistic update
+      await queryClient.cancelQueries({ queryKey: ["appointments"] });
+      const previous = queryClient.getQueriesData({ queryKey: ["appointments"] });
+
+      const newEnd = addMinutes(newStart, durationMinutes);
+      queryClient.setQueriesData<AppointmentWithRelations[]>(
+        { queryKey: ["appointments"] },
+        (old) => {
+          if (!old) return old;
+          return old.map((a) =>
+            a.id === id
+              ? {
+                  ...a,
+                  scheduled_start: newStart.toISOString(),
+                  scheduled_end: newEnd.toISOString(),
+                  chair_id: newChairId !== undefined ? newChairId : a.chair_id,
+                }
+              : a
+          );
+        }
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous) {
+        for (const [key, value] of ctx.previous) {
+          queryClient.setQueryData(key, value);
+        }
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["appointments"] });
+    },
+  });
+}

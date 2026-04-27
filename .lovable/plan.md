@@ -1,56 +1,84 @@
-## Make scheduled sessions individually editable before booking
 
-Right now `RecurringSessionDialog` auto-generates a tidy preview (e.g. weekly Mondays at 9am) and Gail has only one button: **Create N Appointments**. Real life is messier — a patient might want session 2 a day later, session 3 in the afternoon, etc. This change turns the static preview into an editable list.
+## Make the Appointments calendar a real scheduling cockpit
 
-### Behaviour
+Today the calendar is read-only: clicking an event navigates away to a separate edit page. We'll turn it into the kind of "all-singing, all-dancing" calendar Gail expects — click for a quick-edit modal, drag to reschedule, drop into a different chair, and richer at-a-glance info on each card.
 
-1. **Suggestion stays the same.** Pick start date + frequency + time → the dialog still seeds the same N suggested slots. This is the "starting point" Gail confirms with the patient on the phone.
+### What Gail will be able to do
 
-2. **Each suggested slot becomes editable.** The preview area changes from read-only badges to a tidy list of rows. Each row shows:
-   - Session number (`#1`, `#2`, …)
-   - A **date picker** (popover calendar, same control as the Start Date field)
-   - A **time picker** (same 30-min select as the Time field)
-   - A small **Remove** (trash) icon button on the right
+1. **Click a card → Quick-Edit modal opens in place.**
+   - Patient name + treatment header (links to full patient/appointment page if she wants the deep view).
+   - Inline-editable: status, chair, assigned nurse, start time, duration, notes.
+   - Buttons: **Save**, **Reschedule** (opens existing `RescheduleDialog`), **Cancel appointment**, **Open full page**.
+   - Close without saving = no change.
 
-3. **Add another session** button under the list — appends a new row defaulted to "1 week after the last one, same time", which Gail can then adjust.
+2. **Drag an event to a new time slot** (same chair lane) → confirms via toast and saves.
+3. **Drag an event to a different chair row / different day column** → same flow, updates `chair_id` and `scheduled_start` together.
+4. **Click an empty slot** → opens a "New appointment" modal pre-filled with that day/time/chair (instead of going to the `/admin/appointments/new` page for every booking). Big "Open full form" button for complex cases.
+5. **Resize handle at the bottom of each card** → drag to change duration.
 
-4. **Re-seed safely.** If Gail changes Start Date / Frequency / Preferred Day / Time / Sessions-to-schedule **after** she's manually tweaked rows, show a small inline notice: *"You've customised some sessions. Regenerate from new settings?"* with a **Regenerate** button. This avoids silently wiping her edits.
+### Toolbar upgrades
 
-5. **Validation before submit.**
-   - Each row must have a date and a time (both already required by the controls).
-   - Warn (non-blocking, amber text) if any two rows are on the same date — clinics occasionally do this deliberately, so don't block.
-   - Block submit (red text) if any row is in the past.
-   - Re-sort rows chronologically right before submit so session numbers stay in order.
+- **View switcher:** Day / Week / **Month** (new month grid showing per-day appointment counts + dots per chair).
+- **Filters** (popover): by chair, by appointment type, by nurse, by status. Multi-select chips, persisted in URL.
+- **"Today" highlight** stays; add a small **Jump to date** popover (calendar icon).
+- **Density toggle:** Compact / Comfortable (changes `64px per hour` → `48` or `80`).
+- **Legend:** small inline legend of status colours + appointment-type colours.
 
-6. **Submit** uses the edited list verbatim — same `createBulk.mutateAsync` call, just sourced from the editable state instead of the recomputed `generateDates()`.
+### Card visual upgrades
+
+- Coloured left border = appointment type, background tint = status.
+- Show: patient name, type, time range (e.g. `10:00 – 11:30`), session number badge if part of a course (`#2 of 6`), chair name only in day-view, small icons for `nurse assigned`, `consent missing`, `no-show risk` (last visit cancelled).
+- Hover → tooltip with full notes preview.
+- "Now" line: a thin red horizontal line at current time on today's column.
+
+### Conflict + safety
+
+- Drag-drop calls `useCheckConflicts` (already exists) before commit. If conflict → toast "Chair X is busy from 10:00–11:00" and snap back.
+- Past-time drops blocked with an inline confirm ("Schedule in the past?") to avoid fat-finger errors.
+- Optimistic update on the calendar so it feels instant; rollback on error.
 
 ### Layout sketch
 
 ```text
-Preview (4 sessions)                         [Regenerate from settings]
+┌─────────────────────────────────────────────────────────────────┐
+│  ◀ Today ▶   📅 Jump to date   Apr 27 – May 3, 2026             │
+│  [Day|Week|Month]  Filters ▾  Density ▾  Legend ▾  + New        │
+├─────┬───────┬───────┬───────┬───────┬───────┬───────┬───────────┤
+│Chair│ Mon27 │ Tue28 │ Wed29 │ Thu30 │ Fri 1 │ Sat 2 │ Sun 3     │
+├─────┼───────┼───────┼───────┼───────┼───────┼───────┼───────────┤
+│  1  │       │ ┃Hawk │       │       │       │       │           │
+│     │       │ ┃ Iron│       │       │       │       │           │
+│     │       │ ┃#2/6 │       │       │       │       │           │
+├─────┼───────┼───────┼───────┼───────┼───────┼───────┼───────────┤
+│  2  │       │       │       │       │       │       │           │
+└─────┴───────┴───────┴───────┴───────┴───────┴───────┴───────────┘
 
-#1   [📅 Tue, Apr 28, 2026  ▾]   [🕘 9:00 AM ▾]   🗑
-#2   [📅 Tue, May  5, 2026  ▾]   [🕘 9:00 AM ▾]   🗑
-#3   [📅 Wed, May 13, 2026  ▾]   [🕘 2:30 PM ▾]   🗑   ← edited
-#4   [📅 Tue, May 19, 2026  ▾]   [🕘 9:00 AM ▾]   🗑
-
-[+ Add another session]
+  Click card → Quick Edit modal
+  Drag card  → Reschedule (with conflict check)
+  Click slot → New appointment modal
 ```
 
-The list scrolls inside the existing `max-h-48` preview region (bumped to `max-h-72` to fit the controls comfortably).
+### Technical changes
 
-### Technical changes (single file)
-
-**`src/components/admin/RecurringSessionDialog.tsx`**
-
-- Replace the derived `previewDates` with a `useState<Date[]>` called `sessionDates`, plus `customised: boolean` flag.
-- A `useEffect` on `[startDate, frequency, preferredDay, secondDay, time, numSessions]` regenerates `sessionDates` **only when `customised` is false**. First time the user edits a row → set `customised = true`.
-- New small subcomponent (inline) renders each row: `Popover` + `Calendar` for date, existing `Select` + `TIME_SLOTS` for time, `Button variant="ghost" size="icon"` with `Trash2` for remove.
-- "Add another session" button appends `addWeeks(last, 1)` at the same time-of-day as the last row.
-- "Regenerate from settings" pill button (only visible when `customised` is true) re-runs `generateDates()` and clears the flag.
-- Submit handler sorts `sessionDates` chronologically, recomputes `session_number` as `sessions_completed + index + 1`, and passes them to `createBulk.mutateAsync` exactly as today.
-- No schema, no hook, no other UI changes.
+| File | Change |
+|------|--------|
+| `src/pages/admin/AdminAppointments.tsx` | Major refactor — toolbar, filters state (URL-synced via `useSearchParams`), density, month view, "now" line, click-slot handler, click-card handler that opens modal instead of navigating. |
+| `src/components/admin/AppointmentQuickEditDialog.tsx` *(new)* | Modal with inline edit fields. Uses `useUpdateAppointment` for save, `useDeleteAppointment` for cancel, and re-uses `RescheduleDialog`. |
+| `src/components/admin/AppointmentQuickCreateDialog.tsx` *(new)* | Lightweight create modal (patient picker + type + duration + notes), pre-filled from clicked slot. Falls through to `/admin/appointments/new` for power-user flow. |
+| `src/components/admin/CalendarEventCard.tsx` *(new)* | Reusable card with status/type colours, session badge, icons, tooltip — used in both week and month views. |
+| `src/components/admin/CalendarMonthView.tsx` *(new)* | Month grid showing per-day appointment count + colour dots + click-to-zoom-into-day. |
+| `src/hooks/useAppointments.ts` | Add `useMoveAppointment` mutation that updates `chair_id` + `scheduled_start` + `scheduled_end` together with optimistic cache update. |
+| `package.json` | Add `@dnd-kit/core` + `@dnd-kit/utilities` for drag-drop (matches Lovable stack — no React-DnD). |
 
 ### What stays the same
-- Frequency presets, chair/nurse selection, ongoing-vs-fixed-course logic, the `useCreateBulkAppointments` mutation, toast messages.
-- The dialog still feels one-click-fast for the common "yes, weekly Mondays is fine" case — Gail just hits **Create** without touching any row.
+
+- Backing tables (`appointments`, `appointment_types`, `treatment_chairs`) and RLS — no schema changes.
+- `RescheduleDialog`, `RecurringSessionDialog`, `useCheckConflicts` are reused as-is.
+- Existing detail page at `/admin/appointments/:id` remains for deep-linking and complex edits.
+
+### Out of scope (can be follow-ups)
+
+- Nurse-lane view (group by nurse instead of chair) — easy to add once filters land.
+- Patient-side iCal feed.
+- Recurring-rule editing from the calendar (still done from the patient's course tab).
+
