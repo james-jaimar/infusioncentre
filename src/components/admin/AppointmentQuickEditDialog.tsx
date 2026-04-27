@@ -170,7 +170,9 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment }: 
                 </DialogTitle>
                 <DialogDescription>
                   Originally {format(start, "EEE, MMM d 'at' h:mm a")}
-                  {appointment.session_number ? ` · Session #${appointment.session_number}` : ""}
+                  {(appointment as any).session_number
+                    ? ` · Session #${(appointment as any).session_number}`
+                    : ""}
                 </DialogDescription>
               </div>
               <Button
