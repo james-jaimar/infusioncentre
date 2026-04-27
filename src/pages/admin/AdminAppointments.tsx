@@ -751,7 +751,7 @@ export default function AdminAppointments() {
                     </div>
 
                     {/* Chair rows */}
-                    {visibleChairs.map((chair) => (
+                    {visibleChairs.map((chair, chairIdx) => (
                       <div key={chair.id} className="flex border-b">
                         {weekDays.map((day) => {
                           const dayAppts = appointments.filter(
@@ -767,6 +767,10 @@ export default function AdminAppointments() {
                               pxPerHour={pxPerHour}
                               onSlotClick={(slot) =>
                                 setCreateSlot({ date: slot, chairId: chair.id })
+                              }
+                              showNowLine={chairIdx === 0}
+                              nowLineHeightPx={
+                                visibleChairs.length * HOURS.length * pxPerHour
                               }
                             >
                               {dayAppts.map((apt) => (
