@@ -114,10 +114,26 @@ Deno.serve(async (req) => {
       is_approved: true,
     }).eq("user_id", userId);
 
-    // UPDATE user_roles (trigger already inserted 'patient') to the correct role
-    await adminClient.from("user_roles").update({
+    // The handle_new_user trigger inserts a 'patient' role row by default.
+    // Wipe any existing rows for this user and insert exactly one row with
+    // the correct staff role to avoid duplicates causing mis-routing.
+    await adminClient.from("user_roles").delete().eq("user_id", userId);
+
+    // Look up the caller's tenant for the new role row
+    const { data: callerProfile } = await adminClient
+      .from("profiles")
+      .select("tenant_id")
+      .eq("user_id", caller.id)
+      .maybeSingle();
+    const tenantId =
+      (callerProfile as any)?.tenant_id ||
+      "00000000-0000-0000-0000-000000000001";
+
+    await adminClient.from("user_roles").insert({
+      user_id: userId,
       role,
-    }).eq("user_id", userId);
+      tenant_id: tenantId,
+    });
 
     // If doctor, also create a doctors table entry
     if (role === "doctor") {
