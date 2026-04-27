@@ -118,22 +118,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (profileResult.data) {
         setProfile(profileResult.data as Profile);
+        if ((profileResult.data as any).must_change_password === true) {
+          setMustChangePassword(true);
+        }
       }
 
       if (roleResult.data) {
         const userRole = roleResult.data.role as AppRole;
         setRole(userRole);
 
-        // If doctor, check must_change_password flag
+        // If doctor, also check doctors.must_change_password
         if (userRole === "doctor") {
           const { data: docData } = await supabase
             .from("doctors")
             .select("must_change_password")
             .eq("user_id", userId)
             .maybeSingle();
-          setMustChangePassword(docData?.must_change_password === true);
-        } else {
-          setMustChangePassword(false);
+          if (docData?.must_change_password === true) {
+            setMustChangePassword(true);
+          }
         }
       }
     } catch (error) {

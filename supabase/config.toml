@@ -20,3 +20,18 @@ verify_jwt = false
 
 [functions.submit-public-form]
 verify_jwt = false
+
+[functions.list-staff]
+verify_jwt = false
+
+[functions.update-staff]
+verify_jwt = false
+
+[functions.reset-staff-password]
+verify_jwt = false
+
+[functions.set-staff-status]
+verify_jwt = false
+
+[functions.delete-staff]
+verify_jwt = false
