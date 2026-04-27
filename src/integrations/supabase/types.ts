@@ -3404,6 +3404,7 @@ export type Database = {
           status: Database["public"]["Enums"]["treatment_status"]
           tenant_id: string
           treatment_type_id: string
+          updated_at: string
         }
         Insert: {
           appointment_id: string
@@ -3417,6 +3418,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["treatment_status"]
           tenant_id?: string
           treatment_type_id: string
+          updated_at?: string
         }
         Update: {
           appointment_id?: string
@@ -3430,6 +3432,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["treatment_status"]
           tenant_id?: string
           treatment_type_id?: string
+          updated_at?: string
         }
         Relationships: [
           {
