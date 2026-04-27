@@ -697,7 +697,7 @@ export default function AdminAppointments() {
                     </div>
 
                     {/* Chair rows */}
-                    {visibleChairs.map((chair, chairIdx) => (
+                    {visibleChairs.map((chair) => (
                       <div key={chair.id} className="flex border-b">
                         {weekDays.map((day) => {
                           const dayAppts = appointments.filter(
@@ -711,13 +711,6 @@ export default function AdminAppointments() {
                               day={day}
                               chairId={chair.id}
                               pxPerHour={pxPerHour}
-                              onSlotClick={(slot) =>
-                                setCreateSlot({ date: slot, chairId: chair.id })
-                              }
-                              showNowLine={chairIdx === 0}
-                              nowLineHeightPx={
-                                visibleChairs.length * HOURS.length * pxPerHour
-                              }
                             >
                               {dayAppts.map((apt) => (
                                 <DraggableEvent
@@ -741,16 +734,6 @@ export default function AdminAppointments() {
                   </div>
                 </div>
               </div>
-              <DragOverlay>
-                {activeDragApt && (
-                  <div className="w-48">
-                    <CalendarEventCard
-                      apt={activeDragApt}
-                      pxPerHour={pxPerHour}
-                    />
-                  </div>
-                )}
-              </DragOverlay>
             </DndContext>
           )}
         </CardContent>
@@ -778,14 +761,6 @@ export default function AdminAppointments() {
         onOpenChange={(o) => !o && setEditingApt(null)}
         appointment={editingApt}
       />
-      {createSlot && (
-        <AppointmentQuickCreateDialog
-          open={!!createSlot}
-          onOpenChange={(o) => !o && setCreateSlot(null)}
-          defaultDate={createSlot.date}
-          defaultChairId={createSlot.chairId}
-        />
-      )}
     </div>
   );
 }
