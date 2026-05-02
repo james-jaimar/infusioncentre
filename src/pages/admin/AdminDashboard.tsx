@@ -2,7 +2,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { MessageSquare, Users, Calendar, Activity, Layers, FileText, ArrowRight, UserPlus, ClipboardList } from "lucide-react";
+import { MessageSquare, Users, Calendar, Activity, Layers, FileText, ArrowRight, UserPlus, ClipboardList, CalendarPlus } from "lucide-react";
 import { Link } from "react-router-dom";
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, formatDistanceToNow } from "date-fns";
 import { useActivePatientsWithCourses } from "@/hooks/useTreatmentCourses";
@@ -112,6 +112,16 @@ export default function AdminDashboard() {
                     <ClipboardList className="h-4 w-4 text-clinical-warning" />
                     <span className="tabular-nums">{attention.needs_course}</span>
                     <span className="text-muted-foreground">need course setup</span>
+                  </Link>
+                )}
+                {attention.needs_scheduling > 0 && (
+                  <Link
+                    to="/admin/referrals?attention=needs_scheduling"
+                    className="inline-flex items-center gap-2 rounded-md border border-clinical-warning/40 bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted/50 transition-colors"
+                  >
+                    <CalendarPlus className="h-4 w-4 text-clinical-warning" />
+                    <span className="tabular-nums">{attention.needs_scheduling}</span>
+                    <span className="text-muted-foreground">need session scheduling</span>
                   </Link>
                 )}
               </div>

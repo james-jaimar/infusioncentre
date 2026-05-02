@@ -6,6 +6,8 @@ import { ReferralFilters } from "@/components/admin/referrals/ReferralFilters";
 import { ReferralTable } from "@/components/admin/referrals/ReferralTable";
 import { ReferralTriageDialog } from "@/components/admin/referrals/ReferralTriageDialog";
 import { ConvertReferralDialog } from "@/components/admin/ConvertReferralDialog";
+import { RecurringSessionDialog } from "@/components/admin/RecurringSessionDialog";
+import { useTreatmentCoursesByPatient } from "@/hooks/useTreatmentCourses";
 import { getReferralAttention, type ReferralAttention } from "@/lib/referralProgress";
 
 export default function AdminReferrals() {
@@ -25,13 +27,24 @@ export default function AdminReferrals() {
   const [convertPatientId, setConvertPatientId] = useState<string | undefined>();
   const [triageOpen, setTriageOpen] = useState(false);
   const [convertOpen, setConvertOpen] = useState(false);
+  const [schedulingReferral, setSchedulingReferral] = useState<any | null>(null);
+
+  const { data: schedulingCourses = [] } = useTreatmentCoursesByPatient(
+    schedulingReferral?.patient_id
+  );
+  const schedulingCourse = schedulingCourses.find(
+    (c: any) => c.referral_id === schedulingReferral?.id
+  );
 
   const filtered = referrals.filter((r: any) => {
     if (statusFilter !== "all" && r.status !== statusFilter) return false;
     if (urgencyFilter !== "all" && r.urgency !== urgencyFilter) return false;
     if (doctorFilter !== "all" && r.doctor_id !== doctorFilter) return false;
     if (attentionFilter !== "all") {
-      const a = getReferralAttention(r, r.course_count || 0);
+      const a = getReferralAttention(r, r.course_count || 0, {
+        appointmentCount: r.appointment_count || 0,
+        totalSessionsPlanned: r.total_sessions_planned || 0,
+      });
       if (attentionFilter === "needs_attention") {
         if (a === "complete") return false;
       } else if (a !== attentionFilter) {
@@ -63,6 +76,10 @@ export default function AdminReferrals() {
     setConvertOpen(true);
   };
 
+  const openScheduling = (referral: any) => {
+    setSchedulingReferral(referral);
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -90,6 +107,7 @@ export default function AdminReferrals() {
         isLoading={isLoading}
         onReview={openTriage}
         onSetupCourse={openConvertDirect}
+        onScheduleSessions={openScheduling}
       />
 
       <ReferralTriageDialog
@@ -106,6 +124,28 @@ export default function AdminReferrals() {
         referral={convertReferral}
         patientId={convertPatientId}
       />
+
+      {schedulingCourse && (
+        <RecurringSessionDialog
+          open={!!schedulingReferral && !!schedulingCourse}
+          onOpenChange={(next) => {
+            if (!next) setSchedulingReferral(null);
+          }}
+          treatmentCourse={{
+            id: schedulingCourse.id,
+            patient_id: schedulingCourse.patient_id,
+            treatment_type_id: schedulingCourse.treatment_type_id,
+            total_sessions_planned: schedulingCourse.total_sessions_planned,
+            sessions_completed: schedulingCourse.sessions_completed,
+            appointment_type: schedulingCourse.appointment_type,
+            patient: {
+              first_name: schedulingReferral?.patient_first_name || "",
+              last_name: schedulingReferral?.patient_last_name || "",
+            },
+          }}
+          onCreated={() => setSchedulingReferral(null)}
+        />
+      )}
     </div>
   );
 }

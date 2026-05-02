@@ -20,9 +20,10 @@ interface Props {
   isLoading: boolean;
   onReview: (referral: any) => void;
   onSetupCourse?: (referral: any) => void;
+  onScheduleSessions?: (referral: any) => void;
 }
 
-export function ReferralTable({ referrals, isLoading, onReview, onSetupCourse }: Props) {
+export function ReferralTable({ referrals, isLoading, onReview, onSetupCourse, onScheduleSessions }: Props) {
   const getStatus = useStatusDisplay("referral");
 
   if (isLoading) {
@@ -59,7 +60,10 @@ export function ReferralTable({ referrals, isLoading, onReview, onSetupCourse }:
           <TableBody>
             {referrals.map((ref: any) => {
               const status = getStatus(ref.status);
-              const attention = getReferralAttention(ref, ref.course_count || 0);
+              const attention = getReferralAttention(ref, ref.course_count || 0, {
+                appointmentCount: ref.appointment_count || 0,
+                totalSessionsPlanned: ref.total_sessions_planned || 0,
+              });
               const needsAttention = attention !== "complete";
               const rowTint =
                 ref.urgency === "urgent" && ref.status === "pending"
@@ -121,7 +125,15 @@ export function ReferralTable({ referrals, isLoading, onReview, onSetupCourse }:
                     {format(new Date(ref.created_at), "dd MMM yyyy")}
                   </TableCell>
                   <TableCell>
-                    {attention === "needs_course" && onSetupCourse ? (
+                    {attention === "needs_scheduling" && onScheduleSessions ? (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => onScheduleSessions(ref)}
+                      >
+                        Schedule sessions
+                      </Button>
+                    ) : attention === "needs_course" && onSetupCourse ? (
                       <Button
                         variant="default"
                         size="sm"

@@ -7,7 +7,7 @@ export function useReferrals(doctorId?: string) {
     queryFn: async () => {
       let query = supabase
         .from("referrals")
-        .select("*, doctors(id, user_id, practice_name, email, specialisation), treatment_courses:treatment_courses!treatment_courses_referral_id_fkey(id)")
+        .select("*, doctors(id, user_id, practice_name, email, specialisation), treatment_courses:treatment_courses!treatment_courses_referral_id_fkey(id, total_sessions_planned, appointments:appointments!appointments_treatment_course_id_fkey(id, status))")
         .order("created_at", { ascending: false });
 
       if (doctorId) {
@@ -47,11 +47,26 @@ export function useReferrals(doctorId?: string) {
           fallbackName ||
           r.doctors?.email ||
           "Unknown Doctor";
+        const courses = Array.isArray(r.treatment_courses) ? r.treatment_courses : [];
+        const totalSessionsPlanned = courses.reduce(
+          (sum: number, c: any) => sum + (c.total_sessions_planned || 0),
+          0
+        );
+        const appointmentCount = courses.reduce(
+          (sum: number, c: any) =>
+            sum +
+            (Array.isArray(c.appointments)
+              ? c.appointments.filter((a: any) => a.status !== "cancelled").length
+              : 0),
+          0
+        );
         return {
           ...r,
           doctor_display_name: displayName,
           doctor_profile: profile || null,
-          course_count: Array.isArray(r.treatment_courses) ? r.treatment_courses.length : 0,
+          course_count: courses.length,
+          appointment_count: appointmentCount,
+          total_sessions_planned: totalSessionsPlanned,
         };
       });
     },

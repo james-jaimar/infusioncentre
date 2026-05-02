@@ -28,6 +28,12 @@ interface RecurringSessionDialogProps {
     appointment_type?: { name: string; color: string; default_duration_minutes: number } | null;
     patient?: { first_name: string; last_name: string } | null;
   };
+  /** Pre-fill the start date (e.g. from referral conversion). */
+  initialStartDate?: Date;
+  /** Pre-fill cadence from a course template's default frequency. */
+  initialFrequency?: Frequency;
+  /** Called after the appointments are successfully created. */
+  onCreated?: () => void;
 }
 
 type Frequency = "weekly" | "biweekly" | "twice_weekly" | "monthly";
@@ -53,21 +59,38 @@ const DAYS_OF_WEEK = [
   { value: 5, label: "Friday" },
 ];
 
-export function RecurringSessionDialog({ open, onOpenChange, treatmentCourse }: RecurringSessionDialogProps) {
+export function RecurringSessionDialog({
+  open,
+  onOpenChange,
+  treatmentCourse,
+  initialStartDate,
+  initialFrequency,
+  onCreated,
+}: RecurringSessionDialogProps) {
   const isOngoing = treatmentCourse.total_sessions_planned == null;
   const remainingSessions = isOngoing
     ? 12
     : Math.max(0, (treatmentCourse.total_sessions_planned ?? 0) - treatmentCourse.sessions_completed);
   const defaultDuration = treatmentCourse.appointment_type?.default_duration_minutes || 60;
 
-  const [startDate, setStartDate] = useState<Date | undefined>();
-  const [frequency, setFrequency] = useState<Frequency>("weekly");
+  const [startDate, setStartDate] = useState<Date | undefined>(initialStartDate);
+  const [frequency, setFrequency] = useState<Frequency>(initialFrequency || "weekly");
   const [preferredDay, setPreferredDay] = useState<number>(1);
   const [secondDay, setSecondDay] = useState<number>(4);
   const [time, setTime] = useState("09:00");
   const [numSessions, setNumSessions] = useState(remainingSessions || 1);
   const [chairId, setChairId] = useState<string>("");
   const [nurseId, setNurseId] = useState<string>("");
+
+  // Re-seed when dialog reopens with new initial values
+  useEffect(() => {
+    if (open) {
+      if (initialStartDate) setStartDate(initialStartDate);
+      if (initialFrequency) setFrequency(initialFrequency);
+      setNumSessions(remainingSessions || 1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialStartDate, initialFrequency]);
 
   const { data: chairs = [] } = useTreatmentChairs();
   const { data: nurses = [] } = useNurseStaff();
@@ -193,6 +216,7 @@ export function RecurringSessionDialog({ open, onOpenChange, treatmentCourse }: 
       });
       toast.success(`${sorted.length} appointments created`);
       onOpenChange(false);
+      onCreated?.();
     } catch (error) {
       toast.error("Failed to create appointments");
       console.error(error);
@@ -212,6 +236,16 @@ export function RecurringSessionDialog({ open, onOpenChange, treatmentCourse }: 
             — {treatmentCourse.appointment_type?.name}
           </DialogDescription>
         </DialogHeader>
+
+        <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-3 text-xs text-foreground">
+          <p className="font-medium">Nothing is booked yet.</p>
+          <p className="text-muted-foreground mt-0.5">
+            These are proposed appointments. Pick a time, review each session, then click
+            <span className="font-medium text-foreground"> Create appointments</span> to add them
+            to the calendar. Until then, this course will stay on the “Needs session scheduling”
+            to-do list.
+          </p>
+        </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           {/* Start date */}
