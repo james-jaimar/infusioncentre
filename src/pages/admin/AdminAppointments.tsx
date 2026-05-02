@@ -77,12 +77,13 @@ import {
 import { cn } from "@/lib/utils";
 import { AppointmentQuickEditDialog } from "@/components/admin/AppointmentQuickEditDialog";
 import { useNavigate } from "react-router-dom";
+import { AppointmentsListView } from "@/components/admin/appointments/AppointmentsListView";
 
 const HOURS = Array.from({ length: 12 }, (_, i) => i + 7); // 7am to 6pm
 const SLOT_MINUTES = 30; // drag snap
 const DAY_START_MIN = 7 * 60;
 
-type ViewMode = "day" | "week" | "month";
+type ViewMode = "day" | "week" | "month" | "list";
 type Density = "compact" | "comfortable";
 
 const DENSITY_PX: Record<Density, number> = {
@@ -331,6 +332,10 @@ export default function AdminAppointments() {
         end: endOfMonth(currentDate),
       };
     }
+    if (viewMode === "list") {
+      // List defaults to single-day; toolbar prev/next moves day-by-day.
+      return { start: startOfDay(currentDate), end: endOfDay(currentDate) };
+    }
     return {
       start: startOfWeek(currentDate, { weekStartsOn: 1 }),
       end: endOfWeek(currentDate, { weekStartsOn: 1 }),
@@ -370,11 +375,13 @@ export default function AdminAppointments() {
   const goToPrevious = () => {
     if (viewMode === "day") setCurrentDate((d) => addDays(d, -1));
     else if (viewMode === "month") setCurrentDate((d) => subMonths(d, 1));
+    else if (viewMode === "list") setCurrentDate((d) => addDays(d, -1));
     else setCurrentDate((d) => subWeeks(d, 1));
   };
   const goToNext = () => {
     if (viewMode === "day") setCurrentDate((d) => addDays(d, 1));
     else if (viewMode === "month") setCurrentDate((d) => addMonths(d, 1));
+    else if (viewMode === "list") setCurrentDate((d) => addDays(d, 1));
     else setCurrentDate((d) => addWeeks(d, 1));
   };
 
@@ -476,6 +483,8 @@ export default function AdminAppointments() {
       ? format(currentDate, "EEEE, MMM d, yyyy")
       : viewMode === "month"
       ? format(currentDate, "MMMM yyyy")
+      : viewMode === "list"
+      ? format(currentDate, "EEEE, MMM d, yyyy")
       : `${format(dateRange.start, "MMM d")} – ${format(dateRange.end, "MMM d, yyyy")}`;
 
   const activeFilterCount =
@@ -613,6 +622,7 @@ export default function AdminAppointments() {
                   <SelectItem value="day">Day</SelectItem>
                   <SelectItem value="week">Week</SelectItem>
                   <SelectItem value="month">Month</SelectItem>
+                  <SelectItem value="list">List</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -632,6 +642,12 @@ export default function AdminAppointments() {
                 setCurrentDate(d);
                 setViewMode("day");
               }}
+            />
+          ) : viewMode === "list" ? (
+            <AppointmentsListView
+              appointments={appointments}
+              nurses={nurses}
+              onEdit={(apt) => setEditingApt(apt)}
             />
           ) : (
             <DndContext
