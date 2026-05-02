@@ -11,7 +11,11 @@ export function ReferralMetrics({ referrals }: Props) {
   const urgent = referrals.filter((r) => r.urgency === "urgent" && r.status === "pending").length;
   const accepted = referrals.filter((r) => r.status === "accepted").length;
   const incomplete = referrals.filter(
-    (r) => getReferralAttention(r, (r as any).course_count || 0) !== "complete"
+    (r) =>
+      getReferralAttention(r, (r as any).course_count || 0, {
+        appointmentCount: (r as any).appointment_count || 0,
+        totalSessionsPlanned: (r as any).total_sessions_planned || 0,
+      }) !== "complete"
   ).length;
 
   // Average time to triage (pending → any non-pending) in hours
