@@ -43,6 +43,7 @@ export function ReferralFilters({
     { value: "awaiting_triage", label: "Awaiting triage" },
     { value: "needs_patient", label: "Needs patient" },
     { value: "needs_course", label: "Needs course" },
+    { value: "needs_scheduling", label: "Needs scheduling" },
     { value: "complete", label: "Complete" },
   ];
 
