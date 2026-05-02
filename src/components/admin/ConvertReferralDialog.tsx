@@ -23,6 +23,7 @@ import { useConvertReferralToCourse } from "@/hooks/useTreatmentCourses";
 import { useActiveCourseTemplatesByType } from "@/hooks/useCourseTemplates";
 import { isCustomType, isCustomRequest, stripCustomTag } from "@/lib/customReferral";
 import { computeExpectedEndDate, FREQUENCY_LABEL, formatEndDateHint } from "@/lib/courseSchedule";
+import { RecurringSessionDialog } from "@/components/admin/RecurringSessionDialog";
 import { useRef } from "react";
 
 interface Props {
@@ -60,6 +61,13 @@ export function ConvertReferralDialog({ open, onOpenChange, referral, patientId 
   const [touchedNotes, setTouchedNotes] = useState(false);
   const [otherAction, setOtherAction] = useState<"adhoc" | "promote">("adhoc");
   const completedRef = useRef(false);
+
+  // After conversion succeeds, immediately open the scheduler with the same date/cadence.
+  const [scheduling, setScheduling] = useState<null | {
+    course: any;
+    appointmentType: any;
+    patient: any;
+  }>(null);
 
   const { data: variants = [] } = useActiveCourseTemplatesByType(treatmentTypeId || undefined);
 
@@ -113,7 +121,7 @@ export function ConvertReferralDialog({ open, onOpenChange, referral, patientId 
     if (!referral || !effectivePatientId || !treatmentTypeId) return;
 
     try {
-      await convertMutation.mutateAsync({
+      const course = await convertMutation.mutateAsync({
         referral_id: referral.id,
         patient_id: effectivePatientId,
         doctor_id: referral.doctor_id || undefined,
@@ -124,8 +132,22 @@ export function ConvertReferralDialog({ open, onOpenChange, referral, patientId 
         notes: notes || undefined,
       });
       completedRef.current = true;
-      toast.success("Referral converted to treatment course");
+      toast.success("Treatment course created — now schedule the sessions");
       onOpenChange(false);
+      // Hand straight off to the scheduler, pre-filled with the chosen start date and cadence.
+      const apptType = appointmentTypes.find((t: any) => t.id === treatmentTypeId);
+      setScheduling({
+        course: {
+          ...(course as any),
+          total_sessions_planned: totalSessions,
+          sessions_completed: 0,
+        },
+        appointmentType: apptType,
+        patient: {
+          first_name: referral.patient_first_name || "",
+          last_name: referral.patient_last_name || "",
+        },
+      });
     } catch (err) {
       toast.error("Failed to convert referral");
     }
@@ -176,6 +198,7 @@ export function ConvertReferralDialog({ open, onOpenChange, referral, patientId 
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -304,7 +327,7 @@ export function ConvertReferralDialog({ open, onOpenChange, referral, patientId 
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Preferred Start Date</Label>
+                  <Label>Preferred First Session Date</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
@@ -345,7 +368,8 @@ export function ConvertReferralDialog({ open, onOpenChange, referral, patientId 
                         {selectedTemplate?.default_frequency
                           ? `, ${FREQUENCY_LABEL[selectedTemplate.default_frequency]}`
                           : ""}
-                        . You can finalise individual session dates from the course schedule.
+                        . After you click <span className="font-medium text-foreground">Convert &amp; schedule</span>,
+                        you'll choose the time and review every session before they're added to the calendar.
                       </p>
                     </>
                   ) : (
@@ -392,11 +416,51 @@ export function ConvertReferralDialog({ open, onOpenChange, referral, patientId 
               onClick={handleConvert}
               disabled={!referral || !effectivePatientId || !treatmentTypeId || convertMutation.isPending}
             >
-              {convertMutation.isPending ? "Converting..." : "Convert to Course"}
+              {convertMutation.isPending
+                ? "Converting..."
+                : preferredStartDate
+                  ? "Convert & schedule sessions →"
+                  : "Convert to Course"}
             </Button>
           )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    {scheduling && (
+      <RecurringSessionDialog
+        open={!!scheduling}
+        onOpenChange={(next) => {
+          if (!next) setScheduling(null);
+        }}
+        treatmentCourse={{
+          id: scheduling.course.id,
+          patient_id: scheduling.course.patient_id,
+          treatment_type_id: scheduling.course.treatment_type_id,
+          total_sessions_planned: scheduling.course.total_sessions_planned,
+          sessions_completed: scheduling.course.sessions_completed || 0,
+          appointment_type: scheduling.appointmentType
+            ? {
+                name: scheduling.appointmentType.name,
+                color: scheduling.appointmentType.color,
+                default_duration_minutes:
+                  scheduling.appointmentType.default_duration_minutes,
+              }
+            : null,
+          patient: scheduling.patient,
+        }}
+        initialStartDate={preferredStartDate}
+        initialFrequency={
+          (selectedTemplate?.default_frequency === "weekly" ||
+          selectedTemplate?.default_frequency === "biweekly" ||
+          selectedTemplate?.default_frequency === "twice_weekly" ||
+          selectedTemplate?.default_frequency === "monthly")
+            ? selectedTemplate.default_frequency
+            : undefined
+        }
+        onCreated={() => setScheduling(null)}
+      />
+    )}
+    </>
   );
 }
