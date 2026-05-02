@@ -12,6 +12,8 @@ import { useAllDoctors } from "@/hooks/useDoctors";
 interface Props {
   statusFilter: string;
   setStatusFilter: (v: string) => void;
+  attentionFilter: string;
+  setAttentionFilter: (v: string) => void;
   urgencyFilter: string;
   setUrgencyFilter: (v: string) => void;
   doctorFilter: string;
@@ -23,6 +25,8 @@ interface Props {
 export function ReferralFilters({
   statusFilter,
   setStatusFilter,
+  attentionFilter,
+  setAttentionFilter,
   urgencyFilter,
   setUrgencyFilter,
   doctorFilter,
@@ -33,8 +37,38 @@ export function ReferralFilters({
   const { data: statuses = [] } = useStatusDictionaries("referral");
   const { data: doctors = [] } = useAllDoctors();
 
+  const attentionPills: { value: string; label: string }[] = [
+    { value: "all", label: "All" },
+    { value: "needs_attention", label: "Needs attention" },
+    { value: "awaiting_triage", label: "Awaiting triage" },
+    { value: "needs_patient", label: "Needs patient" },
+    { value: "needs_course", label: "Needs course" },
+    { value: "complete", label: "Complete" },
+  ];
+
   return (
-    <div className="flex flex-wrap gap-3">
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        {attentionPills.map((p) => {
+          const active = attentionFilter === p.value;
+          return (
+            <button
+              key={p.value}
+              type="button"
+              onClick={() => setAttentionFilter(p.value)}
+              className={
+                "px-3 py-1.5 text-xs font-medium rounded-full border transition-colors " +
+                (active
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-card text-muted-foreground border-border hover:bg-muted/50")
+              }
+            >
+              {p.label}
+            </button>
+          );
+        })}
+      </div>
+      <div className="flex flex-wrap gap-3">
       <Input
         placeholder="Search patient name..."
         value={search}
@@ -77,6 +111,7 @@ export function ReferralFilters({
           ))}
         </SelectContent>
       </Select>
+      </div>
     </div>
   );
 }
