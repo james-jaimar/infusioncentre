@@ -23,6 +23,7 @@ import { useConvertReferralToCourse } from "@/hooks/useTreatmentCourses";
 import { useActiveCourseTemplatesByType } from "@/hooks/useCourseTemplates";
 import { isCustomType, isCustomRequest, stripCustomTag } from "@/lib/customReferral";
 import { computeExpectedEndDate, FREQUENCY_LABEL, formatEndDateHint } from "@/lib/courseSchedule";
+import { useRef } from "react";
 
 interface Props {
   open: boolean;
@@ -39,6 +40,8 @@ interface Props {
     treatment_requested?: string | null;
     treatment_type_id?: string | null;
     course_template_id?: string | null;
+    status?: string | null;
+    course_count?: number;
   } | null;
   patientId?: string;
 }
@@ -56,6 +59,7 @@ export function ConvertReferralDialog({ open, onOpenChange, referral, patientId 
   const [touchedSessions, setTouchedSessions] = useState(false);
   const [touchedNotes, setTouchedNotes] = useState(false);
   const [otherAction, setOtherAction] = useState<"adhoc" | "promote">("adhoc");
+  const completedRef = useRef(false);
 
   const { data: variants = [] } = useActiveCourseTemplatesByType(treatmentTypeId || undefined);
 
@@ -73,6 +77,7 @@ export function ConvertReferralDialog({ open, onOpenChange, referral, patientId 
       setNotes(referral.prescription_notes || "");
       setTouchedSessions(false);
       setTouchedNotes(false);
+      completedRef.current = false;
     }
     if (!open) {
       setTreatmentTypeId("");
@@ -118,6 +123,7 @@ export function ConvertReferralDialog({ open, onOpenChange, referral, patientId 
         expected_end_date: computedEndDate ? format(computedEndDate, "yyyy-MM-dd") : undefined,
         notes: notes || undefined,
       });
+      completedRef.current = true;
       toast.success("Referral converted to treatment course");
       onOpenChange(false);
     } catch (err) {
@@ -148,8 +154,29 @@ export function ConvertReferralDialog({ open, onOpenChange, referral, patientId 
     });
   };
 
+  const handleOpenChange = (next: boolean) => {
+    // Detect abandonment: closing without converting, while the referral
+    // was already accepted + patient-linked + no course (the gap state).
+    if (
+      !next &&
+      open &&
+      !completedRef.current &&
+      !isOther &&
+      referral &&
+      effectivePatientId &&
+      (referral.status === "accepted" || referral.status === "under_review") &&
+      (referral.course_count ?? 0) === 0
+    ) {
+      toast.info("Course setup not finished", {
+        description:
+          "This referral will stay in your to-do list until a treatment course is created.",
+      });
+    }
+    onOpenChange(next);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -352,7 +379,7 @@ export function ConvertReferralDialog({ open, onOpenChange, referral, patientId 
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => handleOpenChange(false)}>Cancel</Button>
           {isOther ? (
             <Button
               onClick={otherAction === "adhoc" ? handleAdhoc : handlePromote}
