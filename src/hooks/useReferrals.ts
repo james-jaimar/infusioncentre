@@ -7,7 +7,7 @@ export function useReferrals(doctorId?: string) {
     queryFn: async () => {
       let query = supabase
         .from("referrals")
-        .select("*, doctors(id, user_id, practice_name, email, specialisation)")
+        .select("*, doctors(id, user_id, practice_name, email, specialisation), treatment_courses:treatment_courses!treatment_courses_referral_id_fkey(id)")
         .order("created_at", { ascending: false });
 
       if (doctorId) {
@@ -51,6 +51,7 @@ export function useReferrals(doctorId?: string) {
           ...r,
           doctor_display_name: displayName,
           doctor_profile: profile || null,
+          course_count: Array.isArray(r.treatment_courses) ? r.treatment_courses.length : 0,
         };
       });
     },

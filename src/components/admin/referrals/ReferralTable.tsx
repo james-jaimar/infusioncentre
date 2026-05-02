@@ -12,15 +12,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useStatusDisplay } from "@/hooks/useStatusDictionaries";
 import { isCustomRequest } from "@/lib/customReferral";
 import { format } from "date-fns";
-import { Sparkles } from "lucide-react";
+import { Sparkles, AlertCircle } from "lucide-react";
+import { getReferralAttention, ATTENTION_LABEL } from "@/lib/referralProgress";
 
 interface Props {
   referrals: any[];
   isLoading: boolean;
   onReview: (referral: any) => void;
+  onSetupCourse?: (referral: any) => void;
 }
 
-export function ReferralTable({ referrals, isLoading, onReview }: Props) {
+export function ReferralTable({ referrals, isLoading, onReview, onSetupCourse }: Props) {
   const getStatus = useStatusDisplay("referral");
 
   if (isLoading) {
@@ -57,14 +59,30 @@ export function ReferralTable({ referrals, isLoading, onReview }: Props) {
           <TableBody>
             {referrals.map((ref: any) => {
               const status = getStatus(ref.status);
+              const attention = getReferralAttention(ref, ref.course_count || 0);
+              const needsAttention = attention !== "complete";
+              const rowTint =
+                ref.urgency === "urgent" && ref.status === "pending"
+                  ? "bg-clinical-danger-soft/30"
+                  : needsAttention && attention !== "awaiting_triage"
+                    ? "bg-clinical-warning-soft/30"
+                    : "";
               return (
-                <TableRow key={ref.id} className={ref.urgency === "urgent" && ref.status === "pending" ? "bg-clinical-danger-soft/30" : ""}>
+                <TableRow key={ref.id} className={rowTint}>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span>{ref.patient_first_name} {ref.patient_last_name}</span>
                       {isCustomRequest(ref.treatment_requested) && (
                         <Badge variant="outline" className="gap-1 border-amber-400 bg-amber-50 text-amber-900 dark:bg-amber-950/30 dark:text-amber-200 dark:border-amber-700 text-[10px] px-1.5 py-0">
                           <Sparkles className="h-2.5 w-2.5" /> Custom request
+                        </Badge>
+                      )}
+                      {needsAttention && attention !== "awaiting_triage" && (
+                        <Badge
+                          variant="outline"
+                          className="gap-1 border-clinical-warning/60 bg-clinical-warning-soft text-clinical-warning text-[10px] px-1.5 py-0"
+                        >
+                          <AlertCircle className="h-2.5 w-2.5" /> {ATTENTION_LABEL[attention]}
                         </Badge>
                       )}
                     </div>
@@ -103,9 +121,27 @@ export function ReferralTable({ referrals, isLoading, onReview }: Props) {
                     {format(new Date(ref.created_at), "dd MMM yyyy")}
                   </TableCell>
                   <TableCell>
-                    <Button variant="outline" size="sm" onClick={() => onReview(ref)}>
-                      Review
-                    </Button>
+                    {attention === "needs_course" && onSetupCourse ? (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => onSetupCourse(ref)}
+                      >
+                        Set up course
+                      </Button>
+                    ) : attention === "needs_patient" ? (
+                      <Button variant="default" size="sm" onClick={() => onReview(ref)}>
+                        Link patient
+                      </Button>
+                    ) : attention === "awaiting_triage" ? (
+                      <Button variant="default" size="sm" onClick={() => onReview(ref)}>
+                        Review
+                      </Button>
+                    ) : (
+                      <Button variant="outline" size="sm" onClick={() => onReview(ref)}>
+                        View
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               );

@@ -2,12 +2,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { MessageSquare, Users, Calendar, Activity, Layers, FileText, ArrowRight } from "lucide-react";
+import { MessageSquare, Users, Calendar, Activity, Layers, FileText, ArrowRight, UserPlus, ClipboardList } from "lucide-react";
 import { Link } from "react-router-dom";
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, formatDistanceToNow } from "date-fns";
 import { useActivePatientsWithCourses } from "@/hooks/useTreatmentCourses";
 import { TreatmentCourseChip } from "@/components/shared/TreatmentCourseChip";
-import { usePendingReferralsCount } from "@/hooks/usePendingReferralsCount";
+import { useReferralsAttentionCount } from "@/hooks/useReferralsAttentionCount";
 
 function useDashboardStats() {
   return useQuery({
@@ -43,7 +43,7 @@ export default function AdminDashboard() {
   const { profile } = useAuth();
   const { data: stats } = useDashboardStats();
   const { data: activePatients } = useActivePatientsWithCourses(8);
-  const pendingReferrals = usePendingReferralsCount();
+  const attention = useReferralsAttentionCount();
 
   const greeting = profile?.first_name ? `Welcome back, ${profile.first_name}` : "Welcome back";
 
@@ -70,27 +70,54 @@ export default function AdminDashboard() {
         </p>
       </div>
 
-      {pendingReferrals > 0 && (
-        <Link to="/admin/referrals?status=pending" className="block mb-6">
-          <Card className="border-clinical-warning/40 bg-clinical-warning-soft hover:shadow-clinical-lg transition-shadow">
-            <CardContent className="flex items-center justify-between p-4">
-              <div className="flex items-center gap-3">
+      {attention.total > 0 && (
+        <Card className="border-clinical-warning/40 bg-clinical-warning-soft mb-6">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3 flex-wrap">
+              <div className="flex items-center gap-3 mr-2">
                 <div className="h-10 w-10 rounded-md bg-clinical-warning/20 text-clinical-warning flex items-center justify-center">
                   <FileText className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="font-semibold text-foreground">
-                    {pendingReferrals} new referral{pendingReferrals === 1 ? "" : "s"} awaiting triage
-                  </p>
-                  <p className="text-sm text-muted-foreground">Review and assign incoming patients</p>
+                  <p className="font-semibold text-foreground">Referrals needing attention</p>
+                  <p className="text-xs text-muted-foreground">Workflow steps that aren't finished yet</p>
                 </div>
               </div>
-              <span className="text-sm font-medium text-primary inline-flex items-center gap-1">
-                Review queue <ArrowRight className="h-4 w-4" />
-              </span>
-            </CardContent>
-          </Card>
-        </Link>
+              <div className="flex flex-wrap gap-2 ml-auto">
+                {attention.awaiting_triage > 0 && (
+                  <Link
+                    to="/admin/referrals?attention=awaiting_triage"
+                    className="inline-flex items-center gap-2 rounded-md border border-clinical-warning/40 bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted/50 transition-colors"
+                  >
+                    <FileText className="h-4 w-4 text-clinical-warning" />
+                    <span className="tabular-nums">{attention.awaiting_triage}</span>
+                    <span className="text-muted-foreground">to triage</span>
+                  </Link>
+                )}
+                {attention.needs_patient > 0 && (
+                  <Link
+                    to="/admin/referrals?attention=needs_patient"
+                    className="inline-flex items-center gap-2 rounded-md border border-clinical-warning/40 bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted/50 transition-colors"
+                  >
+                    <UserPlus className="h-4 w-4 text-clinical-warning" />
+                    <span className="tabular-nums">{attention.needs_patient}</span>
+                    <span className="text-muted-foreground">need patient</span>
+                  </Link>
+                )}
+                {attention.needs_course > 0 && (
+                  <Link
+                    to="/admin/referrals?attention=needs_course"
+                    className="inline-flex items-center gap-2 rounded-md border border-clinical-warning/40 bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted/50 transition-colors"
+                  >
+                    <ClipboardList className="h-4 w-4 text-clinical-warning" />
+                    <span className="tabular-nums">{attention.needs_course}</span>
+                    <span className="text-muted-foreground">need course setup</span>
+                  </Link>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Stats grid */}
