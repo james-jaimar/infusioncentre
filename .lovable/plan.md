@@ -1,46 +1,61 @@
-## Goal
+## Add a "List" view to the Appointments page
 
-Empower the nurse to facilitate patient form completion in-clinic — either filling out a form *with* the patient on the nurse's tablet, or handing over a tablet for the patient to self-complete — directly from the Job Card and Today's Schedule. This unblocks treatments when patients arrive with missing onboarding forms.
+A fourth view mode on `/admin/appointments` that complements the calendar with a clean, scannable, sortable list — perfect for "what does today actually look like?" at a glance.
 
-## What the nurse will be able to do
+### Where it lives
 
-1. **See exactly what's missing** on the Job Card sidebar — the existing Onboarding card already lists pending forms but they're not actionable.
-2. **Tap a pending form** → choose one of two flows:
-   - **"Complete with patient"** — opens the form full-screen, signed by the patient, submitted by the nurse.
-   - **"Hand to patient"** — launches a **Patient Kiosk Mode**: locks the tablet to that single form, hides nurse navigation, requires patient signature, and returns to the Job Card on submit (or after timeout / nurse PIN to exit early).
-3. **Resume** any in-progress draft the patient started elsewhere.
-4. **See readiness on Today's Schedule** — a small "⚠ 2 forms outstanding" chip on each appointment row, with a quick "Help with forms" action that jumps straight into the same flow without opening the full Job Card.
+In the existing view selector (currently `Day / Week / Month`) — add a new option **List**. Same toolbar, same date picker, same filters; only the body of the card changes.
 
-## Technical changes
+```text
+┌──────────────────────────────────────────────────────────────┐
+│ ◀  Today  ▶   📅   Mon 4 May 2026          Filters  List ▾  │
+├──────────────────────────────────────────────────────────────┤
+│ Time   Patient            Treatment        Chair    Nurse   Status   ⋯ │
+│ 08:30  James Hawkins      Iron Infusion    Chair 1  D. Patel In progress │
+│ 09:00  Sarah Cole         Ketamine         Chair 2  —        Checked in │
+│ 10:30  Mary O'Brien       Vitamin Drip     Chair 3  J. Lee   Confirmed  │
+│ ...                                                                     │
+└──────────────────────────────────────────────────────────────┘
+```
 
-### New components
-- `src/components/nurse/JobCardOnboarding.tsx` — replaces the read-only Onboarding card in `JobCardSidebar.tsx`. Lists each required form with status pill + actions (`Complete with patient` / `Hand to patient` / `View`).
-- `src/components/nurse/PatientKioskMode.tsx` — full-screen overlay wrapping `FullScreenFormDialog` with:
-  - Hidden nurse chrome (no sidebar, no back-to-job-card button).
-  - Header showing patient name only ("Hi James, please complete this form").
-  - Exit guarded by a 4-digit nurse PIN (stored per-session in memory, set on first kiosk launch).
-  - Submission attributed to the patient's `user_id` if linked; else `submitted_by = nurse user_id` with a flag in `data.completed_with_nurse_assistance = true`.
+### Behaviour
 
-### Modified files
-- `src/components/nurse/JobCardSidebar.tsx` — swap the static onboarding block for the new `JobCardOnboarding`.
-- `src/pages/nurse/NurseJobCard.tsx` — wire in kiosk launching; on form-submit invalidate the readiness query so the "Start Treatment" button unlocks immediately.
-- `src/components/nurse/command-centre/TodaysSchedule.tsx` — add a forms-readiness chip per row using `useOnboardingReadiness`, plus a "Help with forms" quick action that opens the kiosk picker without navigating away.
-- `src/hooks/useFormSubmissions.ts` — extend `useCreateFormSubmission` to accept the assistance flag and include it in `data`.
+- **Range follows the toolbar.** List view of "Day" shows that day; switching to "Week" while in List shows the week's appointments grouped by date with sticky day headers. Default range when first opening List = today.
+- **Columns:** Time (start–end), Patient, Treatment type (with the type's colour swatch), Chair, Nurse, Duration, Session # (e.g. `#3 of 6` chip when part of a course), Status pill.
+- **Sort:** by Time (default, ascending), Patient, Chair, Treatment, Status. Click column headers to sort.
+- **Same filters as calendar** (Chair / Treatment type / Status) apply automatically — no duplication.
+- **Click a row** → opens the existing `AppointmentQuickEditDialog` (same as clicking a calendar block), so editing/assigning chair/nurse, rescheduling, etc. all works identically.
+- **Quick search box** above the list to filter by patient name (handy when the list is long).
+- **Empty state:** "No appointments for this range" with a "Schedule from patient" button.
+- **Cancelled / no-show / rescheduled:** shown muted at the bottom (or hidden behind a "Show cancelled" toggle), matching how the calendar treats them.
+- **Today highlight:** the current day's group header is highlighted; rows currently in progress get a soft accent.
+- **Print-friendly:** the list view prints cleanly as the day's run-sheet (one CSS rule, no separate page).
 
-### Permissions / data
-No schema changes required. Existing RLS already allows:
-- Nurses to insert/update `form_submissions` (verified in the schema).
-- Nurses to update `onboarding_checklists`.
+### Why this helps Gail
 
-The `form_submissions.submitted_by` column will record the nurse's user_id when assisting; the form payload will carry `completed_with_nurse_assistance: true` for audit clarity. Patient signature is still captured on the signature canvas.
+- One screen, no scrolling chair-by-chair to piece the day together.
+- Sortable by Time = a true run-sheet of the clinic.
+- Sortable by Chair = same info as the calendar but linear.
+- Print = paper backup at the front desk.
+- Same click target → same edit dialog, so nothing new to learn.
 
-### Kiosk PIN
-Stored in `sessionStorage` (cleared on tab close). First kiosk launch in a session prompts the nurse to set a 4-digit PIN. Exit-kiosk requires the PIN. This is intentionally lightweight — it's a UX guard to stop a curious patient from poking around mid-form, not a security boundary.
+### Technical notes
 
-### Feature flag
-Add a new `feature_flags` row `nurse_can_assist_forms` (default `true`) so Gail can disable this from Settings later, as you mentioned. Read via existing `useClinicSettings`/feature-flag hook in `JobCardOnboarding` to hide the actions if disabled.
+- New file: `src/components/admin/appointments/AppointmentsListView.tsx` — receives the already-filtered `appointments`, `chairs`, `types`, plus `onEdit(apt)`. Pure presentational; no data fetching of its own.
+- `src/pages/admin/AdminAppointments.tsx`:
+  - Extend `ViewMode` union: `"day" | "week" | "month" | "list"`.
+  - Add `<SelectItem value="list">List</SelectItem>` to the existing view-mode `Select`.
+  - In the body conditional, render `<AppointmentsListView ... />` when `viewMode === "list"`.
+  - When `viewMode === "list"`, default `dateRange` derivation: if user hasn't picked Week explicitly, treat as a single day; otherwise honour the current week range. Simplest implementation: reuse current `dateRange` logic but force "day" semantics on first switch into List (preserve their range if they navigate).
+  - `?view=list` round-trips through the existing `searchParams` sync.
+- Uses `@/components/ui/table` (`Table`, `TableHeader`, `TableRow`, `TableCell`) — already in the project.
+- Group-by-day rendering when the range spans multiple days: a sticky `<TableRow>` header per date.
+- Sorting: local `useState<{ key, dir }>` inside the list component; sort with `date-fns` for time, locale compare for strings.
+- Search: local `useState<string>`, simple `includes` on `${first_name} ${last_name}`.
+- Print CSS: `@media print` rule in `src/index.css` (or scoped via a `print:` Tailwind utility on the list container) hides the toolbar & sidebar.
 
-## Out of scope
-- Changing the patient self-onboarding portal flow.
-- Editing already-submitted forms (admins still own amendments).
-- Reworking signatures (existing signature canvas is reused).
+### Out of scope (can follow later)
+
+- Drag-to-reschedule from the list (not natural in a list — calendar is the right place for that).
+- CSV export of the list (easy follow-up if Gail wants to email the day's plan).
+- Bulk actions (multi-select check-in, etc.).
