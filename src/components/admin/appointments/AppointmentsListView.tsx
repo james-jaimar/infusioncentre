@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { format, parseISO, differenceInMinutes, isToday, isSameDay } from "date-fns";
 import {
   Table,
@@ -190,9 +190,9 @@ export function AppointmentsListView({ appointments, nurses, onEdit }: Props) {
           </TableHeader>
           <TableBody>
             {grouped.map(([dayKey, items]) => (
-              <>
+              <Fragment key={dayKey}>
                 {showDayHeaders && (
-                  <TableRow key={`hdr-${dayKey}`} className="hover:bg-transparent">
+                  <TableRow className="hover:bg-transparent">
                     <TableCell
                       colSpan={7}
                       className={cn(
@@ -282,7 +282,7 @@ export function AppointmentsListView({ appointments, nurses, onEdit }: Props) {
                     </TableRow>
                   );
                 })}
-              </>
+              </Fragment>
             ))}
           </TableBody>
         </Table>
