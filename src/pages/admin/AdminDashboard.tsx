@@ -2,11 +2,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { MessageSquare, Users, Calendar, Activity, Layers } from "lucide-react";
+import { MessageSquare, Users, Calendar, Activity, Layers, FileText, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, formatDistanceToNow } from "date-fns";
 import { useActivePatientsWithCourses } from "@/hooks/useTreatmentCourses";
 import { TreatmentCourseChip } from "@/components/shared/TreatmentCourseChip";
+import { usePendingReferralsCount } from "@/hooks/usePendingReferralsCount";
 
 function useDashboardStats() {
   return useQuery({
@@ -42,6 +43,7 @@ export default function AdminDashboard() {
   const { profile } = useAuth();
   const { data: stats } = useDashboardStats();
   const { data: activePatients } = useActivePatientsWithCourses(8);
+  const pendingReferrals = usePendingReferralsCount();
 
   const greeting = profile?.first_name ? `Welcome back, ${profile.first_name}` : "Welcome back";
 
@@ -67,6 +69,29 @@ export default function AdminDashboard() {
           Here's what's happening at The Johannesburg Infusion Centre
         </p>
       </div>
+
+      {pendingReferrals > 0 && (
+        <Link to="/admin/referrals?status=pending" className="block mb-6">
+          <Card className="border-clinical-warning/40 bg-clinical-warning-soft hover:shadow-clinical-lg transition-shadow">
+            <CardContent className="flex items-center justify-between p-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-md bg-clinical-warning/20 text-clinical-warning flex items-center justify-center">
+                  <FileText className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">
+                    {pendingReferrals} new referral{pendingReferrals === 1 ? "" : "s"} awaiting triage
+                  </p>
+                  <p className="text-sm text-muted-foreground">Review and assign incoming patients</p>
+                </div>
+              </div>
+              <span className="text-sm font-medium text-primary inline-flex items-center gap-1">
+                Review queue <ArrowRight className="h-4 w-4" />
+              </span>
+            </CardContent>
+          </Card>
+        </Link>
+      )}
 
       {/* Stats grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

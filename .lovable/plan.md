@@ -1,61 +1,51 @@
-## Add a "List" view to the Appointments page
+## Goal
 
-A fourth view mode on `/admin/appointments` that complements the calendar with a clean, scannable, sortable list — perfect for "what does today actually look like?" at a glance.
+Let Gail (and any admin) see at a glance when new referrals arrive — without having to click into the Referrals page. Mirror the existing red-badge pattern already used for unread Messages in the sidebar, plus surface the count on the Dashboard.
 
-### Where it lives
+## What changes for the user
 
-In the existing view selector (currently `Day / Week / Month`) — add a new option **List**. Same toolbar, same date picker, same filters; only the body of the card changes.
+1. **Sidebar "Referrals" item** gets a red pill badge showing the number of *pending* (un-triaged) referrals — same style as the Messages badge.
+2. **Admin Dashboard** gets a small "New Referrals" alert card at the top when count > 0, with a one-click "Review queue" link.
+3. Counts update in **real time** (via Supabase Realtime on the `referrals` table) and also poll every 30s as a fallback — same pattern as `useUnreadMessageCount`.
+4. Optional toast (sonner) "New referral received from Dr. X" when the admin is logged in and a row is inserted, so it's noticed even mid-task.
 
-```text
-┌──────────────────────────────────────────────────────────────┐
-│ ◀  Today  ▶   📅   Mon 4 May 2026          Filters  List ▾  │
-├──────────────────────────────────────────────────────────────┤
-│ Time   Patient            Treatment        Chair    Nurse   Status   ⋯ │
-│ 08:30  James Hawkins      Iron Infusion    Chair 1  D. Patel In progress │
-│ 09:00  Sarah Cole         Ketamine         Chair 2  —        Checked in │
-│ 10:30  Mary O'Brien       Vitamin Drip     Chair 3  J. Lee   Confirmed  │
-│ ...                                                                     │
-└──────────────────────────────────────────────────────────────┘
-```
+## What counts as "new"
 
-### Behaviour
+- `referrals.status = 'pending'` (the un-triaged queue). This matches the existing "Pending Triage" metric already shown on the Referral Queue page.
+- Once Gail opens the triage dialog and moves status off `pending` (under_review / accepted / rejected), the badge decrements automatically.
 
-- **Range follows the toolbar.** List view of "Day" shows that day; switching to "Week" while in List shows the week's appointments grouped by date with sticky day headers. Default range when first opening List = today.
-- **Columns:** Time (start–end), Patient, Treatment type (with the type's colour swatch), Chair, Nurse, Duration, Session # (e.g. `#3 of 6` chip when part of a course), Status pill.
-- **Sort:** by Time (default, ascending), Patient, Chair, Treatment, Status. Click column headers to sort.
-- **Same filters as calendar** (Chair / Treatment type / Status) apply automatically — no duplication.
-- **Click a row** → opens the existing `AppointmentQuickEditDialog` (same as clicking a calendar block), so editing/assigning chair/nurse, rescheduling, etc. all works identically.
-- **Quick search box** above the list to filter by patient name (handy when the list is long).
-- **Empty state:** "No appointments for this range" with a "Schedule from patient" button.
-- **Cancelled / no-show / rescheduled:** shown muted at the bottom (or hidden behind a "Show cancelled" toggle), matching how the calendar treats them.
-- **Today highlight:** the current day's group header is highlighted; rows currently in progress get a soft accent.
-- **Print-friendly:** the list view prints cleanly as the day's run-sheet (one CSS rule, no separate page).
+## Technical changes
 
-### Why this helps Gail
+**New hook — `src/hooks/usePendingReferralsCount.ts`**
+- Modeled directly on `src/hooks/useUnreadMessages.ts`.
+- `useQuery` with `select('*', { count: 'exact', head: true }).eq('status', 'pending')` against `referrals`.
+- `refetchInterval: 30_000`.
+- Subscribe to a Supabase channel `pending-referrals-count` listening to `postgres_changes` (event `*`, table `referrals`); on any event call `query.refetch()`.
+- Optional: in the INSERT handler, fire a `toast.info('New referral received')` (guarded so it doesn't fire on the user's own initial fetch).
 
-- One screen, no scrolling chair-by-chair to piece the day together.
-- Sortable by Time = a true run-sheet of the clinic.
-- Sortable by Chair = same info as the calendar but linear.
-- Print = paper backup at the front desk.
-- Same click target → same edit dialog, so nothing new to learn.
+**`src/components/layout/AdminLayout.tsx`**
+- Import the new hook alongside `useUnreadMessageCount`.
+- Add `const pendingReferrals = usePendingReferralsCount();`.
+- Extend the badge condition in the nav `.map(...)` so `item.name === "Referrals" && pendingReferrals > 0` renders the same red pill (extract a tiny `<NavBadge count={n} />` helper to keep JSX clean).
 
-### Technical notes
+**`src/pages/admin/AdminDashboard.tsx`**
+- Add a compact alert card near the top: "X new referral(s) awaiting triage" with a `Link to="/admin/referrals?status=pending"` styled as a button. Hidden when count is 0.
+- Reuse the same hook so it shares the cache (no extra query).
 
-- New file: `src/components/admin/appointments/AppointmentsListView.tsx` — receives the already-filtered `appointments`, `chairs`, `types`, plus `onEdit(apt)`. Pure presentational; no data fetching of its own.
-- `src/pages/admin/AdminAppointments.tsx`:
-  - Extend `ViewMode` union: `"day" | "week" | "month" | "list"`.
-  - Add `<SelectItem value="list">List</SelectItem>` to the existing view-mode `Select`.
-  - In the body conditional, render `<AppointmentsListView ... />` when `viewMode === "list"`.
-  - When `viewMode === "list"`, default `dateRange` derivation: if user hasn't picked Week explicitly, treat as a single day; otherwise honour the current week range. Simplest implementation: reuse current `dateRange` logic but force "day" semantics on first switch into List (preserve their range if they navigate).
-  - `?view=list` round-trips through the existing `searchParams` sync.
-- Uses `@/components/ui/table` (`Table`, `TableHeader`, `TableRow`, `TableCell`) — already in the project.
-- Group-by-day rendering when the range spans multiple days: a sticky `<TableRow>` header per date.
-- Sorting: local `useState<{ key, dir }>` inside the list component; sort with `date-fns` for time, locale compare for strings.
-- Search: local `useState<string>`, simple `includes` on `${first_name} ${last_name}`.
-- Print CSS: `@media print` rule in `src/index.css` (or scoped via a `print:` Tailwind utility on the list container) hides the toolbar & sidebar.
+**Filter prefill (small touch)**
+- `AdminReferrals.tsx` reads `?status=pending` from the URL on mount and seeds `statusFilter` so the dashboard link lands on a filtered view.
 
-### Out of scope (can follow later)
+## Out of scope
 
-- Drag-to-reschedule from the list (not natural in a list — calendar is the right place for that).
-- CSV export of the list (easy follow-up if Gail wants to email the day's plan).
-- Bulk actions (multi-select check-in, etc.).
+- Browser push notifications / sound alerts (can be added later if desired).
+- Per-user "seen" tracking — the badge reflects queue state, not personal read state, which matches how a triage queue typically works and avoids extra schema.
+- Doctor-side and nurse-side notification surfaces (this request is about Gail / admin only).
+
+## Files touched
+
+- `src/hooks/usePendingReferralsCount.ts` *(new)*
+- `src/components/layout/AdminLayout.tsx` *(badge + small NavBadge helper)*
+- `src/pages/admin/AdminDashboard.tsx` *(alert card)*
+- `src/pages/admin/AdminReferrals.tsx` *(read `?status=` query param)*
+
+No DB migrations, no edge functions, no new dependencies.

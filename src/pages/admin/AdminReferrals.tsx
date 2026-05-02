@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useReferrals } from "@/hooks/useReferrals";
 import { ReferralMetrics } from "@/components/admin/referrals/ReferralMetrics";
 import { ReferralFilters } from "@/components/admin/referrals/ReferralFilters";
@@ -8,8 +9,10 @@ import { ConvertReferralDialog } from "@/components/admin/ConvertReferralDialog"
 
 export default function AdminReferrals() {
   const { data: referrals = [], isLoading } = useReferrals();
+  const [searchParams] = useSearchParams();
+  const initialStatus = searchParams.get("status") || "all";
 
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState(initialStatus);
   const [urgencyFilter, setUrgencyFilter] = useState("all");
   const [doctorFilter, setDoctorFilter] = useState("all");
   const [search, setSearch] = useState("");

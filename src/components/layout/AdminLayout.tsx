@@ -26,6 +26,7 @@ import {
 import { useState } from "react";
 import logo from "@/assets/logo.png";
 import { useUnreadMessageCount } from "@/hooks/useUnreadMessages";
+import { usePendingReferralsCount } from "@/hooks/usePendingReferralsCount";
 
 const navigation = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
@@ -56,6 +57,7 @@ export default function AdminLayout() {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const unreadCount = useUnreadMessageCount();
+  const pendingReferrals = usePendingReferralsCount();
 
   const handleSignOut = async () => {
     await signOut();
@@ -116,6 +118,11 @@ export default function AdminLayout() {
                   {item.name === "Messages" && unreadCount > 0 && (
                     <span className="ml-auto bg-destructive text-destructive-foreground text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
                       {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  )}
+                  {item.name === "Referrals" && pendingReferrals > 0 && (
+                    <span className="ml-auto bg-destructive text-destructive-foreground text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
+                      {pendingReferrals > 99 ? "99+" : pendingReferrals}
                     </span>
                   )}
                 </Link>
