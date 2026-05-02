@@ -1,5 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Clock, AlertTriangle, CheckCircle, ArrowRight } from "lucide-react";
+import { Clock, AlertTriangle, CheckCircle, ArrowRight, ListTodo } from "lucide-react";
+import { getReferralAttention } from "@/lib/referralProgress";
 
 interface Props {
   referrals: any[];
@@ -9,6 +10,9 @@ export function ReferralMetrics({ referrals }: Props) {
   const pending = referrals.filter((r) => r.status === "pending").length;
   const urgent = referrals.filter((r) => r.urgency === "urgent" && r.status === "pending").length;
   const accepted = referrals.filter((r) => r.status === "accepted").length;
+  const incomplete = referrals.filter(
+    (r) => getReferralAttention(r, (r as any).course_count || 0) !== "complete"
+  ).length;
 
   // Average time to triage (pending → any non-pending) in hours
   const triaged = referrals.filter((r) => r.reviewed_at && r.status !== "pending");
@@ -44,6 +48,12 @@ export function ReferralMetrics({ referrals }: Props) {
       className: "text-clinical-danger",
     },
     {
+      label: "Incomplete Workflow",
+      value: incomplete,
+      icon: ListTodo,
+      className: "text-clinical-warning",
+    },
+    {
       label: "Accepted",
       value: accepted,
       icon: CheckCircle,
@@ -58,7 +68,7 @@ export function ReferralMetrics({ referrals }: Props) {
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
       {metrics.map((m) => (
         <Card key={m.label}>
           <CardContent className="p-4 flex items-center gap-3">
