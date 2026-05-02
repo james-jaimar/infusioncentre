@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -13,11 +14,15 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Sparkles, Receipt, FilePlus2 } from "lucide-react";
+import { Sparkles, Receipt, FilePlus2, CalendarIcon } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 import { useAppointmentTypes } from "@/hooks/useAppointmentTypes";
 import { useConvertReferralToCourse } from "@/hooks/useTreatmentCourses";
 import { useActiveCourseTemplatesByType } from "@/hooks/useCourseTemplates";
 import { isCustomType, isCustomRequest, stripCustomTag } from "@/lib/customReferral";
+import { computeExpectedEndDate, FREQUENCY_LABEL, formatEndDateHint } from "@/lib/courseSchedule";
 
 interface Props {
   open: boolean;
@@ -46,7 +51,7 @@ export function ConvertReferralDialog({ open, onOpenChange, referral, patientId 
   const [treatmentTypeId, setTreatmentTypeId] = useState("");
   const [courseTemplateId, setCourseTemplateId] = useState<string>("");
   const [totalSessions, setTotalSessions] = useState(1);
-  const [expectedEndDate, setExpectedEndDate] = useState("");
+  const [preferredStartDate, setPreferredStartDate] = useState<Date | undefined>(undefined);
   const [notes, setNotes] = useState("");
   const [touchedSessions, setTouchedSessions] = useState(false);
   const [touchedNotes, setTouchedNotes] = useState(false);
@@ -73,7 +78,7 @@ export function ConvertReferralDialog({ open, onOpenChange, referral, patientId 
       setTreatmentTypeId("");
       setCourseTemplateId("");
       setTotalSessions(1);
-      setExpectedEndDate("");
+      setPreferredStartDate(undefined);
       setNotes("");
       setTouchedSessions(false);
       setTouchedNotes(false);
@@ -95,6 +100,9 @@ export function ConvertReferralDialog({ open, onOpenChange, referral, patientId 
 
   const effectivePatientId = patientId || referral?.patient_id || undefined;
   const selectedTemplate = variants.find((v) => v.id === courseTemplateId);
+  const computedEndDate = preferredStartDate
+    ? computeExpectedEndDate(preferredStartDate, totalSessions, selectedTemplate?.default_frequency)
+    : null;
 
   const handleConvert = async () => {
     if (!referral || !effectivePatientId || !treatmentTypeId) return;
@@ -107,7 +115,7 @@ export function ConvertReferralDialog({ open, onOpenChange, referral, patientId 
         treatment_type_id: treatmentTypeId,
         course_template_id: courseTemplateId || null,
         total_sessions_planned: totalSessions,
-        expected_end_date: expectedEndDate || undefined,
+        expected_end_date: computedEndDate ? format(computedEndDate, "yyyy-MM-dd") : undefined,
         notes: notes || undefined,
       });
       toast.success("Referral converted to treatment course");
@@ -269,14 +277,57 @@ export function ConvertReferralDialog({ open, onOpenChange, referral, patientId 
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Expected End Date</Label>
-                  <Input
-                    type="date"
-                    value={expectedEndDate}
-                    onChange={(e) => setExpectedEndDate(e.target.value)}
-                  />
+                  <Label>Preferred Start Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !preferredStartDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {preferredStartDate ? format(preferredStartDate, "PPP") : <span>Pick a date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={preferredStartDate}
+                        onSelect={setPreferredStartDate}
+                        disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                        initialFocus
+                        className={cn("p-3 pointer-events-auto")}
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
+
+              {preferredStartDate && (
+                <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs space-y-1">
+                  {computedEndDate ? (
+                    <>
+                      <p>
+                        <span className="text-muted-foreground">Expected end:</span>{" "}
+                        <span className="font-medium text-foreground">~ {formatEndDateHint(computedEndDate)}</span>
+                      </p>
+                      <p className="text-muted-foreground">
+                        {totalSessions} session{totalSessions === 1 ? "" : "s"}
+                        {selectedTemplate?.default_frequency
+                          ? `, ${FREQUENCY_LABEL[selectedTemplate.default_frequency]}`
+                          : ""}
+                        . You can finalise individual session dates from the course schedule.
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-muted-foreground">
+                      Pick a start date — schedule the rest of the sessions at your convenience.
+                    </p>
+                  )}
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label>Notes</Label>
