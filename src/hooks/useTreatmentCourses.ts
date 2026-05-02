@@ -171,7 +171,7 @@ export function useConvertReferralToCourse() {
       // Update referral status to accepted
       const { error: refError } = await supabase
         .from("referrals")
-        .update({ status: "accepted" } as any)
+        .update({ status: "converted_to_course" } as any)
         .eq("id", data.referral_id);
       if (refError) throw refError;
 
@@ -180,6 +180,7 @@ export function useConvertReferralToCourse() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [QUERY_KEY] });
       qc.invalidateQueries({ queryKey: ["referrals"] });
+      qc.invalidateQueries({ queryKey: ["referrals-attention-count"] });
     },
   });
 }
