@@ -95,7 +95,7 @@ export function usePatientList(options: UsePatientListOptions = {}) {
       let query = supabase
         .from('patients')
         .select(
-          `*, ${courseRel}, patient_invites(status, created_at, expires_at), onboarding_checklists(status), appointments(status)`,
+          `*, ${courseRel}, patient_invites(status, created_at, expires_at), onboarding_checklists(status), appointments(status, treatment_course_id)`,
           { count: 'exact' }
         );
 
@@ -145,7 +145,14 @@ export function usePatientList(options: UsePatientListOptions = {}) {
         const checklists = (p as any).onboarding_checklists ?? [];
         const checklistTotal = checklists.length;
         const checklistCompleted = checklists.filter((c: any) => c.status === 'completed').length;
-        const appts = (p as any).appointments ?? [];
+        const allAppts = (p as any).appointments ?? [];
+        const activeCourseId = (p.treatment_courses ?? []).find((c: any) =>
+          (ACTIVE_COURSE_STATUSES as readonly string[]).includes(c.status)
+        )?.id;
+        // Scope appointment counts to the active course so prior course history doesn't leak in.
+        const appts = activeCourseId
+          ? allAppts.filter((a: any) => a.treatment_course_id === activeCourseId)
+          : allAppts;
         const appointmentsScheduled = appts.filter((a: any) => a.status !== 'cancelled' && a.status !== 'completed').length;
         const appointmentsCompleted = appts.filter((a: any) => a.status === 'completed').length;
         const invites = (p as any).patient_invites ?? [];
