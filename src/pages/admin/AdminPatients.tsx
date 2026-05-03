@@ -203,6 +203,7 @@ export default function AdminPatients() {
             <button
               key={tab.value}
               onClick={() => updateParam("stage", tab.value)}
+              title={tab.hint}
               className={cn(
                 "rounded-full border px-3 py-1 text-sm transition-colors",
                 active
