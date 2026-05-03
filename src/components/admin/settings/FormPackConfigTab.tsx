@@ -4,6 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { ClipboardList, Save } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,28 +34,43 @@ export default function FormPackConfigTab() {
     },
   });
 
-  const [changes, setChanges] = useState<Record<string, string[]>>({});
+  // null = universal, string[] = restricted to those type IDs
+  const [changes, setChanges] = useState<Record<string, string[] | null>>({});
   const hasChanges = Object.keys(changes).length > 0;
 
-  const getAssignments = (tmpl: FormTemplate) => {
+  const getValue = (tmpl: FormTemplate): string[] | null => {
     if (tmpl.id in changes) return changes[tmpl.id];
-    return tmpl.required_for_treatment_types || [];
+    return tmpl.required_for_treatment_types ?? null;
   };
 
   const toggleAssignment = (templateId: string, typeId: string) => {
-    const current = getAssignments(templates.find(t => t.id === templateId)!);
+    const tmpl = templates.find(t => t.id === templateId)!;
+    const current = getValue(tmpl);
+    if (current === null) return; // universal — disabled
     const next = current.includes(typeId)
       ? current.filter(id => id !== typeId)
       : [...current, typeId];
     setChanges(prev => ({ ...prev, [templateId]: next }));
   };
 
+  const setUniversal = (templateId: string, universal: boolean) => {
+    setChanges(prev => ({ ...prev, [templateId]: universal ? null : [] }));
+  };
+
   const handleSave = async () => {
+    // Validate: any non-universal entry must have at least one type
+    for (const [tid, value] of Object.entries(changes)) {
+      if (value !== null && value.length === 0) {
+        const tmpl = templates.find(t => t.id === tid);
+        toast.error(`"${tmpl?.name ?? "Form"}": pick at least one treatment type or mark as Universal`);
+        return;
+      }
+    }
     try {
-      for (const [templateId, typeIds] of Object.entries(changes)) {
+      for (const [templateId, value] of Object.entries(changes)) {
         const { error } = await supabase
           .from("form_templates")
-          .update({ required_for_treatment_types: typeIds.length > 0 ? typeIds : null } as never)
+          .update({ required_for_treatment_types: value } as never)
           .eq("id", templateId);
         if (error) throw error;
       }
@@ -105,8 +121,9 @@ export default function FormPackConfigTab() {
             </TableHeader>
             <TableBody>
               {templates.filter(t => t.is_active).map(tmpl => {
-                const assignments = getAssignments(tmpl);
-                const isUniversal = assignments.length === 0;
+                const value = getValue(tmpl);
+                const isUniversal = value === null;
+                const assignments = value ?? [];
                 return (
                   <TableRow key={tmpl.id}>
                     <TableCell className="font-medium">{tmpl.name}</TableCell>
@@ -123,9 +140,12 @@ export default function FormPackConfigTab() {
                       </TableCell>
                     ))}
                     <TableCell className="text-center">
-                      <Badge variant={isUniversal ? "default" : "secondary"}>
-                        {isUniversal ? "Yes" : "No"}
-                      </Badge>
+                      <div className="flex justify-center" title="Universal forms are required for every treatment type. Turn off to restrict this form to specific types.">
+                        <Switch
+                          checked={isUniversal}
+                          onCheckedChange={(v) => setUniversal(tmpl.id, !!v)}
+                        />
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
