@@ -41,7 +41,11 @@ export function useTreatmentCoursesByPatient(patientId: string | undefined) {
           *,
           appointment_type:appointment_types!treatment_courses_treatment_type_id_fkey(id, name, color),
           doctor:doctors!treatment_courses_doctor_id_fkey(id, practice_name),
-          referral:referrals!treatment_courses_referral_id_fkey(id, diagnosis, urgency)
+          referral:referrals!treatment_courses_referral_id_fkey(id, diagnosis, urgency),
+          appointments:appointments!appointments_treatment_course_id_fkey(
+            id, scheduled_start, scheduled_end, status, session_number, notes,
+            chair:treatment_chairs(id, name)
+          )
         `)
         .eq("patient_id", patientId)
         .order("created_at", { ascending: false });
