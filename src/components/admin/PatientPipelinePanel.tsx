@@ -6,8 +6,9 @@ import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { useOnboardingChecklist } from "@/hooks/useOnboardingChecklist";
 import { usePatientInvites, useSendInvite } from "@/hooks/usePatientInvites";
-import { useAppointments } from "@/hooks/useAppointments";
 import { useTreatmentCoursesByPatient } from "@/hooks/useTreatmentCourses";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { derivePatientStage, STAGE_LABEL, STAGE_CLASS, nextActionFor } from "@/lib/patientPipeline";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -20,7 +21,17 @@ export default function PatientPipelinePanel({ patient }: Props) {
   const navigate = useNavigate();
   const { data: checklist } = useOnboardingChecklist(patient.id);
   const { data: invites } = usePatientInvites(patient.id);
-  const { data: appts } = useAppointments({ patient_id: patient.id } as any);
+  const { data: appts } = useQuery({
+    queryKey: ["patient-appointments-pipeline", patient.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("appointments")
+        .select("id, status")
+        .eq("patient_id", patient.id);
+      if (error) throw error;
+      return data || [];
+    },
+  });
   const { data: courses } = useTreatmentCoursesByPatient(patient.id);
   const sendInvite = useSendInvite();
 
