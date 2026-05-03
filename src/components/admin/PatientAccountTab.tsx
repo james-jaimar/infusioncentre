@@ -272,6 +272,13 @@ export default function PatientAccountTab({
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSetPassword();
+              }}
+              className="space-y-4"
+            >
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="new-password">New Password</Label>
@@ -295,7 +302,7 @@ export default function PatientAccountTab({
               </div>
             </div>
             <Button
-              onClick={handleSetPassword}
+              type="submit"
               disabled={settingPassword || !newPassword}
             >
               {settingPassword ? (
@@ -305,6 +312,7 @@ export default function PatientAccountTab({
               )}
               Set Password
             </Button>
+            </form>
           </CardContent>
         </Card>
       )}
