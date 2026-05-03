@@ -23,6 +23,7 @@ async function sendEmailViaSMTP(payload: {
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
   let logId: string | undefined;
+  let client: SMTPClient | undefined;
   try {
     const { data: logData } = await adminClient.from("communication_log").insert({
       type: "email", recipient: payload.to, subject: payload.subject, status: "pending",
@@ -32,11 +33,10 @@ async function sendEmailViaSMTP(payload: {
     }).select("id").single();
     logId = logData?.id;
 
-    const client = new SMTPClient({
+    client = new SMTPClient({
       connection: { hostname: host, port, tls: port === 465, auth: { username, password } },
     });
     await client.send({ from: fromEmail, to: payload.to, subject: payload.subject, content: payload.text || "", html: payload.html });
-    await client.close();
 
     if (logId) await adminClient.from("communication_log").update({ status: "sent", sent_at: new Date().toISOString() }).eq("id", logId);
     return { success: true };
@@ -44,6 +44,19 @@ async function sendEmailViaSMTP(payload: {
     console.error("SMTP send error:", error);
     if (logId) await adminClient.from("communication_log").update({ status: "failed", error_message: error.message }).eq("id", logId);
     return { success: false, error: error.message };
+  } finally {
+    try { await client?.close(); } catch (_) { /* ignore */ }
+  }
+}
+
+// Fire-and-forget background dispatch so the HTTP response returns immediately.
+function dispatchEmail(payload: Parameters<typeof sendEmailViaSMTP>[0]) {
+  const task = sendEmailViaSMTP(payload).catch((e) => console.error("Background email error:", e));
+  // @ts-ignore EdgeRuntime is available in Supabase Edge runtime
+  if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) {
+    // @ts-ignore
+    EdgeRuntime.waitUntil(task);
+  }
   }
 }
 
@@ -148,15 +161,13 @@ Deno.serve(async (req) => {
       }
 
       const resetLink = `${SITE_URL}/reset-password?token=${token}`;
-      const result = await sendEmailViaSMTP({
+      dispatchEmail({
         to: email,
         subject: "Reset your password — The Johannesburg Infusion Centre",
         html: buildResetEmailHtml(resetLink),
         text: `Reset your password by visiting: ${resetLink}\n\nThis link expires in 1 hour.`,
         related_entity_type: "password_reset",
       });
-
-      if (!result.success) console.error("Failed to send reset email:", result.error);
 
       return new Response(JSON.stringify({ success: true }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -254,19 +265,13 @@ Deno.serve(async (req) => {
       });
 
       const resetLink = `${SITE_URL}/reset-password?token=${token}`;
-      const result = await sendEmailViaSMTP({
+      dispatchEmail({
         to: email,
         subject: "Reset your password — The Johannesburg Infusion Centre",
         html: buildResetEmailHtml(resetLink),
         text: `Reset your password by visiting: ${resetLink}\n\nThis link expires in 1 hour.`,
         related_entity_type: "password_reset",
       });
-
-      if (!result.success) {
-        return new Response(JSON.stringify({ error: "Failed to send email" }), {
-          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
 
       return new Response(JSON.stringify({ success: true }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
