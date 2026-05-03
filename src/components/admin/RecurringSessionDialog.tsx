@@ -15,6 +15,8 @@ import { cn } from "@/lib/utils";
 import { useTreatmentChairs } from "@/hooks/useTreatmentChairs";
 import { useNurseStaff } from "@/hooks/useNurseStaff";
 import { useCreateBulkAppointments } from "@/hooks/useAppointments";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 interface RecurringSessionDialogProps {
   open: boolean;
@@ -68,10 +70,31 @@ export function RecurringSessionDialog({
   onCreated,
 }: RecurringSessionDialogProps) {
   const isOngoing = treatmentCourse.total_sessions_planned == null;
-  const remainingSessions = isOngoing
+  const baseRemaining = isOngoing
     ? 12
     : Math.max(0, (treatmentCourse.total_sessions_planned ?? 0) - treatmentCourse.sessions_completed);
   const defaultDuration = treatmentCourse.appointment_type?.default_duration_minutes || 60;
+
+  // Existing non-cancelled appointments already on the course
+  const { data: existingAppts = [] } = useQuery({
+    queryKey: ["course-existing-appts", treatmentCourse.id, open],
+    enabled: open,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("appointments")
+        .select("id, scheduled_start, status, session_number")
+        .eq("treatment_course_id", treatmentCourse.id)
+        .in("status", ["scheduled", "confirmed", "checked_in", "in_progress", "completed"])
+        .order("scheduled_start", { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+  });
+  const alreadyScheduled = existingAppts.filter((a: any) => a.status !== "completed").length;
+  const remainingSessions = isOngoing
+    ? Math.max(1, baseRemaining)
+    : Math.max(0, baseRemaining - alreadyScheduled);
+  const nextUpcoming = existingAppts.find((a: any) => new Date(a.scheduled_start) >= new Date());
 
   const [startDate, setStartDate] = useState<Date | undefined>(initialStartDate);
   const [frequency, setFrequency] = useState<Frequency>(initialFrequency || "weekly");
@@ -90,7 +113,7 @@ export function RecurringSessionDialog({
       setNumSessions(remainingSessions || 1);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, initialStartDate, initialFrequency]);
+  }, [open, initialStartDate, initialFrequency, remainingSessions]);
 
   const { data: chairs = [] } = useTreatmentChairs();
   const { data: nurses = [] } = useNurseStaff();
@@ -237,15 +260,31 @@ export function RecurringSessionDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-3 text-xs text-foreground">
-          <p className="font-medium">Nothing is booked yet.</p>
-          <p className="text-muted-foreground mt-0.5">
-            These are proposed appointments. Pick a time, review each session, then click
-            <span className="font-medium text-foreground"> Create appointments</span> to add them
-            to the calendar. Until then, this course will stay on the “Needs session scheduling”
-            to-do list.
-          </p>
-        </div>
+        {alreadyScheduled > 0 ? (
+          <div className="rounded-md border border-blue-300 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800 p-3 text-xs text-foreground">
+            <p className="font-medium">
+              {alreadyScheduled} session{alreadyScheduled === 1 ? "" : "s"} already scheduled
+              {!isOngoing && treatmentCourse.total_sessions_planned
+                ? ` of ${treatmentCourse.total_sessions_planned} planned`
+                : ""}.
+            </p>
+            <p className="text-muted-foreground mt-0.5">
+              {nextUpcoming
+                ? <>Next is <span className="font-medium text-foreground">{format(new Date(nextUpcoming.scheduled_start), "EEE d MMM, HH:mm")}</span>. </>
+                : null}
+              You can add more sessions below — defaults are pre-filled to fit what's still needed.
+            </p>
+          </div>
+        ) : (
+          <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-3 text-xs text-foreground">
+            <p className="font-medium">Nothing is booked yet.</p>
+            <p className="text-muted-foreground mt-0.5">
+              These are proposed appointments. Pick a time, review each session, then click
+              <span className="font-medium text-foreground"> Create appointments</span> to add them
+              to the calendar.
+            </p>
+          </div>
+        )}
 
         <div className="grid gap-4 sm:grid-cols-2">
           {/* Start date */}
