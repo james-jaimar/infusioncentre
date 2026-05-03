@@ -224,6 +224,8 @@ export function useCreateBulkAppointments() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
       queryClient.invalidateQueries({ queryKey: ["treatment-courses"] });
+      queryClient.invalidateQueries({ queryKey: ["referrals"] });
+      queryClient.invalidateQueries({ queryKey: ["referrals-attention-count"] });
     },
   });
 }
