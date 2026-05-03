@@ -22,6 +22,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TreatmentCourseChip } from "@/components/shared/TreatmentCourseChip";
+import PatientReadinessBadge from "@/components/shared/PatientReadinessBadge";
 import { cn } from "@/lib/utils";
 import {
   STAGE_LABEL,
@@ -339,7 +340,11 @@ export default function AdminPatients() {
               data?.patients.map((patient) => (
                 <TableRow
                   key={patient.id}
-                  className="cursor-pointer hover:bg-muted/50"
+                  className={cn(
+                    "cursor-pointer hover:bg-muted/50",
+                    patient.pipeline_stage === "ready_to_schedule" &&
+                      "border-l-4 border-l-emerald-500 bg-emerald-50/40"
+                  )}
                   onClick={() => navigate(`/admin/patients/${patient.id}`)}
                 >
                   <TableCell>
@@ -349,8 +354,12 @@ export default function AdminPatients() {
                         {patient.last_name[0]}
                       </div>
                       <div>
-                        <div className="font-medium">
-                          {patient.first_name} {patient.last_name}
+                        <div className="font-medium flex items-center gap-2">
+                          <span>{patient.first_name} {patient.last_name}</span>
+                          {(patient.pipeline_stage === "onboarding" ||
+                            patient.pipeline_stage === "ready_to_schedule") && (
+                            <PatientReadinessBadge patientId={patient.id} compact />
+                          )}
                         </div>
                         {patient.email && (
                           <div className="text-sm text-muted-foreground">
