@@ -50,20 +50,19 @@ export function derivePatientStage(input: PipelineInputs): PatientStage {
 
   if (courses.length === 0) return "no_course";
   if (activeCourse) {
-    // Treatment under way?
-    if (appointmentsCompleted > 0 && (activeCourse.total_sessions_planned ?? 0) > appointmentsCompleted) {
-      return "in_treatment";
-    }
-    // Needs portal access first
+    // Portal access is the first gate — without it the patient can't progress.
     if (!patient.user_id) {
       const pendingInvite = (invites || []).find((i) => i.status === "pending" && new Date(i.expires_at) > new Date());
       return pendingInvite ? "invite_sent" : "needs_invite";
     }
-    // Has account — is onboarding done?
-    if (checklistTotal > 0 && checklistCompleted < checklistTotal) return "onboarding";
-    // Onboarding done — is anything scheduled?
-    if (appointmentsScheduled === 0) return "ready_to_schedule";
-    return "scheduled";
+    // Has account — onboarding next. Treat "no checklist yet" as still onboarding so we don't
+    // prematurely flip to ready_to_schedule for brand-new courses.
+    if (checklistTotal === 0 || checklistCompleted < checklistTotal) return "onboarding";
+    // Onboarding done — has treatment actually started?
+    if (appointmentsCompleted > 0) return "in_treatment";
+    // Anything booked but not yet attended?
+    if (appointmentsScheduled > 0) return "scheduled";
+    return "ready_to_schedule";
   }
   if (pausedCourse) return "paused";
   if (completedCourse) return "completed";
