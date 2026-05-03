@@ -24,6 +24,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { TreatmentCourseChip } from "@/components/shared/TreatmentCourseChip";
 import { cn } from "@/lib/utils";
 import {
+  STAGE_LABEL,
+  STAGE_CLASS,
+  type PatientStage,
+} from "@/lib/patientPipeline";
+import {
   Search,
   Plus,
   ChevronLeft,
@@ -32,7 +37,7 @@ import {
 } from "lucide-react";
 import type { PatientStatus } from "@/types/patient";
 
-const ACTIVE_SET = new Set(["draft", "active", "ready"]);
+const ACTIVE_SET = new Set(["draft", "onboarding", "ready", "active", "completing"]);
 
 const COURSE_STATE_TABS: { value: CourseStateFilter; label: string }[] = [
   { value: "all", label: "All" },
@@ -40,6 +45,16 @@ const COURSE_STATE_TABS: { value: CourseStateFilter; label: string }[] = [
   { value: "awaiting_scheduling", label: "Awaiting scheduling" },
   { value: "completed", label: "Completed" },
   { value: "no_course", label: "No course yet" },
+];
+
+const STAGE_TABS: { value: PatientStage | "all"; label: string }[] = [
+  { value: "all", label: "Everyone" },
+  { value: "needs_invite", label: "Needs invite" },
+  { value: "invite_sent", label: "Invite sent" },
+  { value: "onboarding", label: "Onboarding" },
+  { value: "ready_to_schedule", label: "Ready to schedule" },
+  { value: "scheduled", label: "Scheduled" },
+  { value: "in_treatment", label: "In treatment" },
 ];
 
 export default function AdminPatients() {
@@ -50,6 +65,7 @@ export default function AdminPatients() {
   const courseState = (searchParams.get("state") as CourseStateFilter) || "all";
   const treatmentTypeId = searchParams.get("type") || "all";
   const status = (searchParams.get("status") as PatientStatus | "all") || "all";
+  const stage = (searchParams.get("stage") as PatientStage | "all") || "all";
 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -79,6 +95,7 @@ export default function AdminPatients() {
     status,
     treatment_type_id: treatmentTypeId,
     course_state: courseState,
+    stage,
     page,
     pageSize: 10,
   });
@@ -86,7 +103,7 @@ export default function AdminPatients() {
   // Reset page when filters change
   useEffect(() => {
     setPage(1);
-  }, [courseState, treatmentTypeId, status]);
+  }, [courseState, treatmentTypeId, status, stage]);
 
   const getStatusBadgeVariant = (s: PatientStatus) => {
     switch (s) {
@@ -175,6 +192,30 @@ export default function AdminPatients() {
         })}
       </div>
 
+      {/* Pipeline stage filter chips */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs uppercase tracking-wide text-muted-foreground mr-1">
+          Pipeline
+        </span>
+        {STAGE_TABS.map((tab) => {
+          const active = stage === tab.value;
+          return (
+            <button
+              key={tab.value}
+              onClick={() => updateParam("stage", tab.value)}
+              className={cn(
+                "rounded-full border px-3 py-1 text-sm transition-colors",
+                active
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/40"
+              )}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
       {/* Filters */}
       <div className="flex flex-col gap-4 sm:flex-row">
         <div className="relative flex-1">
@@ -225,6 +266,7 @@ export default function AdminPatients() {
             <TableRow>
               <TableHead>Patient</TableHead>
               <TableHead className="hidden sm:table-cell">ID Number</TableHead>
+              <TableHead>Stage</TableHead>
               <TableHead>Treatment Course</TableHead>
               <TableHead className="hidden lg:table-cell">Medical Aid</TableHead>
               <TableHead>Status</TableHead>
@@ -248,6 +290,9 @@ export default function AdminPatients() {
                     <Skeleton className="h-4 w-24" />
                   </TableCell>
                   <TableCell>
+                    <Skeleton className="h-5 w-20" />
+                  </TableCell>
+                  <TableCell>
                     <Skeleton className="h-5 w-32" />
                   </TableCell>
                   <TableCell className="hidden lg:table-cell">
@@ -263,13 +308,13 @@ export default function AdminPatients() {
               ))
             ) : error ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-destructive">
+                <TableCell colSpan={7} className="text-center py-8 text-destructive">
                   Error loading patients. Please try again.
                 </TableCell>
               </TableRow>
             ) : data?.patients.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">
+                <TableCell colSpan={7} className="text-center py-8">
                   <div className="flex flex-col items-center gap-2">
                     <User className="h-8 w-8 text-muted-foreground" />
                     <p className="text-muted-foreground">
@@ -316,6 +361,26 @@ export default function AdminPatients() {
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">
                     {patient.id_number || "—"}
+                  </TableCell>
+                  <TableCell>
+                    {patient.pipeline_stage ? (
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium",
+                          STAGE_CLASS[patient.pipeline_stage]
+                        )}
+                      >
+                        {STAGE_LABEL[patient.pipeline_stage]}
+                        {patient.pipeline_stage === "onboarding" &&
+                          (patient.checklist_total ?? 0) > 0 && (
+                            <span className="tabular-nums opacity-80">
+                              {patient.checklist_completed}/{patient.checklist_total}
+                            </span>
+                          )}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                   <TableCell>{renderCourseChips(patient)}</TableCell>
                   <TableCell className="hidden lg:table-cell">

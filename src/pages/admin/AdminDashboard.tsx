@@ -8,6 +8,8 @@ import { startOfDay, endOfDay, startOfWeek, endOfWeek, formatDistanceToNow } fro
 import { useActivePatientsWithCourses } from "@/hooks/useTreatmentCourses";
 import { TreatmentCourseChip } from "@/components/shared/TreatmentCourseChip";
 import { useReferralsAttentionCount } from "@/hooks/useReferralsAttentionCount";
+import { usePatientPipelineCounts } from "@/hooks/usePatientPipelineCounts";
+import { STAGE_LABEL } from "@/lib/patientPipeline";
 
 function useDashboardStats() {
   return useQuery({
@@ -44,6 +46,7 @@ export default function AdminDashboard() {
   const { data: stats } = useDashboardStats();
   const { data: activePatients } = useActivePatientsWithCourses(8);
   const attention = useReferralsAttentionCount();
+  const { data: pipeline } = usePatientPipelineCounts();
 
   const greeting = profile?.first_name ? `Welcome back, ${profile.first_name}` : "Welcome back";
 
@@ -124,6 +127,40 @@ export default function AdminDashboard() {
                     <span className="text-muted-foreground">need session scheduling</span>
                   </Link>
                 )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {pipeline && pipeline.total_active > 0 && (
+        <Card className="border-clinical-info/40 bg-clinical-info-soft mb-6">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3 flex-wrap">
+              <div className="flex items-center gap-3 mr-2">
+                <div className="h-10 w-10 rounded-md bg-clinical-info/20 text-clinical-info flex items-center justify-center">
+                  <Users className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">Patient pipeline</p>
+                  <p className="text-xs text-muted-foreground">Where each patient is in their journey</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 ml-auto">
+                {(["needs_invite","invite_sent","onboarding","ready_to_schedule"] as const).map((key) => {
+                  const value = pipeline[key];
+                  if (!value) return null;
+                  return (
+                    <Link
+                      key={key}
+                      to={`/admin/patients?stage=${key}`}
+                      className="inline-flex items-center gap-2 rounded-md border border-clinical-info/40 bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted/50 transition-colors"
+                    >
+                      <span className="tabular-nums">{value}</span>
+                      <span className="text-muted-foreground">{STAGE_LABEL[key].toLowerCase()}</span>
+                    </Link>
+                  );
+                })}
               </div>
             </div>
           </CardContent>
