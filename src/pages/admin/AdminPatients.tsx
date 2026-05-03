@@ -47,14 +47,14 @@ const COURSE_STATE_TABS: { value: CourseStateFilter; label: string }[] = [
   { value: "no_course", label: "No course yet" },
 ];
 
-const STAGE_TABS: { value: PatientStage | "all"; label: string }[] = [
-  { value: "all", label: "Everyone" },
-  { value: "needs_invite", label: "Needs invite" },
-  { value: "invite_sent", label: "Invite sent" },
-  { value: "onboarding", label: "Onboarding" },
-  { value: "ready_to_schedule", label: "Ready to schedule" },
-  { value: "scheduled", label: "Scheduled" },
-  { value: "in_treatment", label: "In treatment" },
+const STAGE_TABS: { value: PatientStage | "all"; label: string; hint: string }[] = [
+  { value: "all", label: "Everyone", hint: "All non-archived patients regardless of stage" },
+  { value: "needs_invite", label: "Needs invite", hint: "Has an active course but no portal account and no live invite" },
+  { value: "invite_sent", label: "Invite sent", hint: "Portal invite issued and still valid — patient hasn't logged in yet" },
+  { value: "onboarding", label: "Onboarding", hint: "Account active, but onboarding forms are still outstanding (or checklist not yet generated)" },
+  { value: "ready_to_schedule", label: "Ready to schedule", hint: "Onboarding complete, no appointments booked yet — needs first session scheduled" },
+  { value: "scheduled", label: "Scheduled", hint: "Has upcoming appointments but no completed sessions yet" },
+  { value: "in_treatment", label: "In treatment", hint: "At least one session has been completed on the active course" },
 ];
 
 export default function AdminPatients() {
