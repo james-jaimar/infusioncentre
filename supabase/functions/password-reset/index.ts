@@ -57,7 +57,6 @@ function dispatchEmail(payload: Parameters<typeof sendEmailViaSMTP>[0]) {
     // @ts-ignore
     EdgeRuntime.waitUntil(task);
   }
-  }
 }
 
 function buildResetEmailHtml(resetLink: string): string {
