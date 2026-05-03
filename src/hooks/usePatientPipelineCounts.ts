@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { derivePatientStage, type PatientStage } from "@/lib/patientPipeline";
+import { derivePatientStage, ACTIVE_COURSE_STATUSES, type PatientStage } from "@/lib/patientPipeline";
 
 export type PipelineCounts = Record<PatientStage, number> & { total_active: number };
 
@@ -25,7 +25,7 @@ export function usePatientPipelineCounts() {
       const { data, error } = await supabase
         .from("patients")
         .select(
-          "id, user_id, status, treatment_courses(id, status, sessions_completed, total_sessions_planned), patient_invites(status, created_at, expires_at), onboarding_checklists(status), appointments(status)"
+          "id, user_id, status, treatment_courses(id, status, sessions_completed, total_sessions_planned), patient_invites(status, created_at, expires_at), onboarding_checklists(status), appointments(status, treatment_course_id)"
         )
         .neq("status", "archived")
         .limit(1000);
@@ -33,7 +33,13 @@ export function usePatientPipelineCounts() {
       const counts = { ...EMPTY };
       for (const p of (data as any[]) || []) {
         const checklists = p.onboarding_checklists ?? [];
-        const appts = p.appointments ?? [];
+        const allAppts = p.appointments ?? [];
+        const activeCourseId = (p.treatment_courses ?? []).find((c: any) =>
+          (ACTIVE_COURSE_STATUSES as readonly string[]).includes(c.status)
+        )?.id;
+        const appts = activeCourseId
+          ? allAppts.filter((a: any) => a.treatment_course_id === activeCourseId)
+          : allAppts;
         const stage = derivePatientStage({
           patient: p,
           courses: p.treatment_courses ?? [],
