@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import PatientReadinessBadge from "@/components/shared/PatientReadinessBadge";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import SendInviteDialog from "@/components/admin/SendInviteDialog";
+import PatientPipelinePanel from "@/components/admin/PatientPipelinePanel";
 import PatientAccountTab from "@/components/admin/PatientAccountTab";
 import PatientCommunicationsTab from "@/components/admin/PatientCommunicationsTab";
 import PatientChatThread from "@/components/admin/PatientChatThread";
@@ -403,6 +404,17 @@ export default function PatientDetail() {
 
       {/* Tabs */}
       <Tabs defaultValue="profile">
+        {patient && (
+          <PatientPipelinePanel
+            patient={{
+              id: patient.id,
+              user_id: patient.user_id,
+              email: patient.email,
+              phone: patient.phone,
+              first_name: patient.first_name,
+            }}
+          />
+        )}
         <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="profile">
             <User className="mr-2 h-4 w-4" />
