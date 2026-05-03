@@ -440,7 +440,7 @@ export function RecurringSessionDialog({
               {sessionDates.map((d, i) => (
                 <div key={i} className="flex items-center gap-2">
                   <span className="text-xs font-medium text-muted-foreground w-8 shrink-0">
-                    #{treatmentCourse.sessions_completed + i + 1}
+                    #{treatmentCourse.sessions_completed + alreadyScheduled + i + 1}
                   </span>
                   <Popover>
                     <PopoverTrigger asChild>
