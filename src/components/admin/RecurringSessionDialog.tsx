@@ -221,6 +221,9 @@ export function RecurringSessionDialog({
 
     const sorted = [...sessionDates].sort((a, b) => a.getTime() - b.getTime());
 
+    // Continue numbering after existing completed + scheduled sessions to avoid duplicates
+    const startSessionNumber = treatmentCourse.sessions_completed + alreadyScheduled + 1;
+
     try {
       await createBulk.mutateAsync({
         appointments: sorted.map((date, idx) => ({
@@ -231,10 +234,10 @@ export function RecurringSessionDialog({
           assigned_nurse_id: nurseId || null,
           scheduled_start: date,
           duration_minutes: defaultDuration,
-          session_number: treatmentCourse.sessions_completed + idx + 1,
+          session_number: startSessionNumber + idx,
           notes: isOngoing
-            ? `Session ${treatmentCourse.sessions_completed + idx + 1} (ongoing pathway)`
-            : `Session ${treatmentCourse.sessions_completed + idx + 1} of ${treatmentCourse.total_sessions_planned}`,
+            ? `Session ${startSessionNumber + idx} (ongoing pathway)`
+            : `Session ${startSessionNumber + idx} of ${treatmentCourse.total_sessions_planned}`,
         })),
       });
       toast.success(`${sorted.length} appointments created`);
