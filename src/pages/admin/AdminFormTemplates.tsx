@@ -17,6 +17,7 @@ import FormTemplateEditor from "@/components/forms/FormTemplateEditor";
 import AIImportDialog from "@/components/forms/AIImportDialog";
 import type { FormField } from "@/components/forms/FormRenderer";
 import type { Database } from "@/integrations/supabase/types";
+import { inferPrefillKey } from "@/lib/prefillFormData";
 
 type FormCategory = Database["public"]["Enums"]["form_category"];
 
@@ -57,6 +58,7 @@ export default function AdminFormTemplates() {
   // AI import state
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [reimportTemplate, setReimportTemplate] = useState<FormTemplate | null>(null);
+  const [backfilling, setBackfilling] = useState(false);
 
 
   const SESSION_KEY = "pendingFormImport";
@@ -152,6 +154,48 @@ export default function AdminFormTemplates() {
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
             <Upload className="h-4 w-4 mr-2" /> Import from Document
+          </Button>
+          <Button
+            variant="outline"
+            disabled={backfilling || !templates}
+            onClick={async () => {
+              if (!templates) return;
+              if (!confirm("Scan all templates and auto-assign patient prefill keys to fields that don't have one?")) return;
+              setBackfilling(true);
+              let touched = 0;
+              let fieldsAssigned = 0;
+              try {
+                for (const t of templates) {
+                  if (!Array.isArray(t.form_schema)) continue;
+                  let changed = false;
+                  const next = (t.form_schema as any[]).map((f) => {
+                    if (f && !f.prefill_key) {
+                      const inferred = inferPrefillKey(f);
+                      if (inferred) {
+                        changed = true;
+                        fieldsAssigned++;
+                        return { ...f, prefill_key: inferred };
+                      }
+                    }
+                    return f;
+                  });
+                  if (changed) {
+                    await updateTemplate.mutateAsync({ id: t.id, form_schema: next });
+                    touched++;
+                  }
+                }
+                toast({
+                  title: "Backfill complete",
+                  description: `Updated ${touched} template${touched === 1 ? "" : "s"}, assigned ${fieldsAssigned} prefill key${fieldsAssigned === 1 ? "" : "s"}.`,
+                });
+              } catch (e: any) {
+                toast({ title: "Backfill failed", description: e?.message, variant: "destructive" });
+              } finally {
+                setBackfilling(false);
+              }
+            }}
+          >
+            {backfilling ? "Scanning…" : "Auto-assign patient fields"}
           </Button>
           <Button onClick={() => openEditor()}>
             <Plus className="h-4 w-4 mr-2" /> New Template

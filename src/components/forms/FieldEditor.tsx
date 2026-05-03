@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { X, Plus } from "lucide-react";
 import type { FormField } from "./FormRenderer";
-import { PREFILL_KEY_OPTIONS } from "@/lib/prefillFormData";
+import { PREFILL_KEY_OPTIONS, inferPrefillKey } from "@/lib/prefillFormData";
 
 interface FieldEditorProps {
   field: FormField;
@@ -302,9 +302,24 @@ export default function FieldEditor({ field, onChange }: FieldEditorProps) {
               ))}
             </SelectContent>
           </Select>
-          <p className="text-[10px] text-muted-foreground">
-            When set, this field will auto-populate from the patient's record.
-          </p>
+          {(() => {
+            const suggested = !field.prefill_key ? inferPrefillKey(field) : null;
+            const suggestedLabel = suggested ? PREFILL_KEY_OPTIONS.find(o => o.value === suggested)?.label : null;
+            if (suggested && suggestedLabel) {
+              return (
+                <p className="text-[10px] text-muted-foreground">
+                  Suggested: <button type="button" className="text-primary underline" onClick={() => update({ prefill_key: suggested })}>
+                    {suggestedLabel}
+                  </button> — auto-applied at render time even if you leave this as None.
+                </p>
+              );
+            }
+            return (
+              <p className="text-[10px] text-muted-foreground">
+                When set, this field will auto-populate from the patient's record.
+              </p>
+            );
+          })()}
         </div>
       )}
     </div>
