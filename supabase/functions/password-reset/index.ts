@@ -7,7 +7,17 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SITE_URL = "https://infusioncentre.lovable.app";
+const FALLBACK_SITE_URL = "https://infusioncentre.jmar.dev";
+
+function resolveSiteUrl(req: Request): string {
+  const origin = req.headers.get("origin");
+  if (origin) return origin.replace(/\/$/, "");
+  const referer = req.headers.get("referer");
+  if (referer) {
+    try { return new URL(referer).origin; } catch (_) { /* ignore */ }
+  }
+  return FALLBACK_SITE_URL;
+}
 
 async function sendEmailViaSMTP(payload: {
   to: string; subject: string; html: string; text?: string;
@@ -122,6 +132,8 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
+    const siteUrl = resolveSiteUrl(req);
+
     const body = await req.json();
     const { action } = body;
 
@@ -159,7 +171,7 @@ Deno.serve(async (req) => {
         });
       }
 
-      const resetLink = `${SITE_URL}/reset-password?token=${token}`;
+      const resetLink = `${siteUrl}/reset-password?token=${token}`;
       dispatchEmail({
         to: email,
         subject: "Reset your password — The Johannesburg Infusion Centre",
@@ -263,7 +275,7 @@ Deno.serve(async (req) => {
         user_id, token, email: email.toLowerCase(),
       });
 
-      const resetLink = `${SITE_URL}/reset-password?token=${token}`;
+      const resetLink = `${siteUrl}/reset-password?token=${token}`;
       dispatchEmail({
         to: email,
         subject: "Reset your password — The Johannesburg Infusion Centre",
