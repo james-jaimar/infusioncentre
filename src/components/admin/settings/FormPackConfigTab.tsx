@@ -58,14 +58,6 @@ export default function FormPackConfigTab() {
   };
 
   const handleSave = async () => {
-    // Validate: any non-universal entry must have at least one type
-    for (const [tid, value] of Object.entries(changes)) {
-      if (value !== null && value.length === 0) {
-        const tmpl = templates.find(t => t.id === tid);
-        toast.error(`"${tmpl?.name ?? "Form"}": pick at least one treatment type or mark as Universal`);
-        return;
-      }
-    }
     try {
       for (const [templateId, value] of Object.entries(changes)) {
         const { error } = await supabase
@@ -92,7 +84,7 @@ export default function FormPackConfigTab() {
             <ClipboardList className="h-5 w-5" /> Form Pack Configuration
           </CardTitle>
           <CardDescription>
-            Assign which forms are required for each treatment type. Unchecked forms are universal (required for all).
+            Toggle Universal on to require a form for every treatment type, or off to restrict it to specific types (or to none).
           </CardDescription>
         </div>
         {hasChanges && (

@@ -281,7 +281,8 @@ Deno.serve(async (req) => {
         .eq("is_active", true);
 
       const applicable = (templates || []).filter((t: any) => {
-        if (!t.required_for_treatment_types) return true; // universal
+        if (t.required_for_treatment_types === null) return true; // universal (NULL only)
+        if (!t.required_for_treatment_types.length) return false;
         if (!treatment_type_ids?.length) return false;
         return t.required_for_treatment_types.some((id: string) => treatment_type_ids.includes(id));
       });

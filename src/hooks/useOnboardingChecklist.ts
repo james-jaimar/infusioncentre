@@ -46,9 +46,11 @@ export function useGenerateChecklist() {
         .eq("is_active", true);
       if (tErr) throw tErr;
 
-      // Filter templates: universal (null) or matching treatment types
+      // Filter templates: universal (NULL only) or matching treatment types.
+      // Empty array = restricted to no types (not auto-applied).
       const applicable = templates?.filter((t) => {
-        if (!t.required_for_treatment_types) return true; // universal
+        if (t.required_for_treatment_types === null) return true; // universal
+        if (!t.required_for_treatment_types.length) return false;
         if (!treatmentTypeIds?.length) return false;
         return t.required_for_treatment_types.some((id: string) => treatmentTypeIds.includes(id));
       }) || [];
