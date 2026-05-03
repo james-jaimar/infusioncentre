@@ -26,7 +26,7 @@ export default function PatientPipelinePanel({ patient }: Props) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("appointments")
-        .select("id, status")
+        .select("id, status, treatment_course_id")
         .eq("patient_id", patient.id);
       if (error) throw error;
       return data || [];
@@ -37,8 +37,13 @@ export default function PatientPipelinePanel({ patient }: Props) {
 
   const checklistTotal = checklist?.length ?? 0;
   const checklistCompleted = checklist?.filter((c) => c.status === "completed").length ?? 0;
-  const apptsScheduled = (appts ?? []).filter((a: any) => a.status !== "cancelled" && a.status !== "completed").length;
-  const apptsCompleted = (appts ?? []).filter((a: any) => a.status === "completed").length;
+  const ACTIVE = ["draft", "onboarding", "ready", "active", "completing"];
+  const activeCourseId = (courses ?? []).find((c: any) => ACTIVE.includes(c.status))?.id;
+  const scopedAppts = activeCourseId
+    ? (appts ?? []).filter((a: any) => a.treatment_course_id === activeCourseId)
+    : (appts ?? []);
+  const apptsScheduled = scopedAppts.filter((a: any) => a.status !== "cancelled" && a.status !== "completed").length;
+  const apptsCompleted = scopedAppts.filter((a: any) => a.status === "completed").length;
   const pendingInvite = (invites ?? []).find((i) => i.status === "pending" && new Date(i.expires_at) > new Date());
 
   const stage = derivePatientStage({
