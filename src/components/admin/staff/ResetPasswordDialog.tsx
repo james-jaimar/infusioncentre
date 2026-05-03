@@ -42,9 +42,10 @@ export function ResetPasswordDialog({ open, onOpenChange, member, onSubmit, savi
             </p>
           </TabsContent>
           <TabsContent value="set" className="space-y-4 pt-3">
+            <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
             <div>
               <Label>New password *</Label>
-              <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Minimum 8 characters" />
+              <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Minimum 8 characters" autoComplete="new-password" />
             </div>
             <div className="flex items-center justify-between rounded-lg border border-border p-3">
               <div>
@@ -53,6 +54,7 @@ export function ResetPasswordDialog({ open, onOpenChange, member, onSubmit, savi
               </div>
               <Switch checked={forceChange} onCheckedChange={setForceChange} />
             </div>
+            </form>
           </TabsContent>
         </Tabs>
 
