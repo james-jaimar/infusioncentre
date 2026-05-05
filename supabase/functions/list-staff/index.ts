@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     // Get all roles for staff (admin/nurse/doctor)
     const { data: roles, error: rolesError } = await admin
       .from("user_roles").select("user_id, role")
-      .in("role", ["admin", "nurse", "doctor"]);
+      .in("role", ["admin", "nurse"]);
     if (rolesError) throw rolesError;
     if (!roles?.length) {
       return new Response(JSON.stringify({ staff: [] }), {
@@ -54,10 +54,7 @@ Deno.serve(async (req) => {
 
     const userIds = [...new Set(roles.map((r) => r.user_id))];
 
-    const [{ data: profiles }, { data: doctors }] = await Promise.all([
-      admin.from("profiles").select("*").in("user_id", userIds),
-      admin.from("doctors").select("*").in("user_id", userIds),
-    ]);
+    const { data: profiles } = await admin.from("profiles").select("*").in("user_id", userIds);
 
     // Fetch auth users one by one (admin.listUsers paginates; for the small staff set this is fine)
     const authUsers: Record<string, any> = {};
@@ -68,20 +65,18 @@ Deno.serve(async (req) => {
       })
     );
 
-    // Apply role precedence: admin > nurse > doctor (so multi-row users
-    // surface their highest staff role, never 'patient').
+    // Apply role precedence: admin > nurse (so multi-row users
+    // surface their highest staff role, never 'patient' or 'doctor').
     function pickRole(userId: string): string {
       const userRoles = roles.filter((r) => r.user_id === userId).map((r) => r.role);
       if (userRoles.includes("admin")) return "admin";
       if (userRoles.includes("nurse")) return "nurse";
-      if (userRoles.includes("doctor")) return "doctor";
       return userRoles[0] || "unknown";
     }
 
     const staff = (profiles || []).map((p: any) => {
       const au = authUsers[p.user_id];
       const role = pickRole(p.user_id);
-      const doc = (doctors || []).find((d: any) => d.user_id === p.user_id);
       const banned = au?.banned_until && new Date(au.banned_until) > new Date();
       return {
         user_id: p.user_id,
@@ -97,7 +92,6 @@ Deno.serve(async (req) => {
         last_sign_in_at: au?.last_sign_in_at || null,
         banned_until: au?.banned_until || null,
         is_disabled: !!banned,
-        doctor: doc || null,
       };
     });
 

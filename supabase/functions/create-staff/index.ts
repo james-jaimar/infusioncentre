@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { email, password, first_name, last_name, phone, role, practice_name, practice_number, specialisation, send_invite } = body;
+    const { email, password, first_name, last_name, phone, role, send_invite } = body;
 
     if (!email || !role) {
       return new Response(
@@ -68,9 +68,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (!["admin", "nurse", "doctor"].includes(role)) {
+    if (!["admin", "nurse"].includes(role)) {
       return new Response(
-        JSON.stringify({ error: "Role must be admin, nurse, or doctor" }),
+        JSON.stringify({ error: "Role must be admin or nurse. Doctors are managed in the Doctors area." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -134,19 +134,6 @@ Deno.serve(async (req) => {
       role,
       tenant_id: tenantId,
     });
-
-    // If doctor, also create a doctors table entry
-    if (role === "doctor") {
-      await adminClient.from("doctors").insert({
-        user_id: userId,
-        practice_name: practice_name || null,
-        practice_number: practice_number || null,
-        phone: phone || null,
-        email: email,
-        specialisation: specialisation || null,
-        must_change_password: !send_invite,
-      });
-    }
 
     // If invite mode, trigger a password reset email so the user can set their own password
     if (send_invite) {

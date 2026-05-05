@@ -7,18 +7,13 @@ export type StaffMember = {
   last_name: string | null;
   phone: string | null;
   email: string | null;
-  role: "admin" | "nurse" | "doctor";
+  role: "admin" | "nurse";
   email_confirmed_at: string | null;
   last_sign_in_at: string | null;
   banned_until: string | null;
   is_disabled: boolean;
   must_change_password: boolean;
   created_at: string;
-  doctor: {
-    practice_name: string | null;
-    practice_number: string | null;
-    specialisation: string | null;
-  } | null;
 };
 
 async function invoke<T = any>(fn: string, body: any): Promise<T> {

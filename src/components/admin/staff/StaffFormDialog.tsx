@@ -18,8 +18,7 @@ type Props = {
 
 const empty = {
   first_name: "", last_name: "", phone: "", email: "", password: "",
-  role: "nurse" as "admin" | "nurse" | "doctor",
-  practice_name: "", practice_number: "", specialisation: "",
+  role: "nurse" as "admin" | "nurse",
   send_invite: true,
 };
 
@@ -35,9 +34,6 @@ export function StaffFormDialog({ open, onOpenChange, mode, member, onSubmit, sa
         email: member.email || "",
         password: "",
         role: member.role,
-        practice_name: member.doctor?.practice_name || "",
-        practice_number: member.doctor?.practice_number || "",
-        specialisation: member.doctor?.specialisation || "",
         send_invite: false,
       });
     } else if (mode === "create") {
@@ -46,7 +42,6 @@ export function StaffFormDialog({ open, onOpenChange, mode, member, onSubmit, sa
   }, [mode, member, open]);
 
   const isCreate = mode === "create";
-  const isDoctor = v.role === "doctor";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -92,28 +87,9 @@ export function StaffFormDialog({ open, onOpenChange, mode, member, onSubmit, sa
               <SelectContent>
                 <SelectItem value="admin">Admin</SelectItem>
                 <SelectItem value="nurse">Nurse</SelectItem>
-                <SelectItem value="doctor">Doctor</SelectItem>
               </SelectContent>
             </Select>
           </div>
-
-          {isDoctor && (
-            <div className="space-y-3 rounded-lg border border-border p-3 bg-muted/30">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Doctor profile</p>
-              <div>
-                <Label>Practice name</Label>
-                <Input value={v.practice_name} onChange={(e) => setV({ ...v, practice_name: e.target.value })} />
-              </div>
-              <div>
-                <Label>Practice number (HPCSA)</Label>
-                <Input value={v.practice_number} onChange={(e) => setV({ ...v, practice_number: e.target.value })} />
-              </div>
-              <div>
-                <Label>Specialisation</Label>
-                <Input value={v.specialisation} onChange={(e) => setV({ ...v, specialisation: e.target.value })} />
-              </div>
-            </div>
-          )}
 
           {isCreate && (
             <>
