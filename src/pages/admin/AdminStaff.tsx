@@ -357,7 +357,7 @@ export default function AdminStaff() {
             <AlertDialogTitle>Delete staff member permanently?</AlertDialogTitle>
             <AlertDialogDescription>
               This will permanently delete {selected?.first_name} {selected?.last_name}'s login, profile,
-              role and {selected?.role === "doctor" ? "doctor record" : "any related staff data"}.
+              role and any related staff data.
               This cannot be undone. To preserve data, use <strong>Disable account</strong> instead.
             </AlertDialogDescription>
           </AlertDialogHeader>
