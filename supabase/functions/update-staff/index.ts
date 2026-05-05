@@ -36,14 +36,14 @@ Deno.serve(async (req) => {
     });
 
     const body = await req.json();
-    const { user_id, first_name, last_name, phone, email, role, practice_name, practice_number, specialisation } = body;
+    const { user_id, first_name, last_name, phone, email, role } = body;
     if (!user_id) {
       return new Response(JSON.stringify({ error: "user_id required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    if (role && !["admin", "nurse", "doctor"].includes(role)) {
-      return new Response(JSON.stringify({ error: "Invalid role" }), {
+    if (role && !["admin", "nurse"].includes(role)) {
+      return new Response(JSON.stringify({ error: "Role must be admin or nurse. Doctors are managed in the Doctors area." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -65,7 +65,6 @@ Deno.serve(async (req) => {
       if (emailErr) throw emailErr;
     }
 
-    // Role change with cascade for doctors row
     if (role) {
       const { data: existingRole } = await admin
         .from("user_roles").select("role").eq("user_id", user_id).maybeSingle();
@@ -73,31 +72,6 @@ Deno.serve(async (req) => {
 
       if (oldRole !== role) {
         await admin.from("user_roles").update({ role }).eq("user_id", user_id);
-
-        if (oldRole === "doctor" && role !== "doctor") {
-          await admin.from("doctors").delete().eq("user_id", user_id);
-        }
-        if (role === "doctor" && oldRole !== "doctor") {
-          const { data: au } = await admin.auth.admin.getUserById(user_id);
-          await admin.from("doctors").insert({
-            user_id,
-            email: au?.user?.email || null,
-            phone: phone ?? null,
-            practice_name: practice_name ?? null,
-            practice_number: practice_number ?? null,
-            specialisation: specialisation ?? null,
-            must_change_password: false,
-          });
-        }
-      }
-
-      if (role === "doctor") {
-        await admin.from("doctors").update({
-          practice_name: practice_name ?? null,
-          practice_number: practice_number ?? null,
-          specialisation: specialisation ?? null,
-          phone: phone ?? null,
-        }).eq("user_id", user_id);
       }
     }
 
