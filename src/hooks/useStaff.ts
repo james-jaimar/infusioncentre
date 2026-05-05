@@ -7,7 +7,7 @@ export type StaffMember = {
   last_name: string | null;
   phone: string | null;
   email: string | null;
-  role: "admin" | "nurse" | "doctor";
+  role: "admin" | "nurse";
   email_confirmed_at: string | null;
   last_sign_in_at: string | null;
   banned_until: string | null;
