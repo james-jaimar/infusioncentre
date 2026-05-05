@@ -22,11 +22,10 @@ import { format, formatDistanceToNow } from "date-fns";
 import { StaffFormDialog } from "@/components/admin/staff/StaffFormDialog";
 import { ResetPasswordDialog } from "@/components/admin/staff/ResetPasswordDialog";
 
-const roleIcons = { admin: Shield, nurse: Stethoscope, doctor: Briefcase } as const;
+const roleIcons = { admin: Shield, nurse: Stethoscope } as const;
 const roleColors: Record<string, string> = {
   admin: "bg-primary/10 text-primary",
   nurse: "bg-accent text-accent-foreground",
-  doctor: "bg-green-100 text-green-800",
 };
 
 function statusBadge(m: StaffMember) {
@@ -67,7 +66,7 @@ export default function AdminStaff() {
   }, [staff, search, roleFilter, statusFilter]);
 
   const counts = useMemo(() => {
-    const c = { admin: 0, nurse: 0, doctor: 0, total: staff?.length || 0 };
+    const c: { admin: number; nurse: number; total: number } = { admin: 0, nurse: 0, total: staff?.length || 0 };
     staff?.forEach((s) => { c[s.role] = (c[s.role] || 0) + 1; });
     return c;
   }, [staff]);
@@ -184,7 +183,7 @@ export default function AdminStaff() {
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Staff Management</h1>
           <p className="text-sm text-muted-foreground">
-            {counts.total} total · {counts.admin} admin · {counts.nurse} nurse · {counts.doctor} doctor
+            {counts.total} total · {counts.admin} admin · {counts.nurse} nurse
           </p>
         </div>
         <Button onClick={() => setCreateOpen(true)} className="gap-2">
@@ -203,7 +202,6 @@ export default function AdminStaff() {
             <SelectItem value="all">All roles</SelectItem>
             <SelectItem value="admin">Admin</SelectItem>
             <SelectItem value="nurse">Nurse</SelectItem>
-            <SelectItem value="doctor">Doctor</SelectItem>
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
