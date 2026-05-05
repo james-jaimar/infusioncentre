@@ -35,9 +35,6 @@ export function StaffFormDialog({ open, onOpenChange, mode, member, onSubmit, sa
         email: member.email || "",
         password: "",
         role: member.role,
-        practice_name: member.doctor?.practice_name || "",
-        practice_number: member.doctor?.practice_number || "",
-        specialisation: member.doctor?.specialisation || "",
         send_invite: false,
       });
     } else if (mode === "create") {
@@ -46,7 +43,6 @@ export function StaffFormDialog({ open, onOpenChange, mode, member, onSubmit, sa
   }, [mode, member, open]);
 
   const isCreate = mode === "create";
-  const isDoctor = v.role === "doctor";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
