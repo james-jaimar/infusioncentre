@@ -14,11 +14,6 @@ export type StaffMember = {
   is_disabled: boolean;
   must_change_password: boolean;
   created_at: string;
-  doctor: {
-    practice_name: string | null;
-    practice_number: string | null;
-    specialisation: string | null;
-  } | null;
 };
 
 async function invoke<T = any>(fn: string, body: any): Promise<T> {
