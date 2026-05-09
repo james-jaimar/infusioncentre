@@ -238,6 +238,50 @@ export default function NurseJobCard() {
     }
   }, [treatment, updateTreatment]);
 
+  // ── Step-back handler ──
+  const handleStepBack = useCallback(async () => {
+    if (!treatment || !user?.id) return;
+    let targetStatus: string | null = null;
+    let targetLabel = "";
+    const patch: any = {};
+    if (stage === "pre_assessment") {
+      targetStatus = "checked_in";
+      targetLabel = "Check-In";
+    } else if (stage === "in_progress") {
+      targetStatus = "pre_assessment";
+      targetLabel = "Pre-Assessment";
+    } else if (stage === "post_assessment") {
+      targetStatus = "in_progress";
+      targetLabel = "In Progress";
+      patch.ended_at = null;
+    }
+    if (!targetStatus) return;
+    setSubmitting(true);
+    try {
+      await updateTreatment.mutateAsync({
+        id: treatment.id,
+        data: { status: targetStatus, ...patch } as any,
+      });
+      if (appointment) {
+        await updateAppointment.mutateAsync({
+          id: appointment.id,
+          data: { status: targetStatus === "checked_in" ? "checked_in" : targetStatus === "in_progress" ? "in_progress" : "checked_in" },
+        });
+      }
+      await addAssessment.mutateAsync({
+        treatment_id: treatment.id,
+        assessment_type: "stage_reverted",
+        data: { from: stage, to: targetStatus, at: new Date().toISOString() },
+        recorded_by: user.id,
+      });
+      toast({ title: `Returned to ${targetLabel}` });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  }, [stage, treatment, appointment, user, updateTreatment, updateAppointment, addAssessment]);
+
   // ── Loading ──
   if (loadingApt || loadingTreatment) {
     return <div className="text-center py-12 text-muted-foreground">Loading job card...</div>;
@@ -271,6 +315,12 @@ export default function NurseJobCard() {
     primaryLabel = "End Treatment";
     onPrimary = handleEndTreatment;
   }
+
+  // Secondary "step back" button — only when there's a previous stage and treatment exists
+  let secondaryLabel: string | undefined;
+  if (treatment && stage === "pre_assessment") secondaryLabel = "Back to Check-In";
+  else if (treatment && stage === "in_progress") secondaryLabel = "Back to Pre-Assessment";
+  else if (treatment && stage === "post_assessment") secondaryLabel = "Back to In Progress";
   // post_assessment: no bar primary; the panel has its own discharge button
   // discharged: nothing
 
@@ -518,6 +568,8 @@ export default function NurseJobCard() {
         onPrimary={onPrimary}
         isSubmitting={submitting}
         hint={hint}
+        secondaryLabel={secondaryLabel}
+        onSecondary={secondaryLabel ? handleStepBack : undefined}
       />
     </div>
   );

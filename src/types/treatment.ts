@@ -27,7 +27,7 @@ export interface TreatmentCourseWithRelations extends TreatmentCourse {
 }
 export type VitalsPhase = 'pre' | 'during' | 'post';
 export type MedicationRoute = 'iv' | 'oral' | 'im' | 'sc';
-export type AssessmentType = 'pre_treatment' | 'during_treatment' | 'post_treatment' | 'ketamine_monitoring';
+export type AssessmentType = 'pre_treatment' | 'during_treatment' | 'post_treatment' | 'ketamine_monitoring' | 'stage_reverted';
 export type IVAccessType = 'peripheral' | 'midline' | 'picc' | 'port' | 'central';
 export type ReactionOutcome = 'resolved' | 'ongoing' | 'escalated' | 'emergency_transfer';
 export type InfusionMethod = 'continuous' | 'intermittent' | 'bolus' | 'push';

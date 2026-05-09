@@ -1,6 +1,17 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, ArrowRight } from "lucide-react";
+import { AlertTriangle, ArrowRight, ArrowLeft } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import type { StageKey } from "./JobCardStepper";
 
 interface JobCardActionsProps {
@@ -10,6 +21,8 @@ interface JobCardActionsProps {
   onPrimary?: () => void;
   isSubmitting?: boolean;
   hint?: string;
+  secondaryLabel?: string;
+  onSecondary?: () => void;
 }
 
 export default function JobCardActions({
@@ -19,6 +32,8 @@ export default function JobCardActions({
   onPrimary,
   isSubmitting,
   hint,
+  secondaryLabel,
+  onSecondary,
 }: JobCardActionsProps) {
   const navigate = useNavigate();
   const isDischarged = stage === "discharged";
@@ -26,6 +41,34 @@ export default function JobCardActions({
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 border-t bg-card/95 backdrop-blur-sm supports-[backdrop-filter]:bg-card/85 px-4 py-3 lg:left-64 shadow-clinical-lg">
       <div className="flex items-center gap-3 max-w-7xl mx-auto">
+        {!isDischarged && secondaryLabel && onSecondary && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="lg"
+                className="h-14 shrink-0"
+                disabled={isSubmitting}
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                {secondaryLabel}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Step back to {secondaryLabel.replace(/^Back to\s+/i, "")}?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Any data you've already saved on this stage will remain. The reversal is recorded in the treatment audit trail.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={onSecondary}>Go back</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+
         {!isDischarged && primaryLabel && onPrimary && (
           <div className="flex-1 flex flex-col gap-1">
             {hint && (

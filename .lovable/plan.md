@@ -1,74 +1,54 @@
-# Nurse Job Card — 5-Stage Sequential Workflow
+# Allow nurses to step backward through job-card stages
 
-## Goal
+## Why
 
-Turn the cosmetic 5-tab stepper into a real, sequential workflow that supports staff handoff (e.g. Gail checks the patient in, another nurse runs the treatment, anyone qualified does post-assessment & discharge). Every stage ends with an explicit "Complete & continue" button that advances the stepper. Fix the current bug that strands the nurse on Check-In with no visible action button.
+Right now the nurse workflow is one-way: Check-In → Pre-Assessment → In Progress → Post-Assessment → Discharged. If a nurse hits "End Treatment" by mistake, they land on Post-Assessment with discharge criteria failing (IV not removed, post-vitals not recorded) and no way to return to the previous stage. The only escape is the override button, which silently fakes compliance — the wrong tool for "I clicked too soon."
 
-## The 5 stages
+We need a safe, auditable way to reverse a stage transition.
 
-```text
-1. Check-In         → identity / consent verified, patient seated
-2. Pre-Assessment   → baseline vitals, safety checklist, IV access
-3. In Progress      → medication administration, monitoring, reactions
-4. Post-Assessment  → closing vitals, IV removal, fit-for-discharge check
-5. Discharged       → final sign-off, billing finalised, summary
-```
+## What we'll build
 
-Each stage shows only its own panels. The previous stage's data stays visible read-only in the sidebar / history. The stepper at the top reflects the true current stage and is the source of truth.
+A small, consistent **"Back to <previous stage>"** secondary control on every stage where reversing is sensible, plus the underlying state transitions and audit trail.
 
-## Stage-by-stage UX
+### 1. Action bar gets a secondary "Step back" button
 
-**Check-In** (who: front desk / any nurse)
-- Panels: Patient identity verification (name + DOB), allergy review, consent forms readiness (auto from onboarding), paper-consent override.
-- Bottom action: **"Confirm Check-In →"** (enabled when identity + consent satisfied). Records who checked the patient in, timestamp.
+In `JobCardActions` (the fixed bottom bar), alongside the primary CTA, add a left-aligned outline button labelled e.g. "← Back to In Progress". It is shown only when a previous stage exists for the current state.
 
-**Pre-Assessment** (who: any nurse — can be different from check-in)
-- Panels: Pre-treatment safety checklist (current manual items), Initial vitals, IV access site & cannulation, pre-treatment notes.
-- Banner shows "Checked in by {name} at {time}" so the receiving nurse has context.
-- Bottom action: **"Start Treatment →"** (enabled when checklist complete + vitals captured + IV access recorded). Sets `treatment.started_at`, advances to In Progress.
+- Tapping it opens a confirmation dialog: *"Return to <stage>? Any progress on the current stage will remain saved."*
+- On confirm, the treatment status is reverted and the appointment status follows.
 
-**In Progress** (who: assigned treating nurse)
-- Panels: Live timer, protocol monitoring banner, vitals timeline, medications, reactions, ketamine panel (if applicable).
-- Bottom action: **"End Treatment →"** advances to Post-Assessment (does NOT navigate away).
+### 2. Allowed reversals
 
-**Post-Assessment** (NEW in-page stage)
-- Panels: Closing vitals, IV removal (time, site condition), patient response/observations, fit-for-discharge checklist (alert, oriented, stable vitals, no active reactions, mobility OK).
-- Bottom action: **"Proceed to Discharge →"** (enabled when closing vitals captured + fit-for-discharge confirmed).
+| Current stage      | Can step back to | Notes                                                    |
+| ------------------ | ---------------- | -------------------------------------------------------- |
+| Pre-Assessment     | Check-In         | Clears `checked_in_*` only if user wants; default keep   |
+| In Progress        | Pre-Assessment   | Keeps `started_at` for audit; clears `pre_assessment_*` is **not** done — preserved as history |
+| Post-Assessment    | In Progress      | Clears `ended_at` so the timer resumes                   |
+| Discharged         | (no back)        | Locked — needs admin/clinical lead intervention          |
 
-**Discharged** (who: any nurse)
-- Inline summary + final sign-off + billing review + discharge instructions. The existing `/nurse/discharge/:id` content moves into this stage as the final panel. Bottom action: **"Complete & Sign Off"** marks treatment `completed`.
+Discharge is final from the nurse UI on purpose. If a nurse needs to undo a discharge, that's a separate admin-only flow and out of scope for this change.
 
-## Handoff support
+### 3. Audit trail
 
-- Each stage records `{stage}_completed_by` (user_id) and `{stage}_completed_at` (timestamp).
-- A small "Stage history" strip under the stepper shows: `Check-in: Gail · 09:42 · Pre-assess: Sarah · 10:05 · …` so the next nurse can see the trail.
-- The Command Centre patient row is annotated with current stage (Check-in / Pre-assess / In progress / Post-assess / Discharge) instead of just status.
+Every reversal is logged through the existing `audit_log` system (the `log_status_change` trigger already captures status transitions in both directions). We'll additionally record a row in the assessments/notes table tagged `stage_reverted` with the old → new stage and the actor, so the StageHistoryStrip can show a small "↶ Reverted by Sarah · 10:14" chip.
 
-## Bug fix (immediate)
+### 4. UI feedback
 
-The action bar in `JobCardActions.tsx` only shows "Start Treatment" when `!treatmentStatus`. When a recoverable `pending` treatment row exists (the orange "Resuming previous attempt" banner), neither Check-In nor Start Treatment renders, leaving the nurse stranded — exactly what you saw with James. We will also show "Start Treatment" when `treatmentStatus === "pending"` and `!started_at`. (This is fixed naturally by the new sequential design but should also be hot-fixed so today's session can proceed.)
+- `StageHistoryStrip` gets a new "reverted" visual variant (muted, with the curved-arrow icon) so the audit is visible at a glance.
+- A toast confirms the reversal: *"Returned to Pre-Assessment"*.
 
-## Technical changes
+## Out of scope
 
-**Database (migration):**
-- Extend the treatment status enum / dictionary to include `checked_in`, `pre_assessment`, `in_progress`, `post_assessment`, `completed`. (Currently only `pending`/`in_progress`/`completed`.)
-- Add columns to `treatments`: `checked_in_by`, `checked_in_at`, `pre_assessment_by`, `pre_assessment_completed_at`, `post_assessment_by`, `post_assessment_completed_at`, `discharged_by`, `discharged_at`, `iv_removed_at`, `fit_for_discharge_data jsonb`.
-- Backfill existing rows: any `in_progress` row gets `checked_in_at = pre_assessment_completed_at = started_at`.
+- Undoing a completed discharge (admin-only, separate task).
+- Editing already-saved vitals/medications from a previous stage (those records remain immutable; a new entry is the correct fix).
+- Free jump-to-any-stage navigation. Only one step back at a time, to keep the audit narrative linear.
 
-**Hooks:**
-- `useTreatments`: add `useAdvanceStage(treatmentId, nextStage)` mutation that writes the right `_by` / `_at` pair and updates status atomically.
+## Technical details
 
-**Components:**
-- `NurseJobCard.tsx`: replace the giant single-screen render with a stage-router that renders only the current stage's panels + a single "Complete & continue" CTA.
-- `JobCardStepper.tsx`: drive off the new richer status; clicking a completed stage scrolls to read-only summary of that stage.
-- `JobCardActions.tsx`: collapse to a single dynamic primary CTA whose label & handler come from the active stage.
-- New small components: `CheckInPanel`, `PreAssessmentPanel`, `PostAssessmentPanel`, `DischargePanel` (extracts existing `NurseDischarge` content).
-- `NurseDischarge.tsx`: keep the route as a redirect to the job card with the discharge stage selected, so old links don't break.
+- **`NurseJobCard.tsx`**: add `handleStepBack(targetStage)` that calls `updateTreatment` with the reverted status (`pre_assessment` → `checked_in`, `in_progress` → `pre_assessment`, `post_assessment` → `in_progress`) plus clearing `ended_at` when leaving Post-Assessment. Compute `previousStage` from `deriveStage` and pass it into `JobCardActions`.
+- **`JobCardActions.tsx`**: accept optional `secondaryLabel` + `onSecondary`. Render as `variant="outline"` button at the left of the bar. Wrap in shadcn `AlertDialog` for confirmation. Hidden when `stage === "discharged"`.
+- **`PostAssessmentPanel.tsx`**: no logic changes needed; the bar handles reversal. The override checkboxes stay, but the more correct path (going back to remove IV and record vitals) is now visibly available.
+- **Audit note**: write a small assessment row `assessment_type: "stage_reverted"` with `{ from, to }` so `StageHistoryStrip` can render it. No DB schema changes required — the existing `treatment_assessments` table already supports arbitrary `assessment_type` strings.
+- **`StageHistoryStrip.tsx`**: read those `stage_reverted` assessments and interleave them chronologically with the existing forward-stage chips.
 
-**Audit:**
-- The existing `log_status_change` trigger automatically logs each new treatment status transition — no extra work needed.
-
-## Out of scope (call out)
-
-- Role-based gating per stage (e.g. only senior nurse can sign off discharge). Today everyone with the `nurse` role can do every stage; we can layer permissions later once you confirm with Gail how she wants it split.
-- Reassigning the "treating nurse" mid-session — for now we just record who completed each stage.
+No migration needed. No new dependencies.
