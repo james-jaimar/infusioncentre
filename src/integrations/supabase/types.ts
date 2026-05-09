@@ -3687,6 +3687,7 @@ export type Database = {
         | "during_treatment"
         | "post_treatment"
         | "ketamine_monitoring"
+        | "stage_reverted"
       billable_item_category:
         | "drug"
         | "consumable"
@@ -3953,6 +3954,7 @@ export const Constants = {
         "during_treatment",
         "post_treatment",
         "ketamine_monitoring",
+        "stage_reverted",
       ],
       billable_item_category: [
         "drug",
