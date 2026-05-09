@@ -3394,12 +3394,20 @@ export type Database = {
       treatments: {
         Row: {
           appointment_id: string
+          checked_in_at: string | null
+          checked_in_by: string | null
           created_at: string
+          discharged_at: string | null
+          discharged_by: string | null
           ended_at: string | null
           id: string
           notes: string | null
           nurse_id: string
           patient_id: string
+          post_assessment_by: string | null
+          post_assessment_completed_at: string | null
+          pre_assessment_by: string | null
+          pre_assessment_completed_at: string | null
           started_at: string | null
           status: Database["public"]["Enums"]["treatment_status"]
           tenant_id: string
@@ -3408,12 +3416,20 @@ export type Database = {
         }
         Insert: {
           appointment_id: string
+          checked_in_at?: string | null
+          checked_in_by?: string | null
           created_at?: string
+          discharged_at?: string | null
+          discharged_by?: string | null
           ended_at?: string | null
           id?: string
           notes?: string | null
           nurse_id: string
           patient_id: string
+          post_assessment_by?: string | null
+          post_assessment_completed_at?: string | null
+          pre_assessment_by?: string | null
+          pre_assessment_completed_at?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["treatment_status"]
           tenant_id?: string
@@ -3422,12 +3438,20 @@ export type Database = {
         }
         Update: {
           appointment_id?: string
+          checked_in_at?: string | null
+          checked_in_by?: string | null
           created_at?: string
+          discharged_at?: string | null
+          discharged_by?: string | null
           ended_at?: string | null
           id?: string
           notes?: string | null
           nurse_id?: string
           patient_id?: string
+          post_assessment_by?: string | null
+          post_assessment_completed_at?: string | null
+          pre_assessment_by?: string | null
+          pre_assessment_completed_at?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["treatment_status"]
           tenant_id?: string
