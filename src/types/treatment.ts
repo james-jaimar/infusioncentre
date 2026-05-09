@@ -1,4 +1,4 @@
-export type TreatmentStatus = 'pending' | 'pre_assessment' | 'in_progress' | 'post_assessment' | 'completed' | 'cancelled';
+export type TreatmentStatus = 'pending' | 'checked_in' | 'pre_assessment' | 'in_progress' | 'post_assessment' | 'completed' | 'cancelled';
 export type TreatmentCourseStatus = 'draft' | 'onboarding' | 'ready' | 'active' | 'paused' | 'completing' | 'completed' | 'cancelled';
 
 export interface TreatmentCourse {
@@ -43,6 +43,14 @@ export interface Treatment {
   ended_at: string | null;
   notes: string | null;
   created_at: string;
+  checked_in_by?: string | null;
+  checked_in_at?: string | null;
+  pre_assessment_by?: string | null;
+  pre_assessment_completed_at?: string | null;
+  post_assessment_by?: string | null;
+  post_assessment_completed_at?: string | null;
+  discharged_by?: string | null;
+  discharged_at?: string | null;
 }
 
 export interface TreatmentWithRelations extends Treatment {
