@@ -1,28 +1,28 @@
 import { CheckCircle, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const STEPS = [
-  { key: "pending", label: "Check-In" },
+export const STAGES = [
+  { key: "check_in", label: "Check-In" },
   { key: "pre_assessment", label: "Pre-Assessment" },
   { key: "in_progress", label: "In Progress" },
   { key: "post_assessment", label: "Post-Assessment" },
-  { key: "completed", label: "Discharged" },
+  { key: "discharged", label: "Discharged" },
 ] as const;
 
+export type StageKey = (typeof STAGES)[number]["key"];
+
 interface JobCardStepperProps {
-  currentStatus: string;
-  onAdvance?: (nextStatus: string) => void;
+  currentStage: StageKey;
 }
 
-export default function JobCardStepper({ currentStatus }: JobCardStepperProps) {
-  const currentIndex = STEPS.findIndex((s) => s.key === currentStatus);
+export default function JobCardStepper({ currentStage }: JobCardStepperProps) {
+  const currentIndex = STAGES.findIndex((s) => s.key === currentStage);
 
   return (
     <div className="flex items-center gap-1 overflow-x-auto py-2">
-      {STEPS.map((step, i) => {
+      {STAGES.map((step, i) => {
         const isDone = i < currentIndex;
         const isCurrent = i === currentIndex;
-
         return (
           <div key={step.key} className="flex items-center">
             <div
@@ -33,14 +33,10 @@ export default function JobCardStepper({ currentStatus }: JobCardStepperProps) {
                 !isDone && !isCurrent && "bg-muted text-muted-foreground"
               )}
             >
-              {isDone ? (
-                <CheckCircle className="h-4 w-4" />
-              ) : (
-                <Circle className="h-4 w-4" />
-              )}
+              {isDone ? <CheckCircle className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
               {step.label}
             </div>
-            {i < STEPS.length - 1 && (
+            {i < STAGES.length - 1 && (
               <div
                 className={cn(
                   "h-0.5 w-4 shrink-0",

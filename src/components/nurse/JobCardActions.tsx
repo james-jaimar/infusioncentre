@@ -1,77 +1,62 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, CheckCircle, Clock } from "lucide-react";
+import { AlertTriangle, ArrowRight } from "lucide-react";
+import type { StageKey } from "./JobCardStepper";
 
 interface JobCardActionsProps {
-  treatmentId: string | null;
-  treatmentStatus: string;
-  appointmentId: string;
-  appointmentStatus: string;
-  onCheckIn: () => void;
-  onStartTreatment: () => void;
-  onEndTreatment: () => void;
-  onRecordVitals: () => void;
-  onAddMedication: () => void;
+  stage: StageKey;
+  primaryLabel?: string;
+  primaryDisabled?: boolean;
+  onPrimary?: () => void;
   isSubmitting?: boolean;
-  checklistComplete?: boolean;
-  hasPreVitals?: boolean;
+  hint?: string;
 }
 
 export default function JobCardActions({
-  treatmentStatus,
-  appointmentStatus,
-  onCheckIn,
-  onStartTreatment,
-  onEndTreatment,
+  stage,
+  primaryLabel,
+  primaryDisabled,
+  onPrimary,
   isSubmitting,
-  checklistComplete,
-  hasPreVitals,
+  hint,
 }: JobCardActionsProps) {
   const navigate = useNavigate();
-
-  const showCheckIn = appointmentStatus === "scheduled" || appointmentStatus === "confirmed";
-  const showStartTreatment = appointmentStatus === "checked_in" && !treatmentStatus;
-  const showEndTreatment = treatmentStatus === "in_progress";
-  const isCompleted = treatmentStatus === "completed" || treatmentStatus === "cancelled";
+  const isDischarged = stage === "discharged";
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 border-t bg-card/95 backdrop-blur-sm supports-[backdrop-filter]:bg-card/85 px-4 py-3 lg:left-64 shadow-clinical-lg">
       <div className="flex items-center gap-3 max-w-7xl mx-auto">
-        {showCheckIn && (
-          <Button onClick={onCheckIn} disabled={isSubmitting} size="lg" className="flex-1 h-14 text-base">
-            <CheckCircle className="mr-2 h-5 w-5" /> Check In Patient
-          </Button>
-        )}
-
-        {showStartTreatment && (
-          <Button
-            onClick={onStartTreatment}
-            disabled={isSubmitting || !checklistComplete || !hasPreVitals}
-            size="lg"
-            className="flex-1 h-14 text-base"
-          >
-            <Clock className="mr-2 h-5 w-5" /> Start Treatment
-          </Button>
-        )}
-
-        {showEndTreatment && (
-          <Button variant="destructive" onClick={onEndTreatment} size="lg" className="flex-1 h-14 text-base">
-            <CheckCircle className="mr-2 h-5 w-5" /> End Treatment & Discharge
-          </Button>
-        )}
-
-        {isCompleted && (
-          <div className="flex-1 text-center text-muted-foreground text-sm font-medium py-4">
-            Treatment completed
+        {!isDischarged && primaryLabel && onPrimary && (
+          <div className="flex-1 flex flex-col gap-1">
+            {hint && (
+              <div className="flex items-center gap-1.5 text-xs text-amber-600">
+                <AlertTriangle className="h-3.5 w-3.5" /> {hint}
+              </div>
+            )}
+            <Button
+              onClick={onPrimary}
+              disabled={primaryDisabled || isSubmitting}
+              size="lg"
+              className="w-full h-14 text-base"
+            >
+              {primaryLabel}
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
           </div>
         )}
 
-        {/* Emergency always visible */}
+        {isDischarged && (
+          <div className="flex-1 text-center text-muted-foreground text-sm font-medium py-4">
+            Treatment completed and discharged
+          </div>
+        )}
+
         <Button
           variant="destructive"
           size="lg"
           className="h-14 min-w-[48px] shrink-0"
           onClick={() => navigate("/nurse/emergency")}
+          title="Emergency"
         >
           <AlertTriangle className="h-5 w-5" />
         </Button>
