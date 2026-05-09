@@ -3779,6 +3779,7 @@ export type Database = {
         | "cancelled"
       treatment_status:
         | "pending"
+        | "checked_in"
         | "pre_assessment"
         | "in_progress"
         | "post_assessment"
@@ -4058,6 +4059,7 @@ export const Constants = {
       ],
       treatment_status: [
         "pending",
+        "checked_in",
         "pre_assessment",
         "in_progress",
         "post_assessment",
