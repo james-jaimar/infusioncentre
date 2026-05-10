@@ -30,6 +30,7 @@ function LiveClock() {
 export default function NurseCommandCentre() {
   const { chairs, unassigned, todaysAppointments, isLoading, assignChair } = useCommandCentre();
   const activeCount = chairs.filter((c) => c.occupant).length;
+  const reservedCount = chairs.filter((c) => !c.occupant && c.reserved).length;
   const totalChairs = chairs.length;
 
   // Candidates a nurse can drop onto a chair: today's appointments that don't yet
@@ -64,6 +65,9 @@ export default function NurseCommandCentre() {
               {activeCount}/{totalChairs}
             </span>
             <span className="text-xs text-muted-foreground">chairs</span>
+            {reservedCount > 0 && (
+              <span className="text-xs text-muted-foreground/80">· +{reservedCount} reserved</span>
+            )}
           </div>
           <div className="flex items-center gap-2 rounded-full bg-clinical-success-soft px-3 py-1.5">
             <span className="relative flex h-2.5 w-2.5">
