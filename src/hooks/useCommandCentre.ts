@@ -19,6 +19,17 @@ export interface ChairData {
   displayOrder: number;
   status: string;
   occupant: ChairOccupant | null;
+  reserved: ChairReservation | null;
+}
+
+export interface ChairReservation {
+  appointmentId: string;
+  patientName: string;
+  treatmentType: string;
+  treatmentTypeColor: string;
+  scheduledStart: string;
+  scheduledEnd: string;
+  status: "checked_in" | "scheduled" | "confirmed";
 }
 
 export interface UnassignedTreatment {

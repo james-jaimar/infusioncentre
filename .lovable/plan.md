@@ -1,54 +1,68 @@
-# Allow nurses to step backward through job-card stages
+# Wire chair assignments into the Command Centre
 
-## Why
+## The problem
 
-Right now the nurse workflow is one-way: Check-In → Pre-Assessment → In Progress → Post-Assessment → Discharged. If a nurse hits "End Treatment" by mistake, they land on Post-Assessment with discharge criteria failing (IV not removed, post-vitals not recorded) and no way to return to the previous stage. The only escape is the override button, which silently fakes compliance — the wrong tool for "I clicked too soon."
+In the appointment edit dialog you can assign a patient to "Chair 1", and that saves to `appointments.chair_id`. But the Command Centre's chair grid only shows a chair as occupied when there is a **`treatments`** row in `pre_assessment`, `in_progress`, or `post_assessment`.
 
-We need a safe, auditable way to reverse a stage transition.
+Result on today's screen: Chair 1 has three appointments (two completed, one scheduled for 17:30 with chair assigned) but the card says "Available" and the header says "0/4 chairs · 0 Active". Nothing tells the nurse that Chair 1 is spoken for at 17:30.
 
-## What we'll build
+## What to fix
 
-A small, consistent **"Back to <previous stage>"** secondary control on every stage where reversing is sensible, plus the underlying state transitions and audit trail.
+Change the chair → appointment matching so a chair card reflects the **most relevant appointment of the day on that chair**, in this priority order:
 
-### 1. Action bar gets a secondary "Step back" button
+```text
+1. Active treatment   (pre_assessment | in_progress | post_assessment)   → existing "Running / Pre / Observing" UI
+2. Checked-in appt    (status = checked_in, no treatment yet)            → new "Checked-in" state
+3. Next upcoming appt (scheduled | confirmed, scheduled_start ≥ now)     → new "Reserved" state with time + countdown
+4. Otherwise                                                             → "Available" (current empty state)
+```
 
-In `JobCardActions` (the fixed bottom bar), alongside the primary CTA, add a left-aligned outline button labelled e.g. "← Back to In Progress". It is shown only when a previous stage exists for the current state.
+Completed/cancelled/no-show appointments are ignored for chair display (but stay on the right-hand "Today's Schedule" panel as they do today).
 
-- Tapping it opens a confirmation dialog: *"Return to <stage>? Any progress on the current stage will remain saved."*
-- On confirm, the treatment status is reverted and the appointment status follows.
+## UI changes
 
-### 2. Allowed reversals
+**ChairPanel.tsx** — add two non-occupant states alongside the existing ones:
 
-| Current stage      | Can step back to | Notes                                                    |
-| ------------------ | ---------------- | -------------------------------------------------------- |
-| Pre-Assessment     | Check-In         | Clears `checked_in_*` only if user wants; default keep   |
-| In Progress        | Pre-Assessment   | Keeps `started_at` for audit; clears `pre_assessment_*` is **not** done — preserved as history |
-| Post-Assessment    | In Progress      | Clears `ended_at` so the timer resumes                   |
-| Discharged         | (no back)        | Locked — needs admin/clinical lead intervention          |
+- **Reserved** — soft indigo tint (the existing `reserved` styling already exists, just needs to render with patient context). Shows: chair name, patient name, treatment type, "Starts 17:30 · in 1h 12m", and an **Open session** button that navigates to the job card.
+- **Checked-in** — soft info/blue tint. Shows patient name, treatment type, "Checked in HH:MM", and **Start pre-assessment** button → job card.
 
-Discharge is final from the nurse UI on purpose. If a nurse needs to undo a discharge, that's a separate admin-only flow and out of scope for this change.
+Both reuse the same card frame/header as the occupied state so the floor stays visually consistent.
 
-### 3. Audit trail
+## Header counters
 
-Every reversal is logged through the existing `audit_log` system (the `log_status_change` trigger already captures status transitions in both directions). We'll additionally record a row in the assessments/notes table tagged `stage_reverted` with the old → new stage and the actor, so the StageHistoryStrip can show a small "↶ Reverted by Sarah · 10:14" chip.
+The pills at the top become more useful:
 
-### 4. UI feedback
+- `0/4 chairs` → keep showing **active infusions / total chairs**, but also show a small subtitle "+1 reserved" when there are scheduled-on-chair appointments later today.
+- `0 Active` pill stays as-is (counts in_progress only).
 
-- `StageHistoryStrip` gets a new "reverted" visual variant (muted, with the curved-arrow icon) so the audit is visible at a glance.
-- A toast confirms the reversal: *"Returned to Pre-Assessment"*.
+## Data layer (`useCommandCentre.ts`)
+
+One change, no new queries — `dayAppointmentsQuery` already returns every appointment with `chair_id`, patient, type, and status.
+
+Replace the current chair mapping:
+
+```text
+chair.occupant = treatment whose appointment.chair_id == chair.id
+```
+
+with a richer per-chair resolver that walks today's appointments for that chair and picks the highest-priority one using the rules above. Expose it as:
+
+```text
+chair.occupant   → only when there's an active treatment (unchanged shape)
+chair.reserved   → { appointmentId, patientName, treatmentType, scheduledStart, status: "checked_in" | "scheduled" | "confirmed" }
+```
+
+`ChairPanel` reads `occupant` first, then falls back to `reserved`, then to plain available.
 
 ## Out of scope
 
-- Undoing a completed discharge (admin-only, separate task).
-- Editing already-saved vitals/medications from a previous stage (those records remain immutable; a new entry is the correct fix).
-- Free jump-to-any-stage navigation. Only one step back at a time, to keep the audit narrative linear.
+- No DB schema changes.
+- No change to how chairs get assigned (the appointment edit dialog already does it correctly).
+- No change to the "Assign patient" popover on empty chairs — it keeps working for chairs with no reservation.
+- No change to discharge / completed handling.
 
-## Technical details
+## Files touched
 
-- **`NurseJobCard.tsx`**: add `handleStepBack(targetStage)` that calls `updateTreatment` with the reverted status (`pre_assessment` → `checked_in`, `in_progress` → `pre_assessment`, `post_assessment` → `in_progress`) plus clearing `ended_at` when leaving Post-Assessment. Compute `previousStage` from `deriveStage` and pass it into `JobCardActions`.
-- **`JobCardActions.tsx`**: accept optional `secondaryLabel` + `onSecondary`. Render as `variant="outline"` button at the left of the bar. Wrap in shadcn `AlertDialog` for confirmation. Hidden when `stage === "discharged"`.
-- **`PostAssessmentPanel.tsx`**: no logic changes needed; the bar handles reversal. The override checkboxes stay, but the more correct path (going back to remove IV and record vitals) is now visibly available.
-- **Audit note**: write a small assessment row `assessment_type: "stage_reverted"` with `{ from, to }` so `StageHistoryStrip` can render it. No DB schema changes required — the existing `treatment_assessments` table already supports arbitrary `assessment_type` strings.
-- **`StageHistoryStrip.tsx`**: read those `stage_reverted` assessments and interleave them chronologically with the existing forward-stage chips.
-
-No migration needed. No new dependencies.
+- `src/hooks/useCommandCentre.ts` — extend `ChairData` with `reserved`, rewrite the per-chair resolver.
+- `src/components/nurse/command-centre/ChairPanel.tsx` — render `reserved` + `checked_in` states.
+- `src/pages/nurse/NurseCommandCentre.tsx` — minor: optional "+N reserved" subtitle on the chairs pill.
