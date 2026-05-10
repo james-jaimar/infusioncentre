@@ -139,26 +139,6 @@ export function useCommandCentre() {
     refetchInterval: 15000,
   });
 
-  // Map chairs to occupants
-  const chairs: ChairData[] = (chairsQuery.data || []).map((chair) => {
-    const treatment = (treatmentsQuery.data || []).find(
-      (t: any) => t.appointment?.chair_id === chair.id
-    );
-    const occupant: ChairOccupant | null = treatment
-      ? {
-          treatmentId: treatment.id,
-          appointmentId: treatment.appointment_id,
-          patientName: `${treatment.patient.first_name} ${treatment.patient.last_name}`,
-          treatmentType: treatment.treatment_type.name,
-          treatmentTypeColor: treatment.treatment_type.color,
-          status: treatment.status,
-          startedAt: treatment.started_at,
-          lastVitalsAt: (vitalsQuery.data || {})[treatment.id] || null,
-        }
-      : null;
-    return { id: chair.id, name: chair.name, displayOrder: chair.display_order, status: chair.status || "available", occupant };
-  });
-
   // Unassigned treatments (no chair_id on appointment)
   const unassigned: UnassignedTreatment[] = (treatmentsQuery.data || [])
     .filter((t: any) => !t.appointment?.chair_id)
@@ -221,6 +201,64 @@ export function useCommandCentre() {
       hasTreatment: treatedApptIds.has(a.id),
     })
   );
+
+  // Map chairs to occupants + reservations.
+  // Priority per chair: active treatment > checked_in appt > next scheduled/confirmed appt.
+  const nowMs = Date.now();
+  const chairs: ChairData[] = (chairsQuery.data || []).map((chair) => {
+    const treatment = (treatmentsQuery.data || []).find(
+      (t: any) => t.appointment?.chair_id === chair.id
+    );
+    const occupant: ChairOccupant | null = treatment
+      ? {
+          treatmentId: treatment.id,
+          appointmentId: treatment.appointment_id,
+          patientName: `${treatment.patient.first_name} ${treatment.patient.last_name}`,
+          treatmentType: treatment.treatment_type.name,
+          treatmentTypeColor: treatment.treatment_type.color,
+          status: treatment.status,
+          startedAt: treatment.started_at,
+          lastVitalsAt: (vitalsQuery.data || {})[treatment.id] || null,
+        }
+      : null;
+
+    let reserved: ChairReservation | null = null;
+    if (!occupant) {
+      const chairAppts = todaysAppointments.filter((a) => a.chairId === chair.id);
+      const checkedIn = chairAppts.find((a) => a.status === "checked_in" && !a.hasTreatment);
+      const nextUpcoming = chairAppts
+        .filter(
+          (a) =>
+            (a.status === "scheduled" || a.status === "confirmed") &&
+            !a.hasTreatment &&
+            new Date(a.scheduledEnd).getTime() >= nowMs
+        )
+        .sort(
+          (a, b) => new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime()
+        )[0];
+      const pick = checkedIn || nextUpcoming;
+      if (pick) {
+        reserved = {
+          appointmentId: pick.appointmentId,
+          patientName: pick.patientName,
+          treatmentType: pick.treatmentType,
+          treatmentTypeColor: pick.treatmentTypeColor,
+          scheduledStart: pick.scheduledStart,
+          scheduledEnd: pick.scheduledEnd,
+          status: pick.status as ChairReservation["status"],
+        };
+      }
+    }
+
+    return {
+      id: chair.id,
+      name: chair.name,
+      displayOrder: chair.display_order,
+      status: chair.status || "available",
+      occupant,
+      reserved,
+    };
+  });
 
   // Legacy "upcoming" list — only future scheduled/confirmed.
   const upcomingSessions: UpcomingSession[] = todaysAppointments
