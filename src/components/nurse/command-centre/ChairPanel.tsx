@@ -2,7 +2,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { ChairData, ScheduledAppointment } from "@/hooks/useCommandCentre";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Armchair, Clock, Activity, ShieldAlert, Wrench, CalendarClock } from "lucide-react";
+import { Armchair, Clock, Activity, ShieldAlert, Wrench, CalendarClock, UserCheck } from "lucide-react";
 import { ElapsedTimer } from "./ElapsedTimer";
 import { VitalsCountdown } from "./VitalsCountdown";
 import { AssignPatientPopover } from "./AssignPatientPopover";
@@ -94,6 +94,7 @@ export function ChairPanel({ chair, assignCandidates = [], onAssignPatient }: Ch
   const location = useLocation();
   const isAdmin = location.pathname.startsWith("/admin");
   const occ = chair.occupant;
+  const reservation = chair.reserved;
 
   // Check chair-level status first (non-available states without occupant)
   const chairStatus = (chair as any).status as string | undefined;
@@ -133,7 +134,7 @@ export function ChairPanel({ chair, assignCandidates = [], onAssignPatient }: Ch
   };
 
   // Available chair
-  if (!occ) {
+  if (!occ && !reservation) {
     return (
       <div className={`relative overflow-hidden rounded-xl border border-border/50 shadow-clinical-sm ${ui.tint} before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:rounded-l-xl ${ui.accent} flex flex-col justify-center items-center p-6`}>
         <Armchair className="h-8 w-8 text-muted-foreground/20 mb-2" />
@@ -145,6 +146,58 @@ export function ChairPanel({ chair, assignCandidates = [], onAssignPatient }: Ch
             onAssign={(appointmentId) => onAssignPatient(appointmentId, chair.id)}
           />
         )}
+      </div>
+    );
+  }
+
+  // Reserved / checked-in chair (no active treatment yet)
+  if (!occ && reservation) {
+    const isCheckedIn = reservation.status === "checked_in";
+    const resUi = isCheckedIn ? stateUI["pre"] : stateUI["reserved"];
+    const startMs = new Date(reservation.scheduledStart).getTime();
+    const diffMs = startMs - Date.now();
+    const absMin = Math.round(Math.abs(diffMs) / 60000);
+    const h = Math.floor(absMin / 60);
+    const m = absMin % 60;
+    const relLabel = diffMs >= 0
+      ? `in ${h > 0 ? `${h}h ` : ""}${m}m`
+      : `${h > 0 ? `${h}h ` : ""}${m}m ago`;
+    const startLabel = new Date(reservation.scheduledStart).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    return (
+      <div className={`relative overflow-hidden rounded-xl border border-border/40 shadow-clinical-md ${resUi.tint} before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:rounded-l-xl ${resUi.accent} flex flex-col`}>
+        <div className="flex items-center justify-between px-4 pt-4 pb-1.5">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Armchair className="h-4 w-4" />
+            <span className="text-sm">{chair.name}</span>
+          </div>
+          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${resUi.badge}`}>
+            {isCheckedIn ? <UserCheck className="h-3 w-3" /> : <CalendarClock className="h-3 w-3" />}
+            {isCheckedIn ? "Checked in" : "Reserved"}
+          </span>
+        </div>
+        <div className="flex-1 px-4 space-y-3">
+          <div>
+            <p className="text-lg font-semibold text-foreground truncate">{reservation.patientName}</p>
+            <p className="text-sm text-muted-foreground mt-0.5">{reservation.treatmentType}</p>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Clock className="h-4 w-4 text-muted-foreground/60" />
+            <span className="font-medium text-foreground">{startLabel}</span>
+            <span>· {relLabel}</span>
+          </div>
+        </div>
+        <div className="px-4 pb-4 pt-3">
+          <Button
+            className="w-full h-14 text-base font-medium"
+            variant={isCheckedIn ? "default" : "outline"}
+            onClick={() => navigate(isAdmin ? `/admin/job-card/${reservation.appointmentId}` : `/nurse/job-card/${reservation.appointmentId}`)}
+          >
+            {isCheckedIn ? "Start pre-assessment" : "Open session"}
+          </Button>
+        </div>
       </div>
     );
   }
