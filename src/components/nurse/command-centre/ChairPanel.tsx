@@ -202,6 +202,7 @@ export function ChairPanel({ chair, assignCandidates = [], onAssignPatient }: Ch
     );
   }
 
+  if (!occ) return null;
   const remainingLabel = getRemainingLabel();
 
   // Occupied chair
