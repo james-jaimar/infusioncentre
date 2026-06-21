@@ -376,3 +376,40 @@ export function useMoveAppointment() {
     },
   });
 }
+
+/**
+ * Mark a patient as physically arrived at the clinic (and optionally re-assign
+ * the chair they're sitting in). Sits between `confirmed` and `checked_in`:
+ * front-desk says "they're here", the nurse later opens the job card to start
+ * the actual check-in form.
+ */
+export function useMarkArrived() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      chairId,
+    }: {
+      id: string;
+      chairId?: string | null;
+    }) => {
+      const updates: Record<string, unknown> = { status: "arrived" };
+      if (chairId !== undefined) updates.chair_id = chairId;
+
+      const { data, error } = await supabase
+        .from("appointments")
+        .update(updates)
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      queryClient.invalidateQueries({ queryKey: ["appointment"] });
+      queryClient.invalidateQueries({ queryKey: ["command-centre"] });
+    },
+  });
+}
