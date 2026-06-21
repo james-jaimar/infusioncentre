@@ -14,9 +14,9 @@ function fillTemplate(
   apt: TomorrowAppointment,
 ): string {
   return tpl
-    .replaceAll("{{first_name}}", apt.patientFirstName)
-    .replaceAll("{{treatment_type}}", apt.treatmentType)
-    .replaceAll("{{time}}", format(parseISO(apt.scheduledStart), "HH:mm"));
+    .split("{{first_name}}").join(apt.patientFirstName)
+    .split("{{treatment_type}}").join(apt.treatmentType)
+    .split("{{time}}").join(format(parseISO(apt.scheduledStart), "HH:mm"));
 }
 
 async function copy(text: string, label = "Copied") {
