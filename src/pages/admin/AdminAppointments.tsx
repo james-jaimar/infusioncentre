@@ -94,6 +94,7 @@ const DENSITY_PX: Record<Density, number> = {
 const STATUS_BG: Record<AppointmentStatus, string> = {
   scheduled: "bg-blue-50 dark:bg-blue-950/40",
   confirmed: "bg-emerald-50 dark:bg-emerald-950/40",
+  arrived: "bg-amber-100 dark:bg-amber-950/50",
   checked_in: "bg-amber-50 dark:bg-amber-950/40",
   in_progress: "bg-violet-50 dark:bg-violet-950/40",
   completed: "bg-muted",

@@ -28,6 +28,7 @@ type SortDir = "asc" | "desc";
 const STATUS_PILL: Record<AppointmentStatus, { label: string; cls: string }> = {
   scheduled: { label: "Scheduled", cls: "bg-muted text-muted-foreground" },
   confirmed: { label: "Confirmed", cls: "bg-clinical-info-soft text-clinical-info" },
+  arrived: { label: "Arrived", cls: "bg-amber-100 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200" },
   checked_in: { label: "Checked in", cls: "bg-clinical-warning-soft text-clinical-warning" },
   in_progress: { label: "In progress", cls: "bg-clinical-success-soft text-clinical-success" },
   completed: { label: "Completed", cls: "bg-primary/10 text-primary" },
