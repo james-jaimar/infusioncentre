@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { ChairPanel } from "@/components/nurse/command-centre/ChairPanel";
 import { MonitoringSidebar } from "@/components/nurse/command-centre/MonitoringSidebar";
 import { TodaysSchedule } from "@/components/nurse/command-centre/TodaysSchedule";
+import { TomorrowsReminderList } from "@/components/nurse/command-centre/TomorrowsReminderList";
 import { format } from "date-fns";
 
 /* ── Live Clock ── */
@@ -28,7 +29,8 @@ function LiveClock() {
 
 /* ── Main Page ── */
 export default function NurseCommandCentre() {
-  const { chairs, unassigned, todaysAppointments, isLoading, assignChair } = useCommandCentre();
+  const { chairs, unassigned, todaysAppointments, tomorrowsAppointments, isLoading, assignChair } =
+    useCommandCentre();
   const activeCount = chairs.filter((c) => c.occupant).length;
   const reservedCount = chairs.filter((c) => !c.occupant && c.reserved).length;
   const totalChairs = chairs.length;
@@ -127,6 +129,7 @@ export default function NurseCommandCentre() {
         {/* Right column: Today's schedule + monitoring */}
         <div className="md:col-span-4 space-y-4">
           <TodaysSchedule appointments={todaysAppointments} />
+          <TomorrowsReminderList appointments={tomorrowsAppointments} />
           <MonitoringSidebar chairs={chairs} />
         </div>
       </div>

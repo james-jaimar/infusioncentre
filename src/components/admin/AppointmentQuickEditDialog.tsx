@@ -35,11 +35,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { CalendarIcon, ExternalLink, Loader2, Trash2, Repeat } from "lucide-react";
+import { CalendarIcon, ExternalLink, Loader2, Trash2, Repeat, UserCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTreatmentChairs } from "@/hooks/useTreatmentChairs";
 import { useNurseStaff } from "@/hooks/useNurseStaff";
-import { useUpdateAppointment, useDeleteAppointment } from "@/hooks/useAppointments";
+import { useUpdateAppointment, useDeleteAppointment, useMarkArrived } from "@/hooks/useAppointments";
 import { AppointmentWithRelations, AppointmentStatus } from "@/types/appointment";
 import { RescheduleDialog } from "./RescheduleDialog";
 
@@ -52,6 +52,7 @@ const TIME_SLOTS = Array.from({ length: 22 }, (_, i) => {
 const STATUS_OPTIONS: { value: AppointmentStatus; label: string }[] = [
   { value: "scheduled", label: "Scheduled" },
   { value: "confirmed", label: "Confirmed" },
+  { value: "arrived", label: "Arrived" },
   { value: "checked_in", label: "Checked in" },
   { value: "in_progress", label: "In progress" },
   { value: "completed", label: "Completed" },
@@ -70,6 +71,7 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment }: 
   const { data: nurses = [] } = useNurseStaff();
   const update = useUpdateAppointment();
   const del = useDeleteAppointment();
+  const markArrived = useMarkArrived();
 
   const [date, setDate] = useState<Date | undefined>();
   const [time, setTime] = useState("09:00");
@@ -148,6 +150,22 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment }: 
   };
 
   const start = parseISO(appointment.scheduled_start);
+  const canMarkArrived =
+    appointment.status === "scheduled" || appointment.status === "confirmed";
+
+  const handleMarkArrived = async () => {
+    try {
+      await markArrived.mutateAsync({
+        id: appointment.id,
+        chairId: chairId === "none" ? null : chairId,
+      });
+      toast.success("Marked as arrived");
+      onOpenChange(false);
+    } catch (e) {
+      toast.error("Failed to mark arrived");
+      console.error(e);
+    }
+  };
 
   return (
     <>
@@ -307,6 +325,17 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment }: 
 
           <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-between">
             <div className="flex gap-2">
+              {canMarkArrived && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleMarkArrived}
+                  disabled={markArrived.isPending}
+                >
+                  <UserCheck className="mr-1 h-3.5 w-3.5" />
+                  Mark arrived
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { startOfDay, endOfDay } from "date-fns";
+import { startOfDay, endOfDay, addDays } from "date-fns";
 
 export interface ChairOccupant {
   treatmentId: string;
@@ -63,6 +63,15 @@ export interface ScheduledAppointment {
   chairName: string | null;
   status: string;
   hasTreatment: boolean;
+}
+
+export interface TomorrowAppointment {
+  appointmentId: string;
+  patientName: string;
+  patientFirstName: string;
+  patientPhone: string | null;
+  treatmentType: string;
+  scheduledStart: string;
 }
 
 export function useCommandCentre() {
@@ -285,7 +294,53 @@ export function useCommandCentre() {
     },
   });
 
+  // Tomorrow's appointments — for the copy-paste reminder strip.
+  const tomorrow = addDays(today, 1);
+  const tomorrowQuery = useQuery({
+    queryKey: ["command-centre", "tomorrow", tomorrow.toDateString()],
+    queryFn: async () => {
+      const dayStart = startOfDay(tomorrow).toISOString();
+      const dayEnd = endOfDay(tomorrow).toISOString();
+
+      const { data, error } = await supabase
+        .from("appointments")
+        .select(`
+          id,
+          scheduled_start,
+          status,
+          patient:patients!inner(first_name, last_name, phone),
+          appointment_type:appointment_types!inner(name)
+        `)
+        .gte("scheduled_start", dayStart)
+        .lte("scheduled_start", dayEnd)
+        .not("status", "in", "(cancelled,no_show,rescheduled)")
+        .order("scheduled_start", { ascending: true });
+
+      if (error) throw error;
+      return data as any[];
+    },
+  });
+
+  const tomorrowsAppointments: TomorrowAppointment[] = (tomorrowQuery.data || []).map(
+    (a: any) => ({
+      appointmentId: a.id,
+      patientName: `${a.patient.first_name} ${a.patient.last_name}`,
+      patientFirstName: a.patient.first_name,
+      patientPhone: a.patient.phone || null,
+      treatmentType: a.appointment_type.name,
+      scheduledStart: a.scheduled_start,
+    })
+  );
+
   const isLoading = chairsQuery.isLoading || treatmentsQuery.isLoading;
 
-  return { chairs, unassigned, upcomingSessions, todaysAppointments, isLoading, assignChair };
+  return {
+    chairs,
+    unassigned,
+    upcomingSessions,
+    todaysAppointments,
+    tomorrowsAppointments,
+    isLoading,
+    assignChair,
+  };
 }

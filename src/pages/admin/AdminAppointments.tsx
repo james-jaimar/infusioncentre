@@ -78,6 +78,7 @@ import { cn } from "@/lib/utils";
 import { AppointmentQuickEditDialog } from "@/components/admin/AppointmentQuickEditDialog";
 import { useNavigate } from "react-router-dom";
 import { AppointmentsListView } from "@/components/admin/appointments/AppointmentsListView";
+import { AppointmentQuickCreateDialog } from "@/components/admin/AppointmentQuickCreateDialog";
 
 const HOURS = Array.from({ length: 12 }, (_, i) => i + 7); // 7am to 6pm
 const SLOT_MINUTES = 30; // drag snap
@@ -94,6 +95,7 @@ const DENSITY_PX: Record<Density, number> = {
 const STATUS_BG: Record<AppointmentStatus, string> = {
   scheduled: "bg-blue-50 dark:bg-blue-950/40",
   confirmed: "bg-emerald-50 dark:bg-emerald-950/40",
+  arrived: "bg-amber-100 dark:bg-amber-950/50",
   checked_in: "bg-amber-50 dark:bg-amber-950/40",
   in_progress: "bg-violet-50 dark:bg-violet-950/40",
   completed: "bg-muted",
@@ -311,6 +313,10 @@ export default function AdminAppointments() {
   // Modal state
   const [editingApt, setEditingApt] = useState<AppointmentWithRelations | null>(null);
   const [activeDragApt, setActiveDragApt] = useState<AppointmentWithRelations | null>(null);
+  const [createSlot, setCreateSlot] = useState<{
+    date: Date;
+    chairId: string | null;
+  } | null>(null);
 
   const pxPerHour = DENSITY_PX[density];
 
@@ -649,6 +655,22 @@ export default function AdminAppointments() {
               nurses={nurses}
               onEdit={(apt) => setEditingApt(apt)}
             />
+          ) : viewMode === "day" ? (
+            <DndContext
+              sensors={sensors}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+              onDragCancel={() => setActiveDragApt(null)}
+            >
+              <DayChairColumnsView
+                day={currentDate}
+                chairs={visibleChairs}
+                appointments={appointments}
+                pxPerHour={pxPerHour}
+                onEditAppointment={(apt) => setEditingApt(apt)}
+                onSlotClick={(date, chairId) => setCreateSlot({ date, chairId })}
+              />
+            </DndContext>
           ) : (
             <DndContext
               sensors={sensors}
@@ -773,6 +795,15 @@ export default function AdminAppointments() {
         onOpenChange={(o) => !o && setEditingApt(null)}
         appointment={editingApt}
       />
+
+      {createSlot && (
+        <AppointmentQuickCreateDialog
+          open={!!createSlot}
+          onOpenChange={(o) => !o && setCreateSlot(null)}
+          defaultDate={createSlot.date}
+          defaultChairId={createSlot.chairId}
+        />
+      )}
     </div>
   );
 }
@@ -817,6 +848,198 @@ function FilterGroup<T extends string>({
           {item.label}
         </Label>
       ))}
+    </div>
+  );
+}
+
+/**
+ * Day view — Google-Calendar-style chairs-as-columns layout.
+ * - Each chair is a vertical column, time runs top-to-bottom.
+ * - Click empty space → opens the quick-create dialog pre-filled with chair + time.
+ * - Drag still works (vertical = retime, horizontal = move chair).
+ * - "Now" line drawn across all columns when viewing today.
+ */
+function DayChairColumnsView({
+  day,
+  chairs,
+  appointments,
+  pxPerHour,
+  onEditAppointment,
+  onSlotClick,
+}: {
+  day: Date;
+  chairs: { id: string; name: string }[];
+  appointments: AppointmentWithRelations[];
+  pxPerHour: number;
+  onEditAppointment: (apt: AppointmentWithRelations) => void;
+  onSlotClick: (date: Date, chairId: string) => void;
+}) {
+  const totalHeight = HOURS.length * pxPerHour;
+  const dayStr = day.toDateString();
+
+  // Live now-line position
+  const [nowTop, setNowTop] = useState<number | null>(null);
+  useEffect(() => {
+    function update() {
+      const now = new Date();
+      if (!isSameDay(now, day)) {
+        setNowTop(null);
+        return;
+      }
+      const min = now.getHours() * 60 + now.getMinutes() - DAY_START_MIN;
+      if (min < 0 || min > HOURS.length * 60) {
+        setNowTop(null);
+        return;
+      }
+      setNowTop((min / 60) * pxPerHour);
+    }
+    update();
+    const id = setInterval(update, 60_000);
+    return () => clearInterval(id);
+  }, [dayStr, pxPerHour]);
+
+  if (chairs.length === 0) {
+    return (
+      <div className="p-8 text-center text-muted-foreground text-sm">
+        No chairs match the current filter.
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <div className="flex min-w-[700px]">
+        {/* Time gutter */}
+        <div className="w-16 shrink-0 bg-muted/30 border-r">
+          <div className="h-12 border-b" />
+          <div className="relative" style={{ height: `${totalHeight}px` }}>
+            {HOURS.map((hour, i) => (
+              <div
+                key={hour}
+                className="absolute right-1 -translate-y-1/2 text-xs text-muted-foreground"
+                style={{ top: `${i * pxPerHour}px` }}
+              >
+                {format(setMinutes(setHours(new Date(), hour), 0), "ha")}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Chair columns */}
+        <div className="flex-1 flex">
+          {chairs.map((chair) => {
+            const chairAppts = appointments.filter(
+              (a) =>
+                a.chair_id === chair.id &&
+                isSameDay(parseISO(a.scheduled_start), day)
+            );
+            return (
+              <div
+                key={chair.id}
+                className="flex-1 min-w-[140px] border-r last:border-r-0"
+              >
+                {/* Chair header */}
+                <div className="h-12 border-b flex items-center justify-center bg-muted/20">
+                  <span className="text-sm font-semibold text-foreground">
+                    {chair.name}
+                  </span>
+                </div>
+
+                {/* Clickable timeline */}
+                <DayChairColumn
+                  day={day}
+                  chairId={chair.id}
+                  pxPerHour={pxPerHour}
+                  nowTop={nowTop}
+                  onSlotClick={onSlotClick}
+                >
+                  {chairAppts.map((apt) => (
+                    <DraggableEvent
+                      key={apt.id}
+                      apt={apt}
+                      pxPerHour={pxPerHour}
+                      onClick={() => onEditAppointment(apt)}
+                    />
+                  ))}
+                </DayChairColumn>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DayChairColumn({
+  day,
+  chairId,
+  pxPerHour,
+  nowTop,
+  onSlotClick,
+  children,
+}: {
+  day: Date;
+  chairId: string;
+  pxPerHour: number;
+  nowTop: number | null;
+  onSlotClick: (date: Date, chairId: string) => void;
+  children: React.ReactNode;
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `${chairId}|${day.toISOString()}`,
+    data: { day, chairId },
+  });
+
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Ignore clicks bubbling up from an appointment card
+    if ((e.target as HTMLElement).closest("[data-appt-card='1']")) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const minutesFromStart = Math.max(
+      0,
+      Math.round((y / pxPerHour) * 60 / SLOT_MINUTES) * SLOT_MINUTES
+    );
+    const totalMin = DAY_START_MIN + minutesFromStart;
+    const clicked = setMinutes(
+      setHours(day, Math.floor(totalMin / 60)),
+      totalMin % 60
+    );
+    onSlotClick(clicked, chairId);
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      onClick={handleClick}
+      className={cn(
+        "relative cursor-pointer transition-colors hover:bg-accent/30",
+        isOver && "bg-primary/10 ring-1 ring-inset ring-primary",
+        isToday(day) && "bg-primary/[0.02]"
+      )}
+      style={{ height: `${HOURS.length * pxPerHour}px` }}
+    >
+      {/* Hour grid lines */}
+      {HOURS.map((hour, i) => (
+        <div
+          key={hour}
+          className="absolute left-0 right-0 border-t border-dashed border-muted/60 pointer-events-none"
+          style={{ top: `${i * pxPerHour}px` }}
+        />
+      ))}
+      {/* Now line */}
+      {nowTop !== null && (
+        <div
+          className="absolute left-0 right-0 h-px bg-red-500 pointer-events-none z-10"
+          style={{ top: `${nowTop}px` }}
+        >
+          <div className="absolute -left-1 -top-1 h-2 w-2 rounded-full bg-red-500" />
+        </div>
+      )}
+      {/* Wrap children so they get a marker for our click-suppress check */}
+      <div data-appt-card="1" className="contents">
+        {children}
+      </div>
     </div>
   );
 }
