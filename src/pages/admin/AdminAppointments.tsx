@@ -61,7 +61,6 @@ import {
   ChevronRight,
   Calendar as CalendarIcon,
   Filter,
-  Layers,
   Stethoscope,
   AlertTriangle,
 } from "lucide-react";
@@ -85,12 +84,7 @@ const SLOT_MINUTES = 30; // drag snap
 const DAY_START_MIN = 7 * 60;
 
 type ViewMode = "day" | "week" | "month" | "list";
-type Density = "compact" | "comfortable";
-
-const DENSITY_PX: Record<Density, number> = {
-  compact: 48,
-  comfortable: 80,
-};
+const PX_PER_HOUR = 80; // comfortable, standardised
 
 const STATUS_BG: Record<AppointmentStatus, string> = {
   scheduled: "bg-blue-50 dark:bg-blue-950/40",
@@ -298,10 +292,7 @@ export default function AdminAppointments() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [viewMode, setViewMode] = useState<ViewMode>(
-    (searchParams.get("view") as ViewMode) || "week"
-  );
-  const [density, setDensity] = useState<Density>(
-    (searchParams.get("density") as Density) || "comfortable"
+    (searchParams.get("view") as ViewMode) || "day"
   );
   const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -318,15 +309,15 @@ export default function AdminAppointments() {
     chairId: string | null;
   } | null>(null);
 
-  const pxPerHour = DENSITY_PX[density];
+  const pxPerHour = PX_PER_HOUR;
 
   useEffect(() => {
     const next = new URLSearchParams(searchParams);
     next.set("view", viewMode);
-    next.set("density", density);
+    next.delete("density");
     setSearchParams(next, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode, density]);
+  }, [viewMode]);
 
   const dateRange = useMemo(() => {
     if (viewMode === "day") {
@@ -608,17 +599,6 @@ export default function AdminAppointments() {
                   </div>
                 </PopoverContent>
               </Popover>
-
-              <Select value={density} onValueChange={(v) => setDensity(v as Density)}>
-                <SelectTrigger className="w-[150px]">
-                  <Layers className="mr-2 h-4 w-4" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="compact">Compact</SelectItem>
-                  <SelectItem value="comfortable">Comfortable</SelectItem>
-                </SelectContent>
-              </Select>
 
               <Select value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
                 <SelectTrigger className="w-28">
