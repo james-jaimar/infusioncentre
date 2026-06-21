@@ -30,7 +30,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { AlertTriangle, Check, ChevronsUpDown, ExternalLink, Loader2, UserPlus } from "lucide-react";
+import { AlertTriangle, Check, ChevronsUpDown, ExternalLink, Loader2, Send, UserPlus, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePatients, useCreatePatientQuick } from "@/hooks/usePatients";
 import { useAppointmentTypes } from "@/hooks/useAppointmentTypes";
@@ -38,6 +38,7 @@ import { useTreatmentChairs } from "@/hooks/useTreatmentChairs";
 import { useNurseStaff } from "@/hooks/useNurseStaff";
 import { useCreateAppointment, useAppointments } from "@/hooks/useAppointments";
 import { startOfDay, endOfDay } from "date-fns";
+import SendInviteDialog from "./SendInviteDialog";
 
 const TIME_SLOTS = Array.from({ length: 22 }, (_, i) => {
   const hour = Math.floor(i / 2) + 7;
@@ -88,6 +89,16 @@ export function AppointmentQuickCreateDialog({
   const [newEmail, setNewEmail] = useState("");
   const [newPhone, setNewPhone] = useState("");
 
+  // Post-booking success state
+  const [booked, setBooked] = useState<null | {
+    patientId: string;
+    patientName: string;
+    patientEmail: string | null;
+    patientPhone: string | null;
+    summary: string;
+  }>(null);
+  const [showInvite, setShowInvite] = useState(false);
+
   useEffect(() => {
     if (!open) return;
     setTime(format(defaultDate, "HH:mm"));
@@ -100,6 +111,8 @@ export function AppointmentQuickCreateDialog({
     setNewEmail("");
     setNewPhone("");
     setPatientSearch("");
+    setBooked(null);
+    setShowInvite(false);
   }, [open, defaultDate, defaultChairId]);
 
   const selectedType = useMemo(
@@ -189,13 +202,99 @@ export function AppointmentQuickCreateDialog({
         duration_minutes: duration,
         notes,
       });
-      toast.success("Appointment created");
-      onOpenChange(false);
+      const chairName =
+        chairId !== "none"
+          ? chairs.find((c) => c.id === chairId)?.name
+          : null;
+      const p = patients.find((pp) => pp.id === patientId);
+      const patientName = p
+        ? `${p.first_name} ${p.last_name}`
+        : "Patient";
+      setBooked({
+        patientId,
+        patientName,
+        patientEmail: (p as any)?.email ?? null,
+        patientPhone: (p as any)?.phone ?? null,
+        summary: `${format(start, "EEE d MMM, h:mm a")}${chairName ? ` · ${chairName}` : ""}`,
+      });
+      toast.success("Appointment booked");
     } catch (e) {
       toast.error("Failed to create");
       console.error(e);
     }
   };
+
+  if (booked) {
+    return (
+      <>
+        <Dialog open={open} onOpenChange={onOpenChange}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                Appointment booked
+              </DialogTitle>
+              <DialogDescription>
+                {booked.patientName} — {booked.summary}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="rounded-md border bg-muted/30 p-3 text-sm">
+              <p className="font-medium">Next step</p>
+              <p className="text-muted-foreground text-xs mt-1">
+                Send {booked.patientName.split(" ")[0]} their portal login so
+                they can complete onboarding forms before arriving.
+              </p>
+            </div>
+
+            <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+              >
+                <a
+                  href={`/admin/patients/${booked.patientId}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <ExternalLink className="mr-1 h-3.5 w-3.5" />
+                  Open patient file
+                </a>
+              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => onOpenChange(false)}>
+                  Done
+                </Button>
+                <Button onClick={() => setShowInvite(true)}>
+                  <Send className="mr-1 h-3.5 w-3.5" />
+                  Send portal login
+                </Button>
+              </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {showInvite && (
+          <SendInviteDialog
+            patientId={booked.patientId}
+            patientEmail={booked.patientEmail}
+            patientPhone={booked.patientPhone}
+            patientName={booked.patientName}
+            open={showInvite}
+            onOpenChange={(o) => {
+              setShowInvite(o);
+            }}
+            hideTrigger
+            onSent={() => {
+              setShowInvite(false);
+              onOpenChange(false);
+            }}
+          />
+        )}
+      </>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
