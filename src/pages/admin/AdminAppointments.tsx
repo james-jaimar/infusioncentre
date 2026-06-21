@@ -852,6 +852,198 @@ function FilterGroup<T extends string>({
   );
 }
 
+/**
+ * Day view — Google-Calendar-style chairs-as-columns layout.
+ * - Each chair is a vertical column, time runs top-to-bottom.
+ * - Click empty space → opens the quick-create dialog pre-filled with chair + time.
+ * - Drag still works (vertical = retime, horizontal = move chair).
+ * - "Now" line drawn across all columns when viewing today.
+ */
+function DayChairColumnsView({
+  day,
+  chairs,
+  appointments,
+  pxPerHour,
+  onEditAppointment,
+  onSlotClick,
+}: {
+  day: Date;
+  chairs: { id: string; name: string }[];
+  appointments: AppointmentWithRelations[];
+  pxPerHour: number;
+  onEditAppointment: (apt: AppointmentWithRelations) => void;
+  onSlotClick: (date: Date, chairId: string) => void;
+}) {
+  const totalHeight = HOURS.length * pxPerHour;
+  const dayStr = day.toDateString();
+
+  // Live now-line position
+  const [nowTop, setNowTop] = useState<number | null>(null);
+  useEffect(() => {
+    function update() {
+      const now = new Date();
+      if (!isSameDay(now, day)) {
+        setNowTop(null);
+        return;
+      }
+      const min = now.getHours() * 60 + now.getMinutes() - DAY_START_MIN;
+      if (min < 0 || min > HOURS.length * 60) {
+        setNowTop(null);
+        return;
+      }
+      setNowTop((min / 60) * pxPerHour);
+    }
+    update();
+    const id = setInterval(update, 60_000);
+    return () => clearInterval(id);
+  }, [dayStr, pxPerHour]);
+
+  if (chairs.length === 0) {
+    return (
+      <div className="p-8 text-center text-muted-foreground text-sm">
+        No chairs match the current filter.
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <div className="flex min-w-[700px]">
+        {/* Time gutter */}
+        <div className="w-16 shrink-0 bg-muted/30 border-r">
+          <div className="h-12 border-b" />
+          <div className="relative" style={{ height: `${totalHeight}px` }}>
+            {HOURS.map((hour, i) => (
+              <div
+                key={hour}
+                className="absolute right-1 -translate-y-1/2 text-xs text-muted-foreground"
+                style={{ top: `${i * pxPerHour}px` }}
+              >
+                {format(setMinutes(setHours(new Date(), hour), 0), "ha")}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Chair columns */}
+        <div className="flex-1 flex">
+          {chairs.map((chair) => {
+            const chairAppts = appointments.filter(
+              (a) =>
+                a.chair_id === chair.id &&
+                isSameDay(parseISO(a.scheduled_start), day)
+            );
+            return (
+              <div
+                key={chair.id}
+                className="flex-1 min-w-[140px] border-r last:border-r-0"
+              >
+                {/* Chair header */}
+                <div className="h-12 border-b flex items-center justify-center bg-muted/20">
+                  <span className="text-sm font-semibold text-foreground">
+                    {chair.name}
+                  </span>
+                </div>
+
+                {/* Clickable timeline */}
+                <DayChairColumn
+                  day={day}
+                  chairId={chair.id}
+                  pxPerHour={pxPerHour}
+                  nowTop={nowTop}
+                  onSlotClick={onSlotClick}
+                >
+                  {chairAppts.map((apt) => (
+                    <DraggableEvent
+                      key={apt.id}
+                      apt={apt}
+                      pxPerHour={pxPerHour}
+                      onClick={() => onEditAppointment(apt)}
+                    />
+                  ))}
+                </DayChairColumn>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DayChairColumn({
+  day,
+  chairId,
+  pxPerHour,
+  nowTop,
+  onSlotClick,
+  children,
+}: {
+  day: Date;
+  chairId: string;
+  pxPerHour: number;
+  nowTop: number | null;
+  onSlotClick: (date: Date, chairId: string) => void;
+  children: React.ReactNode;
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `${chairId}|${day.toISOString()}`,
+    data: { day, chairId },
+  });
+
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Ignore clicks bubbling up from an appointment card
+    if ((e.target as HTMLElement).closest("[data-appt-card='1']")) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const minutesFromStart = Math.max(
+      0,
+      Math.round((y / pxPerHour) * 60 / SLOT_MINUTES) * SLOT_MINUTES
+    );
+    const totalMin = DAY_START_MIN + minutesFromStart;
+    const clicked = setMinutes(
+      setHours(day, Math.floor(totalMin / 60)),
+      totalMin % 60
+    );
+    onSlotClick(clicked, chairId);
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      onClick={handleClick}
+      className={cn(
+        "relative cursor-pointer transition-colors hover:bg-accent/30",
+        isOver && "bg-primary/10 ring-1 ring-inset ring-primary",
+        isToday(day) && "bg-primary/[0.02]"
+      )}
+      style={{ height: `${HOURS.length * pxPerHour}px` }}
+    >
+      {/* Hour grid lines */}
+      {HOURS.map((hour, i) => (
+        <div
+          key={hour}
+          className="absolute left-0 right-0 border-t border-dashed border-muted/60 pointer-events-none"
+          style={{ top: `${i * pxPerHour}px` }}
+        />
+      ))}
+      {/* Now line */}
+      {nowTop !== null && (
+        <div
+          className="absolute left-0 right-0 h-px bg-red-500 pointer-events-none z-10"
+          style={{ top: `${nowTop}px` }}
+        >
+          <div className="absolute -left-1 -top-1 h-2 w-2 rounded-full bg-red-500" />
+        </div>
+      )}
+      {/* Wrap children so they get a marker for our click-suppress check */}
+      <div data-appt-card="1" className="contents">
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function MonthView({
   days,
   currentDate,
