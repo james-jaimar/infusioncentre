@@ -78,6 +78,7 @@ import { cn } from "@/lib/utils";
 import { AppointmentQuickEditDialog } from "@/components/admin/AppointmentQuickEditDialog";
 import { useNavigate } from "react-router-dom";
 import { AppointmentsListView } from "@/components/admin/appointments/AppointmentsListView";
+import { AppointmentQuickCreateDialog } from "@/components/admin/AppointmentQuickCreateDialog";
 
 const HOURS = Array.from({ length: 12 }, (_, i) => i + 7); // 7am to 6pm
 const SLOT_MINUTES = 30; // drag snap
@@ -312,6 +313,10 @@ export default function AdminAppointments() {
   // Modal state
   const [editingApt, setEditingApt] = useState<AppointmentWithRelations | null>(null);
   const [activeDragApt, setActiveDragApt] = useState<AppointmentWithRelations | null>(null);
+  const [createSlot, setCreateSlot] = useState<{
+    date: Date;
+    chairId: string | null;
+  } | null>(null);
 
   const pxPerHour = DENSITY_PX[density];
 
