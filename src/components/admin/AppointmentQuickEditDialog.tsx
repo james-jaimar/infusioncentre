@@ -35,7 +35,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { CalendarIcon, Copy, ExternalLink, Loader2, Phone, Trash2, Repeat, UserCheck, User } from "lucide-react";
+import { CalendarIcon, Copy, ExternalLink, Loader2, Phone, Trash2, Repeat, UserCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTreatmentChairs } from "@/hooks/useTreatmentChairs";
 import { useNurseStaff } from "@/hooks/useNurseStaff";
