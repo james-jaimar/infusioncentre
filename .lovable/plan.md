@@ -1,50 +1,70 @@
-## Goal
+## What's wrong today
 
-Close the loop on Nicole's quick-booking flow so an admin can, without leaving the calendar:
-1. Quick-add a patient (already works)
-2. Book the appointment (already works)
-3. Immediately create + send the patient portal login from the same place
-4. Find the same "Send portal login" action on every existing appointment, in case the invite wasn't sent at booking time
+1. The quick-create dialog books an `appointment` but never creates / attaches a `treatment_course`. So the new patient lands in the system with:
+   - No active course on their file
+   - No onboarding checklist to drive the portal invite
+   - Appointment shows under "Appointments" but the patient page looks empty under Treatment Courses
+2. The dialog itself overflows: `DialogContent` defaults to `max-w-lg` without `max-h` or `overflow-y-auto`, so on shorter viewports (or after the success panel renders) the inner cards spill past the modal edge and a stray scrollbar appears inside the "Next step" box.
 
-The existing pieces are all there — `AppointmentQuickCreateDialog` already supports inline new-patient creation, `AppointmentQuickEditDialog` already has Mark Arrived + chair reassignment, and `SendInviteDialog` already generates and emails the portal invite. They're just not wired together.
+## Plan
 
-## Changes
+### 1. Auto-create a treatment course on quick-book
 
-### 1. Post-create "Send portal login" prompt (quick-create dialog)
+In `AppointmentQuickCreateDialog.tsx`, after `create.mutateAsync` succeeds:
 
-In `src/components/admin/AppointmentQuickCreateDialog.tsx`, after `create.mutateAsync` succeeds:
+- Look up an existing **active** course for this patient + selected appointment type (`useTreatmentCoursesByPatient`).
+- If none exists, call `useCreateTreatmentCourse` with:
+  - `patient_id`
+  - `treatment_type_id` = the appointment type the receptionist picked
+  - `total_sessions_planned: 1` (sensible default — admin can edit later)
+  - `notes: "Auto-created from front-desk booking"`
+  - Status will default to `draft`.
+- Patch the just-created appointment with that `treatment_course_id` so the session shows up under the course.
 
-- Keep a small piece of local state for the freshly-created appointment (patient name, id, email, phone).
-- Instead of immediately closing the dialog, swap the dialog body to a "Booked" success panel:
-  - Confirmation line: "James Hawkins booked for Tue 12 Aug, 10:00 — Chair 2"
-  - Primary button: **Send portal login** → opens `SendInviteDialog` pre-filled with the patient's email/phone.
-  - Secondary buttons: **Open patient file** (new tab), **Done**.
-- If the patient has no email on file (typical for quick-added patients without an address), show an inline email input above the Send button so the admin can type the address Nicole was given over the phone and send straight away.
+This makes the existing "Send portal login" → onboarding flow meaningful because the patient now has a course to generate a checklist against.
 
-### 2. "Send portal login" action on existing appointments (quick-edit dialog)
+Order of operations inside `handleCreate`:
 
-In `src/components/admin/AppointmentQuickEditDialog.tsx`, add a **Send portal login** button to the footer action row (next to Mark arrived / Reschedule). It opens the same `SendInviteDialog` for that appointment's patient. Hide it when the patient already has an accepted invite (we can derive this lightly from `patient_invites` via the existing hook).
+```text
+1. create appointment (as today)
+2. find-or-create draft treatment_course for (patient, type)
+3. update appointment.treatment_course_id
+4. show success panel
+```
 
-### 3. Light reuse refactor of `SendInviteDialog`
+If step 2 or 3 fails, we still keep the appointment (don't roll back) but surface a soft warning toast: "Appointment booked — couldn't link a treatment course, please attach manually."
 
-`SendInviteDialog` currently renders its own trigger button. To use it from inside another dialog, split it so the trigger is optional:
-- Add a `controlled` mode: accept `open` + `onOpenChange` props; when provided, render without the internal `DialogTrigger`.
-- Existing call sites (patient detail page) keep working unchanged.
+### 2. Surface the course on the success panel
 
-### 4. UX polish
+The success panel gets one extra line above the "Next step" card:
 
-- Success toast on booking now reads "Appointment booked — send portal login?" with the inline CTA above, instead of just "Appointment created".
-- After invite send completes, show: "Portal login emailed to {email}. Patient can now complete their forms." and auto-close the quick-create dialog.
+```text
+Linked to: <Treatment type name> course (draft)
+```
 
-## Out of scope
+…with a small "Open course" link (new tab) for power users who want to set the real session count straight away.
 
-- WhatsApp/SMS sending of the invite link (email only for now, matching current `send-patient-invite` edge function).
-- Bulk-sending invites for already-booked patients.
-- Any change to the arrival → chair-assignment flow (already implemented).
-- Any change to forms themselves.
+### 3. Fix the modal overflow
 
-## Build order
+Two small, contained changes — no changes to the shared `dialog.tsx`:
 
-1. Refactor `SendInviteDialog` to support controlled open/close.
-2. Add post-booking success panel + Send portal login flow to `AppointmentQuickCreateDialog`.
-3. Add Send portal login button to `AppointmentQuickEditDialog`.
+- Switch `DialogContent` in this file to `className="max-w-lg max-h-[90vh] overflow-y-auto"` for the create form, and `max-w-md max-h-[90vh] overflow-y-auto` for the success view.
+- Replace the `grid grid-cols-2` block with `grid sm:grid-cols-2` so it stacks below the `sm` breakpoint instead of forcing a 2-col layout that clips on narrow widths.
+- Remove the stray scrollbar from the success "Next step" card by dropping the implicit height — it's caused by the parent `grid gap-4` plus a too-tight `DialogContent`. Once `max-h-[90vh]` is on the content, the inner card sizes naturally.
+
+### 4. Out of scope (call out, don't build)
+
+- Wiring the **course template / session count** picker into the quick-add flow — keep that to the full "New course" page on the patient file.
+- Re-working the portal onboarding wizard itself.
+- Touching the `AppointmentQuickEditDialog` "Send portal login" button (already works once a course exists).
+
+## Files touched
+
+- `src/components/admin/AppointmentQuickCreateDialog.tsx` — course wiring + responsive grid + modal sizing
+- `src/hooks/useAppointments.ts` — small `useUpdateAppointment` patch helper if not already present (likely already there; verify before adding)
+
+## Acceptance checks
+
+- Quick-add a brand-new patient + book → open the patient file → a draft course of the matching type appears under Treatment Courses, with the booked appointment listed under it.
+- Open the booked appointment → it shows the linked course.
+- The create modal no longer clips its inner cards at 1280×720; the success modal has no inner scrollbar.
