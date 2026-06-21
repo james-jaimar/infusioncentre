@@ -36,9 +36,10 @@ import { usePatients, useCreatePatientQuick } from "@/hooks/usePatients";
 import { useAppointmentTypes } from "@/hooks/useAppointmentTypes";
 import { useTreatmentChairs } from "@/hooks/useTreatmentChairs";
 import { useNurseStaff } from "@/hooks/useNurseStaff";
-import { useCreateAppointment, useAppointments } from "@/hooks/useAppointments";
+import { useCreateAppointment, useAppointments, useUpdateAppointment } from "@/hooks/useAppointments";
 import { startOfDay, endOfDay } from "date-fns";
 import SendInviteDialog from "./SendInviteDialog";
+import { supabase } from "@/integrations/supabase/client";
 
 const TIME_SLOTS = Array.from({ length: 22 }, (_, i) => {
   const hour = Math.floor(i / 2) + 7;
@@ -66,6 +67,7 @@ export function AppointmentQuickCreateDialog({
   const { data: nurses = [] } = useNurseStaff();
   const create = useCreateAppointment();
   const createPatient = useCreatePatientQuick();
+  const updateAppointment = useUpdateAppointment();
   // For conflict detection — only fetch the appointments on this day
   const { data: dayAppts = [] } = useAppointments(
     startOfDay(defaultDate),
@@ -96,6 +98,9 @@ export function AppointmentQuickCreateDialog({
     patientEmail: string | null;
     patientPhone: string | null;
     summary: string;
+    courseId: string | null;
+    courseTypeName: string | null;
+    courseWasCreated: boolean;
   }>(null);
   const [showInvite, setShowInvite] = useState(false);
 
@@ -193,7 +198,7 @@ export function AppointmentQuickCreateDialog({
     const start = setMinutes(setHours(defaultDate, h), m);
 
     try {
-      await create.mutateAsync({
+      const appt = await create.mutateAsync({
         patient_id: patientId,
         appointment_type_id: typeId,
         chair_id: chairId === "none" ? null : chairId,
@@ -202,6 +207,54 @@ export function AppointmentQuickCreateDialog({
         duration_minutes: duration,
         notes,
       });
+
+      // Find-or-create a treatment course so the patient file, onboarding
+      // checklist and portal invite all have something to anchor to.
+      let courseId: string | null = null;
+      let courseWasCreated = false;
+      try {
+        const { data: existing } = await supabase
+          .from("treatment_courses" as any)
+          .select("id, status")
+          .eq("patient_id", patientId)
+          .eq("treatment_type_id", typeId)
+          .in("status", ["draft", "onboarding", "ready", "active"])
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (existing?.id) {
+          courseId = existing.id as string;
+        } else {
+          const { data: newCourse, error: courseErr } = await supabase
+            .from("treatment_courses" as any)
+            .insert({
+              patient_id: patientId,
+              treatment_type_id: typeId,
+              total_sessions_planned: 1,
+              notes: "Auto-created from front-desk booking",
+              status: "draft",
+            } as any)
+            .select("id")
+            .single();
+          if (courseErr) throw courseErr;
+          courseId = (newCourse as any).id;
+          courseWasCreated = true;
+        }
+
+        if (courseId && appt?.id) {
+          await updateAppointment.mutateAsync({
+            id: appt.id,
+            data: { treatment_course_id: courseId } as any,
+          });
+        }
+      } catch (linkErr) {
+        console.error("Course link failed", linkErr);
+        toast.warning(
+          "Appointment booked — couldn't link a treatment course, please attach manually."
+        );
+      }
+
       const chairName =
         chairId !== "none"
           ? chairs.find((c) => c.id === chairId)?.name
@@ -210,12 +263,16 @@ export function AppointmentQuickCreateDialog({
       const patientName = p
         ? `${p.first_name} ${p.last_name}`
         : "Patient";
+      const courseTypeName = selectedType?.name ?? null;
       setBooked({
         patientId,
         patientName,
         patientEmail: (p as any)?.email ?? null,
         patientPhone: (p as any)?.phone ?? null,
         summary: `${format(start, "EEE d MMM, h:mm a")}${chairName ? ` · ${chairName}` : ""}`,
+        courseId,
+        courseTypeName,
+        courseWasCreated,
       });
       toast.success("Appointment booked");
     } catch (e) {
@@ -228,7 +285,7 @@ export function AppointmentQuickCreateDialog({
     return (
       <>
         <Dialog open={open} onOpenChange={onOpenChange}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <CheckCircle2 className="h-5 w-5 text-green-600" />
@@ -238,6 +295,27 @@ export function AppointmentQuickCreateDialog({
                 {booked.patientName} — {booked.summary}
               </DialogDescription>
             </DialogHeader>
+
+            {booked.courseId && booked.courseTypeName && (
+              <div className="flex items-center justify-between rounded-md border bg-background px-3 py-2 text-xs">
+                <span className="text-muted-foreground">
+                  Linked to:{" "}
+                  <span className="font-medium text-foreground">
+                    {booked.courseTypeName} course
+                  </span>{" "}
+                  {booked.courseWasCreated ? "(new draft)" : "(existing)"}
+                </span>
+                <a
+                  href={`/admin/treatment-courses/${booked.courseId}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-primary hover:underline inline-flex items-center gap-1"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  Open course
+                </a>
+              </div>
+            )}
 
             <div className="rounded-md border bg-muted/30 p-3 text-sm">
               <p className="font-medium">Next step</p>
@@ -298,7 +376,7 @@ export function AppointmentQuickCreateDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>New appointment</DialogTitle>
           <DialogDescription>
@@ -454,7 +532,7 @@ export function AppointmentQuickCreateDialog({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Treatment type</Label>
               <Select value={typeId} onValueChange={setTypeId}>
@@ -515,7 +593,7 @@ export function AppointmentQuickCreateDialog({
               </Select>
             </div>
 
-            <div className="space-y-2 col-span-2">
+            <div className="space-y-2 sm:col-span-2">
               <Label>Assigned nurse</Label>
               <Select value={nurseId} onValueChange={setNurseId}>
                 <SelectTrigger>
