@@ -20,6 +20,13 @@ interface SendInviteDialogProps {
   patientEmail: string | null;
   patientPhone: string | null;
   patientName: string;
+  /** When provided, dialog becomes controlled and the internal trigger button is hidden. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Hide the default trigger button (use when opening from elsewhere). */
+  hideTrigger?: boolean;
+  /** Called after an invite is successfully sent. */
+  onSent?: () => void;
 }
 
 export default function SendInviteDialog({
@@ -27,8 +34,18 @@ export default function SendInviteDialog({
   patientEmail,
   patientPhone,
   patientName,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+  hideTrigger,
+  onSent,
 }: SendInviteDialogProps) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = (v: boolean) => {
+    if (isControlled) controlledOnOpenChange?.(v);
+    else setInternalOpen(v);
+  };
   const [email, setEmail] = useState(patientEmail || "");
   const [phone, setPhone] = useState(patientPhone || "");
 
@@ -53,6 +70,7 @@ export default function SendInviteDialog({
         toast.success("Invite email sent!", {
           description: `A branded invitation was emailed to ${email}.`,
         });
+        onSent?.();
       } else {
         toast.warning("Invite created but email delivery failed", {
           description: "Please try again or contact the patient directly.",
@@ -90,12 +108,14 @@ export default function SendInviteDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline">
-          <Send className="mr-2 h-4 w-4" />
-          Send Invite
-        </Button>
-      </DialogTrigger>
+      {!hideTrigger && (
+        <DialogTrigger asChild>
+          <Button variant="outline">
+            <Send className="mr-2 h-4 w-4" />
+            Send Invite
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Invite {patientName}</DialogTitle>
