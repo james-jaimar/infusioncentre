@@ -213,7 +213,7 @@ export function AppointmentQuickCreateDialog({
       let courseId: string | null = null;
       let courseWasCreated = false;
       try {
-        const { data: existing } = await supabase
+        const { data: existing } = await (supabase as any)
           .from("treatment_courses" as any)
           .select("id, status")
           .eq("patient_id", patientId)
@@ -226,7 +226,7 @@ export function AppointmentQuickCreateDialog({
         if (existing?.id) {
           courseId = existing.id as string;
         } else {
-          const { data: newCourse, error: courseErr } = await supabase
+          const { data: newCourse, error: courseErr } = await (supabase as any)
             .from("treatment_courses" as any)
             .insert({
               patient_id: patientId,
