@@ -426,6 +426,7 @@ export type Database = {
           key: string
           label: string
           tenant_id: string
+          tomorrow_reminder_template: string | null
           updated_at: string
           updated_by: string | null
           value: Json
@@ -437,6 +438,7 @@ export type Database = {
           key: string
           label: string
           tenant_id?: string
+          tomorrow_reminder_template?: string | null
           updated_at?: string
           updated_by?: string | null
           value?: Json
@@ -448,6 +450,7 @@ export type Database = {
           key?: string
           label?: string
           tenant_id?: string
+          tomorrow_reminder_template?: string | null
           updated_at?: string
           updated_by?: string | null
           value?: Json
@@ -3676,6 +3679,7 @@ export type Database = {
       appointment_status:
         | "scheduled"
         | "confirmed"
+        | "arrived"
         | "checked_in"
         | "in_progress"
         | "completed"
@@ -3942,6 +3946,7 @@ export const Constants = {
       appointment_status: [
         "scheduled",
         "confirmed",
+        "arrived",
         "checked_in",
         "in_progress",
         "completed",
