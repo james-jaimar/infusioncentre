@@ -1,70 +1,36 @@
-## What's wrong today
+## What's happening
 
-1. The quick-create dialog books an `appointment` but never creates / attaches a `treatment_course`. So the new patient lands in the system with:
-   - No active course on their file
-   - No onboarding checklist to drive the portal invite
-   - Appointment shows under "Appointments" but the patient page looks empty under Treatment Courses
-2. The dialog itself overflows: `DialogContent` defaults to `max-w-lg` without `max-h` or `overflow-y-auto`, so on shorter viewports (or after the success panel renders) the inner cards spill past the modal edge and a stray scrollbar appears inside the "Next step" box.
+In the appointment edit modal, the white dialog box (header + close X) is rendering at its usual `max-w-lg` (~512px) width, but the two-column form grid and footer buttons are spilling out to the right onto the dark backdrop. The "Full page" link, "Delete" button, "Close" and "Save changes" buttons all sit outside the white card.
 
-## Plan
+Root cause: `DialogContent` is a CSS `grid` container, and `AppointmentQuickEditDialog` puts a `grid grid-cols-2 gap-4` child inside it. The nested grid's columns default to `minmax(auto, 1fr)`, so wide children (selects with long option text, the date popover trigger, etc.) force the column tracks past the parent's `max-w-lg`, overflowing the white background. Same effect on the footer row.
 
-### 1. Auto-create a treatment course on quick-book
+## Fix
 
-In `AppointmentQuickCreateDialog.tsx`, after `create.mutateAsync` succeeds:
+Single file: `src/components/admin/AppointmentQuickEditDialog.tsx`
 
-- Look up an existing **active** course for this patient + selected appointment type (`useTreatmentCoursesByPatient`).
-- If none exists, call `useCreateTreatmentCourse` with:
-  - `patient_id`
-  - `treatment_type_id` = the appointment type the receptionist picked
-  - `total_sessions_planned: 1` (sensible default — admin can edit later)
-  - `notes: "Auto-created from front-desk booking"`
-  - Status will default to `draft`.
-- Patch the just-created appointment with that `treatment_course_id` so the session shows up under the course.
+1. Widen the dialog and let it scroll on short viewports:
+   - Change `DialogContent` className from `max-w-lg` to `max-w-2xl max-h-[90vh] overflow-y-auto`.
 
-This makes the existing "Send portal login" → onboarding flow meaningful because the patient now has a course to generate a checklist against.
+2. Make the form grid responsive and prevent track overflow:
+   - Change `grid grid-cols-2 gap-4` to `grid grid-cols-1 gap-4 sm:grid-cols-2`.
+   - Wrap each field cell so its select/input cannot push the column wider than the track — apply `min-w-0` on each of the six `space-y-2` field wrappers (Date, Time, Duration, Status, Chair, Assigned nurse).
 
-Order of operations inside `handleCreate`:
+3. Stop the footer from overflowing:
+   - On the `DialogFooter`, keep the existing flex layout but add `flex-wrap` and `gap-2` so action buttons wrap to a second row instead of spilling out.
+   - On the inner left-side action group (Mark arrived / Reschedule / Send portal login / Delete), add `flex-wrap` so those four buttons wrap on narrower widths.
 
-```text
-1. create appointment (as today)
-2. find-or-create draft treatment_course for (patient, type)
-3. update appointment.treatment_course_id
-4. show success panel
-```
+4. Make the header row also wrap safely:
+   - On the header `flex items-start justify-between gap-4` row, add `flex-wrap` so the "Full page" button drops below the title block instead of being pushed off the card on narrow widths.
 
-If step 2 or 3 fails, we still keep the appointment (don't roll back) but surface a soft warning toast: "Appointment booked — couldn't link a treatment course, please attach manually."
+## Out of scope
 
-### 2. Surface the course on the success panel
+- No changes to `dialog.tsx` (the shared primitive stays as-is to avoid affecting other modals).
+- No changes to behavior, data flow, or the Send-portal-login / Reschedule sub-dialogs.
+- No changes to `AppointmentQuickCreateDialog` — its overflow fix already shipped in the previous turn.
 
-The success panel gets one extra line above the "Next step" card:
+## Verification
 
-```text
-Linked to: <Treatment type name> course (draft)
-```
-
-…with a small "Open course" link (new tab) for power users who want to set the real session count straight away.
-
-### 3. Fix the modal overflow
-
-Two small, contained changes — no changes to the shared `dialog.tsx`:
-
-- Switch `DialogContent` in this file to `className="max-w-lg max-h-[90vh] overflow-y-auto"` for the create form, and `max-w-md max-h-[90vh] overflow-y-auto` for the success view.
-- Replace the `grid grid-cols-2` block with `grid sm:grid-cols-2` so it stacks below the `sm` breakpoint instead of forcing a 2-col layout that clips on narrow widths.
-- Remove the stray scrollbar from the success "Next step" card by dropping the implicit height — it's caused by the parent `grid gap-4` plus a too-tight `DialogContent`. Once `max-h-[90vh]` is on the content, the inner card sizes naturally.
-
-### 4. Out of scope (call out, don't build)
-
-- Wiring the **course template / session count** picker into the quick-add flow — keep that to the full "New course" page on the patient file.
-- Re-working the portal onboarding wizard itself.
-- Touching the `AppointmentQuickEditDialog` "Send portal login" button (already works once a course exists).
-
-## Files touched
-
-- `src/components/admin/AppointmentQuickCreateDialog.tsx` — course wiring + responsive grid + modal sizing
-- `src/hooks/useAppointments.ts` — small `useUpdateAppointment` patch helper if not already present (likely already there; verify before adding)
-
-## Acceptance checks
-
-- Quick-add a brand-new patient + book → open the patient file → a draft course of the matching type appears under Treatment Courses, with the booked appointment listed under it.
-- Open the booked appointment → it shows the linked course.
-- The create modal no longer clips its inner cards at 1280×720; the success modal has no inner scrollbar.
+After the edit, open an appointment from `/admin/appointments`, confirm at 1242px viewport that:
+- All form fields sit inside the white dialog card.
+- Footer buttons all fit (or wrap cleanly) inside the card.
+- "Full page" link is inside the header on the right.

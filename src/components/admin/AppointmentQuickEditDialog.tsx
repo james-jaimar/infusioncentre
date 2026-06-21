@@ -175,9 +175,9 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment }: 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <DialogTitle className="flex items-center gap-2">
                   <Link
@@ -237,8 +237,8 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment }: 
             </div>
           </DialogHeader>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-2 min-w-0">
               <Label>Date</Label>
               <Popover>
                 <PopoverTrigger asChild>
@@ -265,7 +265,7 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment }: 
               </Popover>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 min-w-0">
               <Label>Time</Label>
               <Select value={time} onValueChange={setTime}>
                 <SelectTrigger>
@@ -281,7 +281,7 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment }: 
               </Select>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 min-w-0">
               <Label>Duration (mins)</Label>
               <Input
                 type="number"
@@ -292,7 +292,7 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment }: 
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 min-w-0">
               <Label>Status</Label>
               <Select value={status} onValueChange={(v) => setStatus(v as AppointmentStatus)}>
                 <SelectTrigger>
@@ -308,7 +308,7 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment }: 
               </Select>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 min-w-0">
               <Label>Chair</Label>
               <Select value={chairId} onValueChange={setChairId}>
                 <SelectTrigger>
@@ -325,7 +325,7 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment }: 
               </Select>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 min-w-0">
               <Label>Assigned nurse</Label>
               <Select value={nurseId} onValueChange={setNurseId}>
                 <SelectTrigger>
@@ -353,8 +353,8 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment }: 
             />
           </div>
 
-          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-between">
-            <div className="flex gap-2">
+          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:justify-between">
+            <div className="flex flex-wrap gap-2">
               {canMarkArrived && (
                 <Button
                   variant="secondary"
