@@ -1,61 +1,50 @@
 ## Goal
 
-Make the appointment scheduler the daily working calendar for the clinic: one default view, one density, an extra "Treatment Room" column alongside the IV chairs, and a modal-first interaction model so busy nurses never lose their place.
+Close the loop on Nicole's quick-booking flow so an admin can, without leaving the calendar:
+1. Quick-add a patient (already works)
+2. Book the appointment (already works)
+3. Immediately create + send the patient portal login from the same place
+4. Find the same "Send portal login" action on every existing appointment, in case the invite wasn't sent at booking time
+
+The existing pieces are all there — `AppointmentQuickCreateDialog` already supports inline new-patient creation, `AppointmentQuickEditDialog` already has Mark Arrived + chair reassignment, and `SendInviteDialog` already generates and emails the portal invite. They're just not wired together.
 
 ## Changes
 
-### 1. Add "Treatment Room" as a 5th resource column
+### 1. Post-create "Send portal login" prompt (quick-create dialog)
 
-The `treatment_chairs` table is just `{ name, display_order, is_active }` — no chair vs. room type field. The simplest, least invasive move is to add a 5th row called "Treatment Room" with `display_order = 5`. It will appear automatically as the rightmost column in the Day view and as a selectable resource everywhere chairs are already used (quick-create dialog, appointment edit, Command Centre chair panel).
+In `src/components/admin/AppointmentQuickCreateDialog.tsx`, after `create.mutateAsync` succeeds:
 
-If, later, the clinic wants to visually distinguish IV chairs from the room (e.g. a different header color or filter), we can add a `kind` column then — out of scope for now.
+- Keep a small piece of local state for the freshly-created appointment (patient name, id, email, phone).
+- Instead of immediately closing the dialog, swap the dialog body to a "Booked" success panel:
+  - Confirmation line: "James Hawkins booked for Tue 12 Aug, 10:00 — Chair 2"
+  - Primary button: **Send portal login** → opens `SendInviteDialog` pre-filled with the patient's email/phone.
+  - Secondary buttons: **Open patient file** (new tab), **Done**.
+- If the patient has no email on file (typical for quick-added patients without an address), show an inline email input above the Send button so the admin can type the address Nicole was given over the phone and send straight away.
 
-Migration: one `INSERT` into `treatment_chairs`.
+### 2. "Send portal login" action on existing appointments (quick-edit dialog)
 
-### 2. Default to Day view, drop the density toggle
+In `src/components/admin/AppointmentQuickEditDialog.tsx`, add a **Send portal login** button to the footer action row (next to Mark arrived / Reschedule). It opens the same `SendInviteDialog` for that appointment's patient. Hide it when the patient already has an accepted invite (we can derive this lightly from `patient_invites` via the existing hook).
 
-- `AdminAppointments.tsx` currently reads `view` from the URL and falls back to whatever the prior default was. Change the fallback to `day` and update the page so landing on `/admin/appointments` (no query string) lands on Day view.
-- Remove the `density` toggle. Standardize on **comfortable** density — it gives roughly 64 px per 30-min slot, which is enough room for an hour-long appointment to show patient name + treatment type + a small status chip without truncation, and keeps tap targets large enough for tablet use.
-- Verify the Day grid stays readable when the viewport narrows: 5 columns + the time gutter at 1024 px wide leaves ~190 px per column, which is the floor we'll design to. Below that (tablet portrait), horizontally scroll the grid rather than collapsing columns — losing a column would hide bookings.
+### 3. Light reuse refactor of `SendInviteDialog`
 
-### 3. Click an appointment block → details modal
+`SendInviteDialog` currently renders its own trigger button. To use it from inside another dialog, split it so the trigger is optional:
+- Add a `controlled` mode: accept `open` + `onOpenChange` props; when provided, render without the internal `DialogTrigger`.
+- Existing call sites (patient detail page) keep working unchanged.
 
-Today, clicking an appointment in the Day grid opens the `AppointmentQuickEditDialog`. Audit what that dialog shows and bring it up to a proper "appointment details" modal:
+### 4. UX polish
 
-- Header: patient name (link to patient file), treatment type, status pill.
-- Body: scheduled start / end, chair/room, assigned nurse, contact phone (one-tap copy), notes.
-- Actions: Mark Arrived, Reassign chair/room, Reschedule (opens date/time picker inline), Cancel appointment, Open full appointment page (escape hatch).
-- The modal stays on the calendar — closing it returns the nurse to the same Day view scroll position. No sidebar navigation for routine appointment actions.
-
-### 4. Quick-add patient flow polish
-
-The inline "New patient" sub-form in `AppointmentQuickCreateDialog` already captures first name, last name, email, phone. Tighten the UX:
-
-- When the dialog opens from an empty slot click, focus jumps to the patient search field; pressing "+ New patient" reveals the 4-field form with the first-name field auto-focused.
-- After save, the dialog stays open and shows a success toast like "James Hawkins added — appointment booked for Tue 12:00". From there the nurse can click "Open patient file" (opens in a new tab so the calendar stays put) or just close.
-- Phone field uses a phone-style input mask matching the existing patient form.
-
-### 5. Modal-first interaction principle (applied here)
-
-Across the appointments area, every routine action stays in a modal layered over the calendar. The only times we leave the calendar are: (a) opening a patient's full file, (b) opening the multi-step full appointment form for complex bookings (recurring sessions, multi-resource). Both open in a new tab so the calendar context survives.
+- Success toast on booking now reads "Appointment booked — send portal login?" with the inline CTA above, instead of just "Appointment created".
+- After invite send completes, show: "Portal login emailed to {email}. Patient can now complete their forms." and auto-close the quick-create dialog.
 
 ## Out of scope
 
-- Visual distinction between chairs and the treatment room (color band, icon).
-- Tablet-portrait responsive collapse of columns.
-- Recurring appointment UX, automated reminders.
-
-## Technical notes
-
-- Migration: `INSERT INTO public.treatment_chairs (name, display_order) VALUES ('Treatment Room', 5);` — idempotent via `ON CONFLICT DO NOTHING` after adding a unique constraint on `name`, or guarded with a `WHERE NOT EXISTS`.
-- `AdminAppointments.tsx`: change default `view` to `'day'`; delete density state, `densityToggle` UI, and the `density` URL param; hard-code the row height that "comfortable" was using.
-- `DayChairColumnsView` / `DayChairColumn`: no code changes needed — they already render whatever chairs come back from `useTreatmentChairs`.
-- `AppointmentQuickEditDialog`: extend with the details layout above; add "Reschedule" inline date/time picker reusing `react-day-picker` per the project's date-selection convention.
-- `AppointmentQuickCreateDialog`: focus management + post-save toast/CTA; reuse existing patient-create mutation.
+- WhatsApp/SMS sending of the invite link (email only for now, matching current `send-patient-invite` edge function).
+- Bulk-sending invites for already-booked patients.
+- Any change to the arrival → chair-assignment flow (already implemented).
+- Any change to forms themselves.
 
 ## Build order
 
-1. Migration to add Treatment Room.
-2. Default to Day view + remove density toggle.
-3. Click-to-open details modal (extend `AppointmentQuickEditDialog`).
-4. Quick-add patient UX polish.
+1. Refactor `SendInviteDialog` to support controlled open/close.
+2. Add post-booking success panel + Send portal login flow to `AppointmentQuickCreateDialog`.
+3. Add Send portal login button to `AppointmentQuickEditDialog`.

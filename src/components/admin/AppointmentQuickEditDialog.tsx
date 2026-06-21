@@ -35,13 +35,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { CalendarIcon, Copy, ExternalLink, Loader2, Phone, Trash2, Repeat, UserCheck } from "lucide-react";
+import { CalendarIcon, Copy, ExternalLink, Loader2, Phone, Trash2, Repeat, Send, UserCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTreatmentChairs } from "@/hooks/useTreatmentChairs";
 import { useNurseStaff } from "@/hooks/useNurseStaff";
 import { useUpdateAppointment, useDeleteAppointment, useMarkArrived } from "@/hooks/useAppointments";
 import { AppointmentWithRelations, AppointmentStatus } from "@/types/appointment";
 import { RescheduleDialog } from "./RescheduleDialog";
+import SendInviteDialog from "./SendInviteDialog";
+import { usePatientInvites } from "@/hooks/usePatientInvites";
 
 const TIME_SLOTS = Array.from({ length: 22 }, (_, i) => {
   const hour = Math.floor(i / 2) + 7;
@@ -81,6 +83,9 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment }: 
   const [status, setStatus] = useState<AppointmentStatus>("scheduled");
   const [notes, setNotes] = useState("");
   const [showReschedule, setShowReschedule] = useState(false);
+  const [showInvite, setShowInvite] = useState(false);
+  const { data: invites } = usePatientInvites(appointment?.patient_id);
+  const hasAcceptedInvite = !!invites?.some((i) => i.status === "accepted");
 
   useEffect(() => {
     if (!appointment) return;
@@ -369,6 +374,16 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment }: 
                 <Repeat className="mr-1 h-3.5 w-3.5" />
                 Reschedule…
               </Button>
+              {!hasAcceptedInvite && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowInvite(true)}
+                >
+                  <Send className="mr-1 h-3.5 w-3.5" />
+                  Send portal login
+                </Button>
+              )}
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="ghost" size="sm" className="text-destructive">
@@ -414,6 +429,18 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment }: 
           open={showReschedule}
           onOpenChange={setShowReschedule}
           appointment={appointment}
+        />
+      )}
+
+      {showInvite && (
+        <SendInviteDialog
+          patientId={appointment.patient_id}
+          patientEmail={(appointment.patient as any).email ?? null}
+          patientPhone={(appointment.patient as any).phone ?? null}
+          patientName={`${appointment.patient.first_name} ${appointment.patient.last_name}`}
+          open={showInvite}
+          onOpenChange={setShowInvite}
+          hideTrigger
         />
       )}
     </>
