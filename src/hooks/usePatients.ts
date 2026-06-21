@@ -246,6 +246,40 @@ export function useCreatePatient() {
   });
 }
 
+// Minimal "front-desk quick add" — name + contact only, defaults handle the rest.
+// Used by the appointment quick-create dialog so a receptionist can take a phone
+// booking without filling in the full patient file.
+export function useCreatePatientQuick() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: {
+      first_name: string;
+      last_name: string;
+      email?: string | null;
+      phone?: string | null;
+    }) => {
+      const { data, error } = await supabase
+        .from('patients')
+        .insert({
+          first_name: input.first_name.trim(),
+          last_name: input.last_name.trim(),
+          email: input.email?.trim() || null,
+          phone: input.phone?.trim() || null,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as Patient;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['patients'] });
+      queryClient.invalidateQueries({ queryKey: ['patients-all'] });
+    },
+  });
+}
+
 export function useUpdatePatient() {
   const queryClient = useQueryClient();
 
