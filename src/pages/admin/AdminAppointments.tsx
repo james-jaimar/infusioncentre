@@ -655,6 +655,22 @@ export default function AdminAppointments() {
               nurses={nurses}
               onEdit={(apt) => setEditingApt(apt)}
             />
+          ) : viewMode === "day" ? (
+            <DndContext
+              sensors={sensors}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+              onDragCancel={() => setActiveDragApt(null)}
+            >
+              <DayChairColumnsView
+                day={currentDate}
+                chairs={visibleChairs}
+                appointments={appointments}
+                pxPerHour={pxPerHour}
+                onEditAppointment={(apt) => setEditingApt(apt)}
+                onSlotClick={(date, chairId) => setCreateSlot({ date, chairId })}
+              />
+            </DndContext>
           ) : (
             <DndContext
               sensors={sensors}
@@ -779,6 +795,15 @@ export default function AdminAppointments() {
         onOpenChange={(o) => !o && setEditingApt(null)}
         appointment={editingApt}
       />
+
+      {createSlot && (
+        <AppointmentQuickCreateDialog
+          open={!!createSlot}
+          onOpenChange={(o) => !o && setCreateSlot(null)}
+          defaultDate={createSlot.date}
+          defaultChairId={createSlot.chairId}
+        />
+      )}
     </div>
   );
 }
