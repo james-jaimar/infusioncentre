@@ -1,103 +1,61 @@
-## What we're building
+## Goal
 
-Nicole's feedback is all about one thing: **the appointment board has to feel like a real, fast, daily-use schedule** — Google-Calendar-quick to add, glanceable for "what's happening in every chair right now", and forgiving when admin/nurses pass a patient between them. This plan reshapes the Day view, the create flow, the patient model on the front desk, and adds two small but high-leverage touches (arrived status + tomorrow's call-list).
+Make the appointment scheduler the daily working calendar for the clinic: one default view, one density, an extra "Treatment Room" column alongside the IV chairs, and a modal-first interaction model so busy nurses never lose their place.
 
-Nothing changes structurally outside Appointments + Command Centre. Treatment courses, billing, nurse job-card flow are all left alone.
+## Changes
 
----
+### 1. Add "Treatment Room" as a 5th resource column
 
-## 1. New Day view: chairs as columns, time as rows (the mockup)
+The `treatment_chairs` table is just `{ name, display_order, is_active }` — no chair vs. room type field. The simplest, least invasive move is to add a 5th row called "Treatment Room" with `display_order = 5`. It will appear automatically as the rightmost column in the Day view and as a selectable resource everywhere chairs are already used (quick-create dialog, appointment edit, Command Centre chair panel).
 
-Today the Day view shows **chairs as rows** and time runs left-to-right. The mockup flips this: each chair is a vertical column, time flows top-to-bottom from 7am, and every appointment is a block in its chair's column. This is the layout Nicole and Gayle naturally read.
+If, later, the clinic wants to visually distinguish IV chairs from the room (e.g. a different header color or filter), we can add a `kind` column then — out of scope for now.
 
-```text
-        Chair 1     Chair 2     Chair 3     Chair 4     Treatment Room
-7 AM    ┌─────┐
-8 AM    │     │     ┌──────────┐
-9 AM    │ JH  │     │ Ketamine │
-10 AM   │     │     │  10:00–  │
-11 AM   └─────┘     │  14:30   │
-12 PM               └──────────┘
-1 PM                                        ← click empty slot = quick-add
-…
-```
+Migration: one `INSERT` into `treatment_chairs`.
 
-Behaviour:
-- **Click any empty 30-min slot** → opens the quick-create popup pre-filled with that chair + start time (today this only works on appointment cards; empty space is dead).
-- **Drag still works** vertically (move time) and horizontally (move to another chair column).
-- **"Now" line** drawn across all chair columns at the current time when viewing today.
-- The current Day-view rendering (chairs-as-rows) is replaced; Week view keeps its existing layout because spreading 4–5 chairs × 7 days as columns is unreadable.
-- Treatment Room shows alongside chairs (it already exists as a `treatment_chair` row).
+### 2. Default to Day view, drop the density toggle
 
-## 2. Quick-create popup: faster, with inline "quick-add patient"
+- `AdminAppointments.tsx` currently reads `view` from the URL and falls back to whatever the prior default was. Change the fallback to `day` and update the page so landing on `/admin/appointments` (no query string) lands on Day view.
+- Remove the `density` toggle. Standardize on **comfortable** density — it gives roughly 64 px per 30-min slot, which is enough room for an hour-long appointment to show patient name + treatment type + a small status chip without truncation, and keeps tap targets large enough for tablet use.
+- Verify the Day grid stays readable when the viewport narrows: 5 columns + the time gutter at 1024 px wide leaves ~190 px per column, which is the floor we'll design to. Below that (tablet portrait), horizontally scroll the grid rather than collapsing columns — losing a column would hide bookings.
 
-The existing `AppointmentQuickCreateDialog` already covers patient + type + time + chair + nurse + notes. Three changes:
+### 3. Click an appointment block → details modal
 
-1. **"+ New patient" inside the patient search** — when the search returns nothing (or the user clicks an "Add new patient" row at the top of the list), the popover swaps to a 4-field mini-form: **First name, Last name, Email, Mobile**. On save it creates the patient record, returns the id, and the appointment continues with that patient selected. The full patient file is filled in later — exactly Nicole's phone-booking case.
-2. **Pre-fill from the clicked slot** — start time + chair come from the empty cell click; admin just picks patient + treatment type.
-3. **Conflict line** — if the chosen chair/time clashes with another appointment, show inline red text "Chair 2 is busy 10:00–10:30 (James Hawkins)" instead of failing on submit.
+Today, clicking an appointment in the Day grid opens the `AppointmentQuickEditDialog`. Audit what that dialog shows and bring it up to a proper "appointment details" modal:
 
-The "Open full form" escape hatch stays for complex cases (recurring, course-linked).
+- Header: patient name (link to patient file), treatment type, status pill.
+- Body: scheduled start / end, chair/room, assigned nurse, contact phone (one-tap copy), notes.
+- Actions: Mark Arrived, Reassign chair/room, Reschedule (opens date/time picker inline), Cancel appointment, Open full appointment page (escape hatch).
+- The modal stays on the calendar — closing it returns the nurse to the same Day view scroll position. No sidebar navigation for routine appointment actions.
 
-## 3. New "Arrived" status — handoff between front desk and nurse
+### 4. Quick-add patient flow polish
 
-Today the flow is `scheduled → confirmed → checked_in → in_progress`. Nicole wants an explicit **Arrived** step between confirmed and checked_in so the front desk can mark "they're here, sat in Chair 3" without starting the nurse's check-in form.
+The inline "New patient" sub-form in `AppointmentQuickCreateDialog` already captures first name, last name, email, phone. Tighten the UX:
 
-- Add `arrived` to the `appointment_status` enum.
-- Day-view appointment cards get a one-tap **"Mark arrived"** button (and a chair picker, since arrival is also when chairs get juggled — "we moved her to Chair 4 because Chair 2's pump is acting up").
-- The Command Centre chair panel already has a "Checked-in" reservation state from last session — it picks up `arrived` the same way and shows the patient sitting in the chair, with a clear visual difference from "checked in by nurse".
-- The nurse's existing check-in screen continues to advance `arrived → checked_in` when they open the patient's job card.
-- Audit log captures who marked them arrived and when (the existing `log_status_change` trigger handles this automatically).
+- When the dialog opens from an empty slot click, focus jumps to the patient search field; pressing "+ New patient" reveals the 4-field form with the first-name field auto-focused.
+- After save, the dialog stays open and shows a success toast like "James Hawkins added — appointment booked for Tue 12:00". From there the nurse can click "Open patient file" (opens in a new tab so the calendar stays put) or just close.
+- Phone field uses a phone-style input mask matching the existing patient form.
 
-## 4. Command Centre: "Tomorrow's appointments" copy strip
+### 5. Modal-first interaction principle (applied here)
 
-A new panel on the Command Centre listing tomorrow's appointments as plain rows:
+Across the appointments area, every routine action stays in a modal layered over the calendar. The only times we leave the calendar are: (a) opening a patient's full file, (b) opening the multi-step full appointment form for complex bookings (recurring sessions, multi-resource). Both open in a new tab so the calendar context survives.
 
-```text
-Tomorrow — Mon, Jun 22 · 6 appointments
-────────────────────────────────────────────────────────────
-09:00  Jane Smith        082 555 1234   Iron Infusion       [Copy]
-10:30  Pieter van Wyk    071 222 0987   Ketamine Therapy    [Copy]
-…                                                            [Copy all]
-```
+## Out of scope
 
-- **Copy** on a row puts a ready-to-paste WhatsApp reminder on the clipboard ("Hi Jane, reminder of your Iron Infusion appointment tomorrow at 09:00 at The Johannesburg Infusion Centre. Reply to confirm."). Template lives in `clinic_settings` so Gayle can edit it later.
-- **Copy all** copies the whole list as a block.
-- Read-only data already in `appointments` + `patients`; no schema changes for this panel.
-
-This is the "nice-to-have" Nicole flagged, but it's cheap and lands a visible win.
-
----
+- Visual distinction between chairs and the treatment room (color band, icon).
+- Tablet-portrait responsive collapse of columns.
+- Recurring appointment UX, automated reminders.
 
 ## Technical notes
 
-**Schema (one migration):**
-- `ALTER TYPE appointment_status ADD VALUE 'arrived' BEFORE 'checked_in';`
-- Optional reminder template column: `ALTER TABLE clinic_settings ADD COLUMN tomorrow_reminder_template text;` with a sensible default.
+- Migration: `INSERT INTO public.treatment_chairs (name, display_order) VALUES ('Treatment Room', 5);` — idempotent via `ON CONFLICT DO NOTHING` after adding a unique constraint on `name`, or guarded with a `WHERE NOT EXISTS`.
+- `AdminAppointments.tsx`: change default `view` to `'day'`; delete density state, `densityToggle` UI, and the `density` URL param; hard-code the row height that "comfortable" was using.
+- `DayChairColumnsView` / `DayChairColumn`: no code changes needed — they already render whatever chairs come back from `useTreatmentChairs`.
+- `AppointmentQuickEditDialog`: extend with the details layout above; add "Reschedule" inline date/time picker reusing `react-day-picker` per the project's date-selection convention.
+- `AppointmentQuickCreateDialog`: focus management + post-save toast/CTA; reuse existing patient-create mutation.
 
-**Files touched:**
-- `src/pages/admin/AdminAppointments.tsx` — rewrite the Day view branch (week/month/list untouched). Drop chairs-as-rows in favour of chairs-as-columns with an empty-slot click handler.
-- `src/components/admin/AppointmentQuickCreateDialog.tsx` — add inline "new patient" sub-form path; pre-fill from click; inline conflict message.
-- `src/components/admin/AppointmentQuickEditDialog.tsx` — add "Mark arrived" + chair re-assign control.
-- `src/types/appointment.ts` — extend `AppointmentStatus` union with `'arrived'`; STATUS_BG palette gets a new colour.
-- `src/hooks/usePatients.ts` — `useCreatePatientQuick` mutation (4 fields, defaults the rest).
-- `src/hooks/useAppointments.ts` — `useMarkArrived` mutation.
-- `src/hooks/useCommandCentre.ts` + `src/pages/nurse/NurseCommandCentre.tsx` — derive `tomorrowsAppointments`; new `<TomorrowsReminderList />` component under `src/components/nurse/command-centre/`.
-- Status dictionary seed row for `arrived` so it shows up in filters/legends consistently.
+## Build order
 
-**Out of scope (call out, don't build now):**
-- Automated WhatsApp/SMS sending — copy-to-clipboard only for now.
-- Recurring sessions UX — unchanged.
-- Mobile-specific calendar layout — desktop/tablet focus, as today.
-
----
-
-## Suggested build order
-
-1. Migration: `arrived` enum value + reminder template column.
-2. Day view re-layout + empty-slot click → opens existing quick-create popup pre-filled.
-3. Quick-add patient inside the create dialog.
-4. Arrived status: card button, chair re-assign, Command Centre chair panel pickup.
-5. Tomorrow's appointments panel on Command Centre.
-
-Each step is independently shippable, so we can pause and let Gayle/Nicole try it after step 2 if you want feedback before going further.
+1. Migration to add Treatment Room.
+2. Default to Day view + remove density toggle.
+3. Click-to-open details modal (extend `AppointmentQuickEditDialog`).
+4. Quick-add patient UX polish.
