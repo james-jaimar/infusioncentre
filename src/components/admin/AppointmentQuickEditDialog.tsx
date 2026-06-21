@@ -35,7 +35,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { CalendarIcon, ExternalLink, Loader2, Trash2, Repeat, UserCheck } from "lucide-react";
+import { CalendarIcon, Copy, ExternalLink, Loader2, Phone, Trash2, Repeat, UserCheck, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTreatmentChairs } from "@/hooks/useTreatmentChairs";
 import { useNurseStaff } from "@/hooks/useNurseStaff";
@@ -175,7 +175,12 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment }: 
             <div className="flex items-start justify-between gap-4">
               <div>
                 <DialogTitle className="flex items-center gap-2">
-                  {appointment.patient.first_name} {appointment.patient.last_name}
+                  <Link
+                    to={`/admin/patients/${appointment.patient_id}`}
+                    className="hover:underline"
+                  >
+                    {appointment.patient.first_name} {appointment.patient.last_name}
+                  </Link>
                   <Badge
                     variant="outline"
                     style={{
@@ -192,6 +197,26 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment }: 
                     ? ` · Session #${(appointment as any).session_number}`
                     : ""}
                 </DialogDescription>
+                {(appointment.patient as any).phone && (
+                  <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                    <Phone className="h-3 w-3" />
+                    <span>{(appointment.patient as any).phone}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-5 px-1"
+                      onClick={() => {
+                        navigator.clipboard.writeText(
+                          String((appointment.patient as any).phone)
+                        );
+                        toast.success("Phone copied");
+                      }}
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
               </div>
               <Button
                 asChild
@@ -199,7 +224,7 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment }: 
                 size="sm"
                 className="shrink-0"
               >
-                <Link to={`/admin/appointments/${appointment.id}`}>
+                <Link to={`/admin/appointments/${appointment.id}`} target="_blank">
                   <ExternalLink className="mr-1 h-3.5 w-3.5" />
                   Full page
                 </Link>
