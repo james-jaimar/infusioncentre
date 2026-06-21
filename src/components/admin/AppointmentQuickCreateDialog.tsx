@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { format, setHours, setMinutes } from "date-fns";
+import { format, setHours, setMinutes, parseISO } from "date-fns";
 import {
   Dialog,
   DialogContent,
@@ -30,13 +30,14 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Check, ChevronsUpDown, ExternalLink, Loader2 } from "lucide-react";
+import { AlertTriangle, Check, ChevronsUpDown, ExternalLink, Loader2, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { usePatients } from "@/hooks/usePatients";
+import { usePatients, useCreatePatientQuick } from "@/hooks/usePatients";
 import { useAppointmentTypes } from "@/hooks/useAppointmentTypes";
 import { useTreatmentChairs } from "@/hooks/useTreatmentChairs";
 import { useNurseStaff } from "@/hooks/useNurseStaff";
-import { useCreateAppointment } from "@/hooks/useAppointments";
+import { useCreateAppointment, useAppointments } from "@/hooks/useAppointments";
+import { startOfDay, endOfDay } from "date-fns";
 
 const TIME_SLOTS = Array.from({ length: 22 }, (_, i) => {
   const hour = Math.floor(i / 2) + 7;
@@ -63,6 +64,12 @@ export function AppointmentQuickCreateDialog({
   const { data: chairs = [] } = useTreatmentChairs();
   const { data: nurses = [] } = useNurseStaff();
   const create = useCreateAppointment();
+  const createPatient = useCreatePatientQuick();
+  // For conflict detection — only fetch the appointments on this day
+  const { data: dayAppts = [] } = useAppointments(
+    startOfDay(defaultDate),
+    endOfDay(defaultDate)
+  );
 
   const [patientId, setPatientId] = useState("");
   const [patientPickerOpen, setPatientPickerOpen] = useState(false);
@@ -72,6 +79,14 @@ export function AppointmentQuickCreateDialog({
   const [chairId, setChairId] = useState<string>("none");
   const [nurseId, setNurseId] = useState<string>("none");
   const [notes, setNotes] = useState("");
+  const [patientSearch, setPatientSearch] = useState("");
+
+  // Inline "+ new patient" mini-form
+  const [showNewPatient, setShowNewPatient] = useState(false);
+  const [newFirstName, setNewFirstName] = useState("");
+  const [newLastName, setNewLastName] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newPhone, setNewPhone] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -79,6 +94,12 @@ export function AppointmentQuickCreateDialog({
     setChairId(defaultChairId || "none");
     setPatientId("");
     setNotes("");
+    setShowNewPatient(false);
+    setNewFirstName("");
+    setNewLastName("");
+    setNewEmail("");
+    setNewPhone("");
+    setPatientSearch("");
   }, [open, defaultDate, defaultChairId]);
 
   const selectedType = useMemo(
@@ -92,6 +113,56 @@ export function AppointmentQuickCreateDialog({
 
   const selectedPatient = patients.find((p) => p.id === patientId);
 
+  // Live conflict detection for the chosen chair/time/duration
+  const conflict = useMemo(() => {
+    if (chairId === "none") return null;
+    const [h, m] = time.split(":").map(Number);
+    const start = setMinutes(setHours(defaultDate, h), m);
+    const end = new Date(start.getTime() + duration * 60_000);
+    return dayAppts.find(
+      (a) =>
+        a.chair_id === chairId &&
+        a.status !== "cancelled" &&
+        a.status !== "no_show" &&
+        a.status !== "rescheduled" &&
+        parseISO(a.scheduled_start) < end &&
+        parseISO(a.scheduled_end) > start
+    );
+  }, [chairId, time, duration, defaultDate, dayAppts]);
+
+  const filteredPatients = useMemo(() => {
+    const q = patientSearch.trim().toLowerCase();
+    if (!q) return patients.slice(0, 50);
+    return patients
+      .filter((p) =>
+        `${p.first_name} ${p.last_name} ${p.phone ?? ""} ${p.email ?? ""}`
+          .toLowerCase()
+          .includes(q)
+      )
+      .slice(0, 50);
+  }, [patients, patientSearch]);
+
+  const handleCreateQuickPatient = async () => {
+    if (!newFirstName.trim() || !newLastName.trim()) {
+      toast.error("First name and last name are required");
+      return;
+    }
+    try {
+      const p = await createPatient.mutateAsync({
+        first_name: newFirstName,
+        last_name: newLastName,
+        email: newEmail || null,
+        phone: newPhone || null,
+      });
+      setPatientId(p.id);
+      setShowNewPatient(false);
+      toast.success(`Added ${p.first_name} ${p.last_name}`);
+    } catch (e) {
+      toast.error("Couldn't create patient");
+      console.error(e);
+    }
+  };
+
   const handleCreate = async () => {
     if (!patientId) {
       toast.error("Pick a patient");
@@ -99,6 +170,10 @@ export function AppointmentQuickCreateDialog({
     }
     if (!typeId) {
       toast.error("Pick a treatment type");
+      return;
+    }
+    if (conflict) {
+      toast.error("That chair is busy at the selected time");
       return;
     }
     const [h, m] = time.split(":").map(Number);
@@ -138,6 +213,64 @@ export function AppointmentQuickCreateDialog({
         <div className="space-y-4">
           <div className="space-y-2">
             <Label>Patient</Label>
+            {showNewPatient ? (
+              <div className="rounded-md border border-dashed bg-muted/30 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Add new patient
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs"
+                    onClick={() => setShowNewPatient(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    placeholder="First name"
+                    value={newFirstName}
+                    onChange={(e) => setNewFirstName(e.target.value)}
+                  />
+                  <Input
+                    placeholder="Last name"
+                    value={newLastName}
+                    onChange={(e) => setNewLastName(e.target.value)}
+                  />
+                  <Input
+                    placeholder="Mobile"
+                    value={newPhone}
+                    onChange={(e) => setNewPhone(e.target.value)}
+                  />
+                  <Input
+                    placeholder="Email"
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  className="w-full"
+                  onClick={handleCreateQuickPatient}
+                  disabled={createPatient.isPending}
+                >
+                  {createPatient.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <UserPlus className="mr-1 h-3.5 w-3.5" />
+                      Save patient
+                    </>
+                  )}
+                </Button>
+                <p className="text-[10px] text-muted-foreground">
+                  Full patient file can be completed later from the patient page.
+                </p>
+              </div>
+            ) : (
             <Popover open={patientPickerOpen} onOpenChange={setPatientPickerOpen}>
               <PopoverTrigger asChild>
                 <Button
@@ -153,11 +286,45 @@ export function AppointmentQuickCreateDialog({
               </PopoverTrigger>
               <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                 <Command>
-                  <CommandInput placeholder="Search patients…" />
+                  <CommandInput
+                    placeholder="Search patients…"
+                    value={patientSearch}
+                    onValueChange={setPatientSearch}
+                  />
                   <CommandList>
-                    <CommandEmpty>No patient found.</CommandEmpty>
+                    <CommandEmpty>
+                      <button
+                        type="button"
+                        className="flex w-full items-center justify-center gap-1 py-2 text-sm text-primary hover:underline"
+                        onClick={() => {
+                          // Pre-fill name from the search box if it looks like a name
+                          const parts = patientSearch.trim().split(/\s+/);
+                          setNewFirstName(parts[0] || "");
+                          setNewLastName(parts.slice(1).join(" ") || "");
+                          setShowNewPatient(true);
+                          setPatientPickerOpen(false);
+                        }}
+                      >
+                        <UserPlus className="h-3.5 w-3.5" />
+                        Add &ldquo;{patientSearch || "new patient"}&rdquo;
+                      </button>
+                    </CommandEmpty>
                     <CommandGroup>
-                      {patients.map((p) => (
+                      <CommandItem
+                        value="__add_new__"
+                        onSelect={() => {
+                          const parts = patientSearch.trim().split(/\s+/);
+                          setNewFirstName(parts[0] || "");
+                          setNewLastName(parts.slice(1).join(" ") || "");
+                          setShowNewPatient(true);
+                          setPatientPickerOpen(false);
+                        }}
+                        className="text-primary"
+                      >
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Add new patient…
+                      </CommandItem>
+                      {filteredPatients.map((p) => (
                         <CommandItem
                           key={p.id}
                           value={`${p.first_name} ${p.last_name}`}
@@ -173,6 +340,11 @@ export function AppointmentQuickCreateDialog({
                             )}
                           />
                           {p.first_name} {p.last_name}
+                          {p.phone && (
+                            <span className="ml-auto text-xs text-muted-foreground">
+                              {p.phone}
+                            </span>
+                          )}
                         </CommandItem>
                       ))}
                     </CommandGroup>
@@ -180,6 +352,7 @@ export function AppointmentQuickCreateDialog({
                 </Command>
               </PopoverContent>
             </Popover>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -261,6 +434,23 @@ export function AppointmentQuickCreateDialog({
             </div>
           </div>
 
+          {conflict && (
+            <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
+              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+              <div>
+                <div className="font-medium">
+                  {chairs.find((c) => c.id === chairId)?.name ?? "That chair"} is busy
+                </div>
+                <div>
+                  {format(parseISO(conflict.scheduled_start), "h:mm a")}–
+                  {format(parseISO(conflict.scheduled_end), "h:mm a")} ·{" "}
+                  {conflict.patient.first_name} {conflict.patient.last_name} (
+                  {conflict.appointment_type.name})
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label>Notes</Label>
             <Textarea
@@ -288,7 +478,7 @@ export function AppointmentQuickCreateDialog({
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleCreate} disabled={create.isPending}>
+            <Button onClick={handleCreate} disabled={create.isPending || !!conflict}>
               {create.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
