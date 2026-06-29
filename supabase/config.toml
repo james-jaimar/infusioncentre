@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.dispatch-appointment-reminders]
 verify_jwt = false
+
+[functions.confirm-appointment]
+verify_jwt = false
