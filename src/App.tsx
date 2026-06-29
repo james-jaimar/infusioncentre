@@ -94,6 +94,7 @@ import PatientMessages from "./pages/patient/PatientMessages";
 import InviteLanding from "./pages/InviteLanding";
 import PendingApproval from "./pages/PendingApproval";
 import PublicForm from "./pages/PublicForm";
+import AppointmentConfirm from "./pages/AppointmentConfirm";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -126,6 +127,9 @@ const App = () => (
 
             {/* Public forms (no auth required) */}
             <Route path="/forms/:slug" element={<PublicForm />} />
+
+            {/* Public appointment confirmation */}
+            <Route path="/appointment/confirm/:token" element={<AppointmentConfirm />} />
 
             {/* Auth routes */}
             <Route path="/login" element={<Login />} />
