@@ -187,24 +187,27 @@ export default function AdminLayout() {
 
       {/* Main content */}
       <div className="flex flex-1 flex-col min-w-0">
-        {/* Header */}
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-card/95 backdrop-blur px-4 shadow-clinical-sm">
-          <button onClick={() => setSidebarOpen(true)} className="h-10 w-10 flex items-center justify-center lg:hidden">
+        {/* Mobile header */}
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-card/95 backdrop-blur px-4 lg:hidden shadow-clinical-sm">
+          <button onClick={() => setSidebarOpen(true)} className="h-12 w-12 flex items-center justify-center">
             <Menu className="h-6 w-6" />
           </button>
-          <button
-            onClick={() => setDesktopCollapsed((v) => !v)}
-            className="hidden lg:flex h-10 w-10 items-center justify-center rounded-md hover:bg-muted text-foreground/70 hover:text-foreground"
-            title={desktopCollapsed ? "Expand menu" : "Collapse menu"}
-            aria-label={desktopCollapsed ? "Expand menu" : "Collapse menu"}
-          >
-            {desktopCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
-          </button>
-          <span className="font-semibold text-foreground lg:hidden">Administration</span>
+          <span className="font-semibold text-foreground">Administration</span>
         </header>
 
+        {/* Floating desktop sidebar toggle */}
+        <button
+          onClick={() => setDesktopCollapsed((v) => !v)}
+          className="hidden lg:flex fixed top-3 left-3 z-40 h-9 w-9 items-center justify-center rounded-md bg-card/90 backdrop-blur border shadow-clinical-sm text-foreground/70 hover:text-foreground hover:bg-muted"
+          style={!desktopCollapsed ? { left: "calc(16rem + 0.5rem)" } : undefined}
+          title={desktopCollapsed ? "Show menu" : "Hide menu"}
+          aria-label={desktopCollapsed ? "Show menu" : "Hide menu"}
+        >
+          {desktopCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+        </button>
+
         {/* Page content */}
-        <main className="flex-1 p-4 lg:p-8">
+        <main className="flex-1 p-4 lg:p-8 lg:pt-4">
           <Outlet />
         </main>
       </div>
