@@ -35,7 +35,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { CalendarIcon, Copy, ExternalLink, Loader2, MessageSquare, Phone, Trash2, Repeat, Send, UserCheck } from "lucide-react";
+import { CalendarIcon, CheckCircle2, Copy, ExternalLink, Loader2, MessageSquare, Phone, Trash2, Repeat, Send, UserCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTreatmentChairs } from "@/hooks/useTreatmentChairs";
 import { useNurseStaff } from "@/hooks/useNurseStaff";
@@ -218,6 +218,15 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment }: 
                   >
                     {appointment.appointment_type.name}
                   </Badge>
+                  {appointment.patient_confirmed_at && (
+                    <Badge
+                      className="bg-emerald-600 text-white hover:bg-emerald-600 gap-1"
+                      title={`Patient confirmed via SMS link on ${format(parseISO(appointment.patient_confirmed_at), "EEE MMM d 'at' h:mm a")}`}
+                    >
+                      <CheckCircle2 className="h-3 w-3" />
+                      Confirmed by patient
+                    </Badge>
+                  )}
                 </DialogTitle>
                 <DialogDescription>
                   Originally {format(start, "EEE, MMM d 'at' h:mm a")}
@@ -225,6 +234,12 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment }: 
                     ? ` · Session #${(appointment as any).session_number}`
                     : ""}
                 </DialogDescription>
+                {appointment.patient_confirmed_at && (
+                  <div className="mt-1 text-xs text-emerald-700 dark:text-emerald-400">
+                    Patient tapped the SMS confirmation link on{" "}
+                    {format(parseISO(appointment.patient_confirmed_at), "EEE MMM d 'at' h:mm a")}
+                  </div>
+                )}
                 {(appointment.patient as any).phone && (
                   <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
                     <Phone className="h-3 w-3" />
