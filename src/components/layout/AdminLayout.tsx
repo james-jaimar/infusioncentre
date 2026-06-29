@@ -207,7 +207,7 @@ export default function AdminLayout() {
         </button>
 
         {/* Page content */}
-        <main className="flex-1 p-4 lg:p-8 lg:pt-4">
+        <main className={`flex-1 p-4 lg:p-8 lg:pt-4 ${desktopCollapsed ? "lg:pl-16" : ""}`}>
           <Outlet />
         </main>
       </div>
