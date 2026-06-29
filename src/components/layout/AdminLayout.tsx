@@ -92,9 +92,9 @@ export default function AdminLayout() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 bg-primary text-primary-foreground transform transition-all duration-200 ease-in-out lg:translate-x-0 lg:static ${
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-primary text-primary-foreground transform transition-transform duration-200 ease-in-out lg:static ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        } ${desktopCollapsed ? "w-16" : "w-64"}`}
+        } ${desktopCollapsed ? "lg:hidden" : "lg:translate-x-0"}`}
       >
         <div className="flex h-full flex-col">
           {/* Logo */}
