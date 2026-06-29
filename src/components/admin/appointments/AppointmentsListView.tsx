@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { ArrowUpDown, ArrowUp, ArrowDown, Printer, Search, Plus } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, Printer, Search, Plus, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import {
@@ -279,6 +279,14 @@ export function AppointmentsListView({ appointments, nurses, onEdit }: Props) {
                         >
                           {meta.label}
                         </span>
+                        {a.patient_confirmed_at && (
+                          <span
+                            className="ml-1 inline-flex items-center gap-0.5 rounded-full bg-emerald-600 px-1.5 py-0.5 text-[10px] font-semibold text-white"
+                            title={`Patient confirmed via SMS on ${format(parseISO(a.patient_confirmed_at), "MMM d, HH:mm")}`}
+                          >
+                            <CheckCircle2 className="h-2.5 w-2.5" /> Confirmed
+                          </span>
+                        )}
                       </TableCell>
                     </TableRow>
                   );
