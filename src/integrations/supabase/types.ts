@@ -124,10 +124,12 @@ export type Database = {
           assigned_nurse_id: string | null
           cancellation_reason: string | null
           chair_id: string | null
+          confirmation_token: string | null
           created_at: string
           created_by: string | null
           id: string
           notes: string | null
+          patient_confirmed_at: string | null
           patient_id: string
           reschedule_reason: string | null
           rescheduled_from_id: string | null
@@ -144,10 +146,12 @@ export type Database = {
           assigned_nurse_id?: string | null
           cancellation_reason?: string | null
           chair_id?: string | null
+          confirmation_token?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
           notes?: string | null
+          patient_confirmed_at?: string | null
           patient_id: string
           reschedule_reason?: string | null
           rescheduled_from_id?: string | null
@@ -164,10 +168,12 @@ export type Database = {
           assigned_nurse_id?: string | null
           cancellation_reason?: string | null
           chair_id?: string | null
+          confirmation_token?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
           notes?: string | null
+          patient_confirmed_at?: string | null
           patient_id?: string
           reschedule_reason?: string | null
           rescheduled_from_id?: string | null
