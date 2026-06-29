@@ -12,12 +12,14 @@ import {
   useUpdateClinicSetting,
 } from "@/hooks/useClinicSettings";
 import { useSendTestSms, useRunReminderDispatchNow } from "@/hooks/useSendSms";
+import SmsLogPanel from "./SmsLogPanel";
 
 const SMS_KEYS = [
   "sms_enabled",
   "sms_sender_id",
   "sms_reminder_send_hour",
   "sms_reminder_template",
+  "sms_confirm_base_url",
 ] as const;
 
 type SmsKey = typeof SMS_KEYS[number];
@@ -64,12 +66,14 @@ export default function SmsSettingsTab() {
   const handleTest = async () => {
     if (!testPhone) { toast.error("Enter a phone number"); return; }
     const tpl = (vals.sms_reminder_template as string) || "Test message from clinic SMS.";
+    const base = ((vals.sms_confirm_base_url as string) || "https://infusioncentre.jaimar.dev").replace(/\/$/, "");
     const preview = tpl
       .replace(/\{\{first_name\}\}/g, "Test")
       .replace(/\{\{time\}\}/g, "10:00")
       .replace(/\{\{date\}\}/g, "today")
       .replace(/\{\{treatment_type\}\}/g, "Iron Infusion")
-      .replace(/\{\{clinic_name\}\}/g, "The Johannesburg Infusion Centre");
+      .replace(/\{\{clinic_name\}\}/g, "The Johannesburg Infusion Centre")
+      .replace(/\{\{confirm_link\}\}/g, `${base}/appointment/confirm/test-token`);
     try {
       await sendTest.mutateAsync({
         to: testPhone,
@@ -177,11 +181,31 @@ export default function SmsSettingsTab() {
               <code className="text-[10px]">{`{{time}}`}</code>,{" "}
               <code className="text-[10px]">{`{{date}}`}</code>,{" "}
               <code className="text-[10px]">{`{{treatment_type}}`}</code>,{" "}
-              <code className="text-[10px]">{`{{clinic_name}}`}</code>.
+              <code className="text-[10px]">{`{{clinic_name}}`}</code>,{" "}
+              <code className="text-[10px]">{`{{confirm_link}}`}</code>.
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              Include <code className="text-[10px]">{`{{confirm_link}}`}</code> to let the patient
+              tap a personal link and confirm they'll attend. Their confirmation is recorded
+              against the appointment.
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs">Confirmation link base URL</Label>
+            <Input
+              value={(vals.sms_confirm_base_url as string) ?? ""}
+              onChange={(e) => setVal("sms_confirm_base_url", e.target.value)}
+              placeholder="https://infusioncentre.jaimar.dev"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              The {`{{confirm_link}}`} tag becomes <code className="text-[10px]">{`<base>/appointment/confirm/<token>`}</code>.
             </p>
           </div>
         </CardContent>
       </Card>
+
+      <SmsLogPanel />
 
       <Card>
         <CardHeader className="pb-3">
