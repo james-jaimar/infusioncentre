@@ -73,6 +73,8 @@ Deno.serve(async (req) => {
     const senderId = (settings.sms_sender_id as string) || "InfusionCtr";
     const template = (settings.sms_reminder_template as string) ||
       "Hi {{first_name}}, reminder of your {{treatment_type}} appointment tomorrow at {{time}}.";
+    const confirmBase = ((settings.sms_confirm_base_url as string) ||
+      "https://infusioncentre.jaimar.dev").replace(/\/$/, "");
 
     if (!enabled) {
       return new Response(JSON.stringify({ skipped: true, reason: "sms disabled" }), {
@@ -107,7 +109,7 @@ Deno.serve(async (req) => {
     const { data: appts, error: apptErr } = await admin
       .from("appointments")
       .select(
-        "id, scheduled_start, patient_id, patients(id, first_name, phone), appointment_types(name), status",
+        "id, scheduled_start, patient_id, confirmation_token, patients(id, first_name, phone), appointment_types(name), status",
       )
       .gte("scheduled_start", startUTC)
       .lte("scheduled_start", endUTC)
@@ -141,6 +143,9 @@ Deno.serve(async (req) => {
         date: formatDate(a.scheduled_start as string),
         treatment_type: treatment ?? "treatment",
         clinic_name: clinic,
+        confirm_link: (a as any).confirmation_token
+          ? `${confirmBase}/appointment/confirm/${(a as any).confirmation_token}`
+          : "",
       });
 
       const res = await fetch(`${supabaseUrl}/functions/v1/send-sms`, {
