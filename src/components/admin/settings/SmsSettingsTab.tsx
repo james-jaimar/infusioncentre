@@ -175,6 +175,37 @@ export default function SmsSettingsTab() {
               value={(vals.sms_reminder_template as string) ?? ""}
               onChange={(e) => setVal("sms_reminder_template", e.target.value)}
             />
+            {(() => {
+              const tpl = (vals.sms_reminder_template as string) ?? "";
+              const base = ((vals.sms_confirm_base_url as string) || "https://infusioncentre.jaimar.dev").replace(/\/$/, "");
+              const preview = tpl
+                .replace(/\{\{first_name\}\}/g, "Jonathan")
+                .replace(/\{\{time\}\}/g, "10:00")
+                .replace(/\{\{date\}\}/g, "Mon 30 Jun")
+                .replace(/\{\{treatment_type\}\}/g, "Iron Infusion")
+                .replace(/\{\{clinic_name\}\}/g, "The Johannesburg Infusion Centre")
+                .replace(/\{\{confirm_link\}\}/g, `${base}/appointment/confirm/00000000-0000-0000-0000-000000000000`);
+              const len = preview.length;
+              const isGsm = /^[\x00-\x7F\n\r]*$/.test(preview);
+              const singleLimit = isGsm ? 160 : 70;
+              const multiLimit = isGsm ? 153 : 67;
+              const segments = len === 0 ? 0 : len <= singleLimit ? 1 : Math.ceil(len / multiLimit);
+              const nextBoundary = segments <= 1 ? singleLimit : segments * multiLimit;
+              const remaining = nextBoundary - len;
+              const overOne = segments > 1;
+              return (
+                <div className={`text-[11px] flex items-center justify-between ${overOne ? "text-destructive" : "text-muted-foreground"}`}>
+                  <span>
+                    Preview length: <strong>{len}</strong> chars · {segments} SMS segment{segments === 1 ? "" : "s"} ({isGsm ? "GSM-7" : "Unicode"})
+                  </span>
+                  <span>
+                    {overOne
+                      ? `Over single-SMS limit by ${len - singleLimit} char${len - singleLimit === 1 ? "" : "s"}`
+                      : `${remaining} char${remaining === 1 ? "" : "s"} left in 1 SMS`}
+                  </span>
+                </div>
+              );
+            })()}
             <p className="text-[11px] text-muted-foreground">
               Merge tags:{" "}
               <code className="text-[10px]">{`{{first_name}}`}</code>,{" "}
