@@ -35,11 +35,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { CalendarIcon, Copy, ExternalLink, Loader2, Phone, Trash2, Repeat, Send, UserCheck } from "lucide-react";
+import { CalendarIcon, Copy, ExternalLink, Loader2, MessageSquare, Phone, Trash2, Repeat, Send, UserCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTreatmentChairs } from "@/hooks/useTreatmentChairs";
 import { useNurseStaff } from "@/hooks/useNurseStaff";
 import { useUpdateAppointment, useDeleteAppointment, useMarkArrived } from "@/hooks/useAppointments";
+import { useSendAppointmentConfirmationSms } from "@/hooks/useSendSms";
 import { AppointmentWithRelations, AppointmentStatus } from "@/types/appointment";
 import { RescheduleDialog } from "./RescheduleDialog";
 import SendInviteDialog from "./SendInviteDialog";
@@ -74,6 +75,7 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment }: 
   const update = useUpdateAppointment();
   const del = useDeleteAppointment();
   const markArrived = useMarkArrived();
+  const sendSms = useSendAppointmentConfirmationSms();
 
   const [date, setDate] = useState<Date | undefined>();
   const [time, setTime] = useState("09:00");
@@ -169,6 +171,27 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment }: 
     } catch (e) {
       toast.error("Failed to mark arrived");
       console.error(e);
+    }
+  };
+
+  const patientPhone = (appointment.patient as any).phone as string | null;
+  const handleSendSms = async () => {
+    if (!patientPhone) {
+      toast.error("Patient has no phone number on file");
+      return;
+    }
+    try {
+      await sendSms.mutateAsync({
+        appointmentId: appointment.id,
+        phone: patientPhone,
+        firstName: appointment.patient.first_name,
+        scheduledStart: appointment.scheduled_start,
+        treatmentType: appointment.appointment_type.name,
+        confirmationToken: (appointment as any).confirmation_token ?? null,
+      });
+      toast.success("SMS confirmation sent");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to send SMS");
     }
   };
 
@@ -366,6 +389,20 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment }: 
                   Mark arrived
                 </Button>
               )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSendSms}
+                disabled={sendSms.isPending || !patientPhone}
+                title={!patientPhone ? "No phone number on file" : "Send confirmation SMS now"}
+              >
+                {sendSms.isPending ? (
+                  <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <MessageSquare className="mr-1 h-3.5 w-3.5" />
+                )}
+                Send SMS confirmation
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
