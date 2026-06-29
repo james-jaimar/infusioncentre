@@ -152,11 +152,21 @@ function CalendarEventCard({
         <div className="font-medium truncate text-foreground">
           {apt.patient.first_name} {apt.patient.last_name}
         </div>
-        {sessionNo ? (
-          <Badge variant="outline" className="h-4 px-1 text-[9px] shrink-0">
-            #{sessionNo}
-          </Badge>
-        ) : null}
+        <div className="flex items-center gap-1 shrink-0">
+          {apt.patient_confirmed_at ? (
+            <Badge
+              className="h-4 px-1 text-[9px] bg-emerald-600 text-white hover:bg-emerald-600"
+              title={`Patient confirmed via SMS link on ${format(parseISO(apt.patient_confirmed_at), "MMM d, h:mm a")}`}
+            >
+              ✓ Confirmed
+            </Badge>
+          ) : null}
+          {sessionNo ? (
+            <Badge variant="outline" className="h-4 px-1 text-[9px]">
+              #{sessionNo}
+            </Badge>
+          ) : null}
+        </div>
       </div>
       {!compact && height > 36 && (
         <>
