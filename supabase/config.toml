@@ -35,3 +35,9 @@ verify_jwt = false
 
 [functions.delete-staff]
 verify_jwt = false
+
+[functions.send-sms]
+verify_jwt = false
+
+[functions.dispatch-appointment-reminders]
+verify_jwt = false
