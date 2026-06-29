@@ -17,9 +17,9 @@ export default function AppointmentConfirm() {
 
   useEffect(() => {
     (async () => {
-      const { data, error } = await supabase.functions.invoke(
-        `confirm-appointment?token=${encodeURIComponent(token ?? "")}`,
-      );
+      const { data, error } = await supabase.functions.invoke("confirm-appointment", {
+        body: { token: token ?? "" },
+      });
       if (error || data?.error) {
         setInfo({ error: data?.error ?? error?.message ?? "Could not confirm" });
         setState("err");
