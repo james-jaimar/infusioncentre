@@ -8,6 +8,7 @@ import FormPackConfigTab from "@/components/admin/settings/FormPackConfigTab";
 import FeatureFlagsTab from "@/components/admin/settings/FeatureFlagsTab";
 import EmailNotificationsTab from "@/components/admin/settings/EmailNotificationsTab";
 import ClinicSettingsTab from "@/components/admin/settings/ClinicSettingsTab";
+import SmsSettingsTab from "@/components/admin/settings/SmsSettingsTab";
 
 export default function AdminSettings() {
   return (
@@ -27,6 +28,7 @@ export default function AdminSettings() {
             <TabsTrigger value="forms">Form Packs</TabsTrigger>
             <TabsTrigger value="statuses">Statuses</TabsTrigger>
             <TabsTrigger value="notifications">Email Notifications</TabsTrigger>
+            <TabsTrigger value="sms">SMS</TabsTrigger>
             <TabsTrigger value="features">Feature Flags</TabsTrigger>
           </TabsList>
           <ScrollBar orientation="horizontal" />
@@ -39,6 +41,7 @@ export default function AdminSettings() {
         <TabsContent value="forms"><FormPackConfigTab /></TabsContent>
         <TabsContent value="statuses"><StatusDictionaryTab /></TabsContent>
         <TabsContent value="notifications"><EmailNotificationsTab /></TabsContent>
+        <TabsContent value="sms"><SmsSettingsTab /></TabsContent>
         <TabsContent value="features"><FeatureFlagsTab /></TabsContent>
       </Tabs>
     </div>
