@@ -195,19 +195,20 @@ export default function AdminLayout() {
           <span className="font-semibold text-foreground">Administration</span>
         </header>
 
-        {/* Floating desktop sidebar toggle */}
-        <button
-          onClick={() => setDesktopCollapsed((v) => !v)}
-          className="hidden lg:flex fixed top-3 left-3 z-40 h-9 w-9 items-center justify-center rounded-md bg-card/90 backdrop-blur border shadow-clinical-sm text-foreground/70 hover:text-foreground hover:bg-muted"
-          style={!desktopCollapsed ? { left: "calc(16rem + 0.5rem)" } : undefined}
-          title={desktopCollapsed ? "Show menu" : "Hide menu"}
-          aria-label={desktopCollapsed ? "Show menu" : "Hide menu"}
-        >
-          {desktopCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
-        </button>
+        {/* Floating "show menu" button — only when sidebar is hidden. When open, the toggle lives inside the sidebar header. */}
+        {desktopCollapsed && (
+          <button
+            onClick={() => setDesktopCollapsed(false)}
+            className="hidden lg:flex fixed bottom-4 left-4 z-40 h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-clinical-md hover:bg-primary/90"
+            title="Show menu"
+            aria-label="Show menu"
+          >
+            <PanelLeftOpen className="h-5 w-5" />
+          </button>
+        )}
 
         {/* Page content */}
-        <main className={`flex-1 p-4 lg:p-8 lg:pt-4 ${desktopCollapsed ? "lg:pl-16" : ""}`}>
+        <main className="flex-1 p-4 lg:p-8">
           <Outlet />
         </main>
       </div>
