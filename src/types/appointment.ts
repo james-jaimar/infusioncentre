@@ -44,6 +44,8 @@ export interface Appointment {
   cancellation_reason: string | null;
   notes: string | null;
   created_by: string | null;
+  patient_confirmed_at?: string | null;
+  confirmation_token?: string | null;
   created_at: string;
   updated_at: string;
 }
