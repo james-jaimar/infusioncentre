@@ -517,7 +517,17 @@ export default function AdminAppointments() {
   const activeFilterCount =
     chairFilter.size + typeFilter.size + statusFilter.size;
 
+  const nurseLookup = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const n of nurses) {
+      const name = `${(n as any).first_name ?? ""} ${(n as any).last_name ?? ""}`.trim();
+      if ((n as any).user_id) m.set((n as any).user_id, name || "Nurse");
+    }
+    return m;
+  }, [nurses]);
+
   return (
+    <NurseLookupContext.Provider value={nurseLookup}>
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
