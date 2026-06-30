@@ -36,6 +36,7 @@ import { usePatients, useCreatePatientQuick } from "@/hooks/usePatients";
 import { useAppointmentTypes } from "@/hooks/useAppointmentTypes";
 import { useTreatmentChairs } from "@/hooks/useTreatmentChairs";
 import { useNurseStaff } from "@/hooks/useNurseStaff";
+import { useAllDoctors } from "@/hooks/useDoctors";
 import { useCreateAppointment, useAppointments, useUpdateAppointment } from "@/hooks/useAppointments";
 import { startOfDay, endOfDay } from "date-fns";
 import SendInviteDialog from "./SendInviteDialog";
@@ -65,6 +66,7 @@ export function AppointmentQuickCreateDialog({
   const { data: types = [] } = useAppointmentTypes();
   const { data: chairs = [] } = useTreatmentChairs();
   const { data: nurses = [] } = useNurseStaff();
+  const { data: doctors = [] } = useAllDoctors();
   const create = useCreateAppointment();
   const createPatient = useCreatePatientQuick();
   const updateAppointment = useUpdateAppointment();
@@ -81,6 +83,7 @@ export function AppointmentQuickCreateDialog({
   const [duration, setDuration] = useState(60);
   const [chairId, setChairId] = useState<string>("none");
   const [nurseId, setNurseId] = useState<string>("none");
+  const [doctorId, setDoctorId] = useState<string>("none");
   const [notes, setNotes] = useState("");
   const [patientSearch, setPatientSearch] = useState("");
 
@@ -109,6 +112,7 @@ export function AppointmentQuickCreateDialog({
     setTime(format(defaultDate, "HH:mm"));
     setChairId(defaultChairId || "none");
     setPatientId("");
+    setDoctorId("none");
     setNotes("");
     setShowNewPatient(false);
     setNewFirstName("");
@@ -130,6 +134,21 @@ export function AppointmentQuickCreateDialog({
   }, [selectedType]);
 
   const selectedPatient = patients.find((p) => p.id === patientId);
+
+  // Pre-fill the referring doctor dropdown when the selected patient already has one
+  useEffect(() => {
+    if (!selectedPatient) return;
+    const refName = (selectedPatient as any).referring_doctor_name as string | null;
+    if (!refName) {
+      setDoctorId("none");
+      return;
+    }
+    const match = (doctors as any[]).find(
+      (d) => (d.full_name && d.full_name.toLowerCase() === refName.toLowerCase()) ||
+             (d.practice_name && d.practice_name.toLowerCase() === refName.toLowerCase()),
+    );
+    setDoctorId(match?.id ?? "none");
+  }, [selectedPatient, doctors]);
 
   // Live conflict detection for the chosen chair/time/duration
   const conflict = useMemo(() => {
@@ -207,6 +226,27 @@ export function AppointmentQuickCreateDialog({
         duration_minutes: duration,
         notes,
       });
+
+      // If a referring doctor was picked, write the friendly fields back to
+      // the patient so the dashboard / appointment list pick them up.
+      if (doctorId !== "none") {
+        const doc = (doctors as any[]).find((d) => d.id === doctorId);
+        if (doc) {
+          const refName = doc.full_name || doc.practice_name || doc.email || "";
+          try {
+            await (supabase as any)
+              .from("patients")
+              .update({
+                referring_doctor_name: refName,
+                referring_doctor_practice: doc.practice_name ?? null,
+                referring_doctor_phone: doc.phone ?? null,
+              })
+              .eq("id", patientId);
+          } catch (e) {
+            console.error("Failed to set referring doctor on patient", e);
+          }
+        }
+      }
 
       // Find-or-create a treatment course so the patient file, onboarding
       // checklist and portal invite all have something to anchor to.
