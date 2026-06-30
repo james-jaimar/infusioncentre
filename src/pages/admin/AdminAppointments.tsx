@@ -674,12 +674,14 @@ export default function AdminAppointments() {
                   {/* Time gutter */}
                   <div className="w-16 shrink-0 bg-muted/30 border-r">
                     <div className="h-[68px] border-b" />
-                    {visibleChairs.map((chair) => (
-                      <div
-                        key={chair.id}
-                        className="border-b text-xs text-muted-foreground relative"
-                        style={{ height: `${HOURS.length * pxPerHour}px` }}
-                      >
+                     {visibleChairs.map((chair) => {
+                       const cc = getChairColor({ id: chair.id, display_order: chair.display_order ?? null });
+                       return (
+                       <div
+                         key={chair.id}
+                         className={`border-b text-xs text-muted-foreground relative ${cc.bg}`}
+                         style={{ height: `${HOURS.length * pxPerHour}px` }}
+                       >
                         {HOURS.map((hour, i) => (
                           <div
                             key={hour}
@@ -689,11 +691,13 @@ export default function AdminAppointments() {
                             {format(setMinutes(setHours(new Date(), hour), 0), "ha")}
                           </div>
                         ))}
-                        <div className="absolute left-1 top-1 text-xs font-medium text-foreground">
-                          {chair.name}
-                        </div>
-                      </div>
-                    ))}
+                         <div className={`absolute left-1 top-1 text-xs font-medium flex items-center gap-1 ${cc.text}`}>
+                           <span className={`h-1.5 w-1.5 rounded-full ${cc.dot}`} />
+                           {chair.name}
+                         </div>
+                       </div>
+                       );
+                     })}
                   </div>
 
                   {/* Day columns */}
