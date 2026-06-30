@@ -10,6 +10,7 @@ import { TreatmentCourseChip } from "@/components/shared/TreatmentCourseChip";
 import { useReferralsAttentionCount } from "@/hooks/useReferralsAttentionCount";
 import { usePatientPipelineCounts } from "@/hooks/usePatientPipelineCounts";
 import { STAGE_LABEL } from "@/lib/patientPipeline";
+import { getChairColor } from "@/lib/chairColors";
 
 function useDashboardStats() {
   return useQuery({
@@ -315,11 +316,15 @@ function AppointmentsPanel({ title, emptyText, items }: { title: string; emptyTe
                           Awaiting confirmation
                         </span>
                       )}
-                      {apt.chair?.name && (
-                        <span className="inline-flex items-center rounded-full bg-muted text-muted-foreground px-2 py-0.5 text-[11px] font-medium">
-                          {apt.chair.name}
-                        </span>
-                      )}
+                      {apt.chair?.name && (() => {
+                        const c = getChairColor({ id: apt.chair_id ?? null, display_order: apt.chair?.display_order ?? null });
+                        return (
+                          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium border ${c.bg} ${c.text} ${c.border}`}>
+                            <span className={`h-1.5 w-1.5 rounded-full ${c.dot}`} />
+                            {apt.chair.name}
+                          </span>
+                        );
+                      })()}
                     </div>
                     <p className="text-sm text-muted-foreground mt-0.5 truncate">{apt.appointment_type.name}</p>
                     {(apt.patient.referring_doctor_name || apt.patient.referring_doctor_practice) && (
