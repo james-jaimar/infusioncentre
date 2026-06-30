@@ -174,16 +174,36 @@ Deno.serve(async (req) => {
     // If this is a doctor account, create the matching doctors row so the
     // Doctors area and referral flows can find them.
     if (role === "doctor") {
-      await adminClient.from("doctors").insert({
-        user_id: userId,
-        email,
-        phone: phone || null,
-        practice_name: practice_name || null,
-        practice_number: practice_number || null,
-        specialisation: specialisation || null,
-        tenant_id: tenantId,
-        is_active: true,
-      });
+      const { data: existingDoc } = await adminClient
+        .from("doctors")
+        .select("id")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (existingDoc) {
+        await adminClient
+          .from("doctors")
+          .update({
+            email,
+            phone: phone || null,
+            practice_name: practice_name || null,
+            practice_number: practice_number || null,
+            specialisation: specialisation || null,
+            tenant_id: tenantId,
+            is_active: true,
+          })
+          .eq("id", (existingDoc as any).id);
+      } else {
+        await adminClient.from("doctors").insert({
+          user_id: userId,
+          email,
+          phone: phone || null,
+          practice_name: practice_name || null,
+          practice_number: practice_number || null,
+          specialisation: specialisation || null,
+          tenant_id: tenantId,
+          is_active: true,
+        });
+      }
     }
 
     // If invite mode, trigger a password reset email so the user can set their own password
