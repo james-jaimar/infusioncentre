@@ -317,7 +317,7 @@ function AppointmentsPanel({ title, emptyText, items }: { title: string; emptyTe
                         </span>
                       )}
                       {apt.chair?.name && (() => {
-                        const c = getChairColor({ id: apt.chair_id ?? null, display_order: apt.chair?.display_order ?? null });
+                        const c = getChairColor({ id: apt.chair.name, display_order: apt.chair?.display_order ?? null });
                         return (
                           <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium border ${c.bg} ${c.text} ${c.border}`}>
                             <span className={`h-1.5 w-1.5 rounded-full ${c.dot}`} />
