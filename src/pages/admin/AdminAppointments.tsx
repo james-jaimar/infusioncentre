@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, createContext, useContext } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   format,
@@ -99,6 +99,9 @@ const STATUS_BG: Record<AppointmentStatus, string> = {
   rescheduled: "bg-indigo-50 dark:bg-indigo-950/40 opacity-60",
 };
 
+// Lookup map of nurse user_id -> display name, provided by the page-level component.
+const NurseLookupContext = createContext<Map<string, string>>(new Map());
+
 function CalendarEventCard({
   apt,
   pxPerHour,
@@ -129,6 +132,12 @@ function CalendarEventCard({
   const top = ((startMin - DAY_START_MIN) / 60) * pxPerHour;
   const height = Math.max(28, (durationMin / 60) * pxPerHour);
   const sessionNo = (apt as any).session_number as number | null;
+  const nurseLookup = useContext(NurseLookupContext);
+  const nurseName = apt.assigned_nurse_id
+    ? nurseLookup.get(apt.assigned_nurse_id) ?? null
+    : null;
+  const doctorName =
+    ((apt.patient as any)?.referring_doctor_name as string | null) ?? null;
 
   return (
     <div
@@ -177,6 +186,16 @@ function CalendarEventCard({
           <div className="truncate text-muted-foreground">
             {format(start, "h:mm a")} – {format(end, "h:mm a")}
           </div>
+          {nurseName && (
+            <div className="truncate text-muted-foreground">
+              <span className="opacity-70">Nurse:</span> {nurseName}
+            </div>
+          )}
+          {doctorName && (
+            <div className="truncate text-muted-foreground">
+              <span className="opacity-70">Dr:</span> {doctorName}
+            </div>
+          )}
         </>
       )}
       <div className="absolute right-1 top-1 flex gap-0.5">
@@ -498,7 +517,17 @@ export default function AdminAppointments() {
   const activeFilterCount =
     chairFilter.size + typeFilter.size + statusFilter.size;
 
+  const nurseLookup = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const n of nurses) {
+      const name = `${(n as any).first_name ?? ""} ${(n as any).last_name ?? ""}`.trim();
+      if ((n as any).user_id) m.set((n as any).user_id, name || "Nurse");
+    }
+    return m;
+  }, [nurses]);
+
   return (
+    <NurseLookupContext.Provider value={nurseLookup}>
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -800,6 +829,7 @@ export default function AdminAppointments() {
         />
       )}
     </div>
+    </NurseLookupContext.Provider>
   );
 }
 
