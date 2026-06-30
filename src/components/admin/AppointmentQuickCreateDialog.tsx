@@ -41,6 +41,7 @@ import { useCreateAppointment, useAppointments, useUpdateAppointment } from "@/h
 import { startOfDay, endOfDay } from "date-fns";
 import SendInviteDialog from "./SendInviteDialog";
 import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 
 const TIME_SLOTS = Array.from({ length: 22 }, (_, i) => {
   const hour = Math.floor(i / 2) + 7;
@@ -70,6 +71,7 @@ export function AppointmentQuickCreateDialog({
   const create = useCreateAppointment();
   const createPatient = useCreatePatientQuick();
   const updateAppointment = useUpdateAppointment();
+  const queryClient = useQueryClient();
   // For conflict detection — only fetch the appointments on this day
   const { data: dayAppts = [] } = useAppointments(
     startOfDay(defaultDate),
@@ -93,6 +95,15 @@ export function AppointmentQuickCreateDialog({
   const [newLastName, setNewLastName] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [newPhone, setNewPhone] = useState("");
+
+  // Inline "+ new doctor" mini-form
+  const [showNewDoctor, setShowNewDoctor] = useState(false);
+  const [newDocFirstName, setNewDocFirstName] = useState("");
+  const [newDocLastName, setNewDocLastName] = useState("");
+  const [newDocEmail, setNewDocEmail] = useState("");
+  const [newDocPhone, setNewDocPhone] = useState("");
+  const [newDocPractice, setNewDocPractice] = useState("");
+  const [creatingDoctor, setCreatingDoctor] = useState(false);
 
   // Post-booking success state
   const [booked, setBooked] = useState<null | {
@@ -119,6 +130,12 @@ export function AppointmentQuickCreateDialog({
     setNewLastName("");
     setNewEmail("");
     setNewPhone("");
+    setShowNewDoctor(false);
+    setNewDocFirstName("");
+    setNewDocLastName("");
+    setNewDocEmail("");
+    setNewDocPhone("");
+    setNewDocPractice("");
     setPatientSearch("");
     setBooked(null);
     setShowInvite(false);
@@ -197,6 +214,64 @@ export function AppointmentQuickCreateDialog({
     } catch (e) {
       toast.error("Couldn't create patient");
       console.error(e);
+    }
+  };
+
+  const handleCreateQuickDoctor = async () => {
+    if (!newDocFirstName.trim() && !newDocLastName.trim() && !newDocPractice.trim()) {
+      toast.error("Enter a doctor name or practice");
+      return;
+    }
+    if (!newDocEmail.trim()) {
+      toast.error("Email is required to create a doctor");
+      return;
+    }
+    setCreatingDoctor(true);
+    try {
+      const tempPassword = `Dr-${Math.random().toString(36).slice(2, 10)}!`;
+      const res = await supabase.functions.invoke("create-staff", {
+        body: {
+          email: newDocEmail.trim(),
+          password: tempPassword,
+          first_name: newDocFirstName.trim(),
+          last_name: newDocLastName.trim(),
+          phone: newDocPhone.trim() || null,
+          role: "doctor",
+          practice_name: newDocPractice.trim() || null,
+        },
+      });
+      if (res.error || (res.data as any)?.error) {
+        throw new Error(
+          (res.data as any)?.error || res.error?.message || "Failed to create doctor"
+        );
+      }
+      // Refresh and select the new doctor
+      await queryClient.invalidateQueries({ queryKey: ["all-doctors"] });
+      const { data: refetched } = await queryClient.fetchQuery({
+        queryKey: ["all-doctors-lookup", newDocEmail.trim()],
+        queryFn: async () => {
+          const r = await supabase
+            .from("doctors")
+            .select("id")
+            .eq("email", newDocEmail.trim())
+            .maybeSingle();
+          return r;
+        },
+      }) as any;
+      const newId = refetched?.id;
+      if (newId) setDoctorId(newId);
+      setShowNewDoctor(false);
+      setNewDocFirstName("");
+      setNewDocLastName("");
+      setNewDocEmail("");
+      setNewDocPhone("");
+      setNewDocPractice("");
+      toast.success("Doctor added");
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || "Couldn't add doctor");
+    } finally {
+      setCreatingDoctor(false);
     }
   };
 
@@ -573,7 +648,85 @@ export function AppointmentQuickCreateDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>Referring doctor</Label>
+            <div className="flex items-center justify-between">
+              <Label>Referring doctor</Label>
+              {!showNewDoctor && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-xs"
+                  onClick={() => setShowNewDoctor(true)}
+                >
+                  <UserPlus className="mr-1 h-3.5 w-3.5" />
+                  Add new doctor
+                </Button>
+              )}
+            </div>
+            {showNewDoctor ? (
+              <div className="rounded-md border border-dashed bg-muted/30 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Add new doctor
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs"
+                    onClick={() => setShowNewDoctor(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    placeholder="First name"
+                    value={newDocFirstName}
+                    onChange={(e) => setNewDocFirstName(e.target.value)}
+                  />
+                  <Input
+                    placeholder="Last name"
+                    value={newDocLastName}
+                    onChange={(e) => setNewDocLastName(e.target.value)}
+                  />
+                  <Input
+                    placeholder="Practice name"
+                    value={newDocPractice}
+                    onChange={(e) => setNewDocPractice(e.target.value)}
+                  />
+                  <Input
+                    placeholder="Phone"
+                    value={newDocPhone}
+                    onChange={(e) => setNewDocPhone(e.target.value)}
+                  />
+                  <Input
+                    className="col-span-2"
+                    placeholder="Email (required)"
+                    type="email"
+                    value={newDocEmail}
+                    onChange={(e) => setNewDocEmail(e.target.value)}
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  className="w-full"
+                  onClick={handleCreateQuickDoctor}
+                  disabled={creatingDoctor}
+                >
+                  {creatingDoctor ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <UserPlus className="mr-1 h-3.5 w-3.5" />
+                      Save doctor
+                    </>
+                  )}
+                </Button>
+                <p className="text-[10px] text-muted-foreground">
+                  A temporary login is created. Full details can be completed later from the Doctors page.
+                </p>
+              </div>
+            ) : (
             <Select value={doctorId} onValueChange={setDoctorId}>
               <SelectTrigger>
                 <SelectValue placeholder="Select referring doctor" />
@@ -596,6 +749,7 @@ export function AppointmentQuickCreateDialog({
                 })}
               </SelectContent>
             </Select>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
