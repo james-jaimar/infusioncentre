@@ -2,7 +2,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { MessageSquare, Users, Calendar, Activity, Layers, FileText, ArrowRight, UserPlus, ClipboardList, CalendarPlus } from "lucide-react";
+import { MessageSquare, Users, Calendar, Activity, Layers, FileText, ArrowRight, UserPlus, ClipboardList, CalendarPlus, CheckCircle2, Stethoscope } from "lucide-react";
 import { Link } from "react-router-dom";
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, formatDistanceToNow } from "date-fns";
 import { useActivePatientsWithCourses } from "@/hooks/useTreatmentCourses";
@@ -25,7 +25,7 @@ function useDashboardStats() {
         supabase.from("contact_submissions").select("id", { count: "exact", head: true }).eq("status", "new"),
         supabase.from("patients").select("id", { count: "exact", head: true }).eq("status", "active"),
         supabase.from("appointments").select("id", { count: "exact", head: true }).gte("scheduled_start", weekStart).lte("scheduled_start", weekEnd),
-        supabase.from("appointments").select("id, status, scheduled_start, patient:patients!inner(first_name, last_name), appointment_type:appointment_types!inner(name)").gte("scheduled_start", todayStart).lte("scheduled_start", todayEnd).order("scheduled_start", { ascending: true }).limit(5),
+        supabase.from("appointments").select("id, status, scheduled_start, patient_confirmed_at, patient:patients!inner(first_name, last_name, referring_doctor_name, referring_doctor_practice), appointment_type:appointment_types!inner(name)").gte("scheduled_start", todayStart).lte("scheduled_start", todayEnd).order("scheduled_start", { ascending: true }).limit(5),
         supabase.from("treatment_courses").select("id", { count: "exact", head: true }).in("status", ["draft", "active", "ready"] as any),
       ]);
 
@@ -174,17 +174,39 @@ export default function AdminDashboard() {
             <CardContent className="p-0">
               <div className="divide-y divide-border">
                 {stats.todayAppointments.map((apt: any) => (
-                  <div key={apt.id} className="flex items-center justify-between px-5 py-4">
-                    <div>
-                      <p className="font-medium text-foreground">
-                        {apt.patient.first_name} {apt.patient.last_name}
-                      </p>
-                      <p className="text-sm text-muted-foreground mt-0.5">{apt.appointment_type.name}</p>
+                  <Link
+                    key={apt.id}
+                    to={`/admin/appointments/${apt.id}`}
+                    className="flex items-center justify-between gap-4 px-5 py-4 hover:bg-muted/40 transition-colors"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-medium text-foreground truncate">
+                          {apt.patient.first_name} {apt.patient.last_name}
+                        </p>
+                        {apt.patient_confirmed_at ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-clinical-success-soft text-clinical-success px-2 py-0.5 text-[11px] font-medium">
+                            <CheckCircle2 className="h-3 w-3" /> Confirmed
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-full bg-muted text-muted-foreground px-2 py-0.5 text-[11px] font-medium">
+                            Awaiting confirmation
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-0.5 truncate">{apt.appointment_type.name}</p>
+                      {(apt.patient.referring_doctor_name || apt.patient.referring_doctor_practice) && (
+                        <p className="text-xs text-muted-foreground mt-0.5 inline-flex items-center gap-1 truncate">
+                          <Stethoscope className="h-3 w-3" />
+                          {apt.patient.referring_doctor_name || "—"}
+                          {apt.patient.referring_doctor_practice ? ` · ${apt.patient.referring_doctor_practice}` : ""}
+                        </p>
+                      )}
                     </div>
-                    <span className="text-sm text-muted-foreground font-mono tabular-nums">
+                    <span className="text-sm text-muted-foreground font-mono tabular-nums shrink-0">
                       {new Date(apt.scheduled_start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </span>
-                  </div>
+                  </Link>
                 ))}
               </div>
             </CardContent>
