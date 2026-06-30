@@ -41,6 +41,7 @@ import {
   X,
   ClipboardList,
   RefreshCw,
+  Stethoscope,
 } from "lucide-react";
 import { RescheduleDialog } from "@/components/admin/RescheduleDialog";
 import { cn } from "@/lib/utils";
@@ -316,6 +317,22 @@ export default function AppointmentDetail() {
                             : "Assigned"
                           : "Not assigned"}
                       </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Stethoscope className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Referring Doctor</p>
+                      <p className="font-medium">
+                        {(appointment.patient as any)?.referring_doctor_name || (
+                          <span className="text-muted-foreground font-normal">—</span>
+                        )}
+                      </p>
+                      {(appointment.patient as any)?.referring_doctor_practice && (
+                        <p className="text-xs text-muted-foreground">
+                          {(appointment.patient as any).referring_doctor_practice}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
