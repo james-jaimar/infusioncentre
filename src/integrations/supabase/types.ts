@@ -1179,6 +1179,7 @@ export type Database = {
           name: string
           overlay_fields: Json | null
           pdf_pages: Json | null
+          public_access: boolean
           render_mode: string
           required_for_treatment_types: string[] | null
           slug: string | null
@@ -1198,6 +1199,7 @@ export type Database = {
           name: string
           overlay_fields?: Json | null
           pdf_pages?: Json | null
+          public_access?: boolean
           render_mode?: string
           required_for_treatment_types?: string[] | null
           slug?: string | null
@@ -1217,6 +1219,7 @@ export type Database = {
           name?: string
           overlay_fields?: Json | null
           pdf_pages?: Json | null
+          public_access?: boolean
           render_mode?: string
           required_for_treatment_types?: string[] | null
           slug?: string | null
