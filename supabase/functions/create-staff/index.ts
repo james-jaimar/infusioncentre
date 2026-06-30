@@ -53,7 +53,10 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { email, password, first_name, last_name, phone, role, send_invite } = body;
+    const {
+      email, password, first_name, last_name, phone, role, send_invite,
+      practice_name, practice_number, specialisation,
+    } = body;
 
     if (!email || !role) {
       return new Response(
@@ -68,9 +71,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (!["admin", "nurse"].includes(role)) {
+    if (!["admin", "nurse", "doctor"].includes(role)) {
       return new Response(
-        JSON.stringify({ error: "Role must be admin or nurse. Doctors are managed in the Doctors area." }),
+        JSON.stringify({ error: "Role must be admin, nurse or doctor." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -134,6 +137,21 @@ Deno.serve(async (req) => {
       role,
       tenant_id: tenantId,
     });
+
+    // If this is a doctor account, create the matching doctors row so the
+    // Doctors area and referral flows can find them.
+    if (role === "doctor") {
+      await adminClient.from("doctors").insert({
+        user_id: userId,
+        email,
+        phone: phone || null,
+        practice_name: practice_name || null,
+        practice_number: practice_number || null,
+        specialisation: specialisation || null,
+        tenant_id: tenantId,
+        is_active: true,
+      });
+    }
 
     // If invite mode, trigger a password reset email so the user can set their own password
     if (send_invite) {
