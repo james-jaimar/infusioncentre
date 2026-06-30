@@ -9,7 +9,7 @@ import { useActivePatientsWithCourses } from "@/hooks/useTreatmentCourses";
 import { TreatmentCourseChip } from "@/components/shared/TreatmentCourseChip";
 import { useReferralsAttentionCount } from "@/hooks/useReferralsAttentionCount";
 import { usePatientPipelineCounts } from "@/hooks/usePatientPipelineCounts";
-import { STAGE_LABEL } from "@/lib/patientPipeline";
+import { STAGE_LABEL, ACTIVE_COURSE_STATUSES } from "@/lib/patientPipeline";
 import { getChairColor } from "@/lib/chairColors";
 
 function useDashboardStats() {
@@ -31,7 +31,7 @@ function useDashboardStats() {
         supabase.from("appointments").select("id", { count: "exact", head: true }).gte("scheduled_start", weekStart).lte("scheduled_start", weekEnd),
         supabase.from("appointments").select("id, status, scheduled_start, patient_confirmed_at, chair:treatment_chairs(name, display_order), patient:patients!inner(first_name, last_name, referring_doctor_name, referring_doctor_practice), appointment_type:appointment_types!inner(name)").gte("scheduled_start", todayStart).lte("scheduled_start", todayEnd).order("scheduled_start", { ascending: true }),
         supabase.from("appointments").select("id, status, scheduled_start, patient_confirmed_at, chair:treatment_chairs(name, display_order), patient:patients!inner(first_name, last_name, referring_doctor_name, referring_doctor_practice), appointment_type:appointment_types!inner(name)").gte("scheduled_start", tomorrowStart).lte("scheduled_start", tomorrowEnd).order("scheduled_start", { ascending: true }),
-        supabase.from("treatment_courses").select("id", { count: "exact", head: true }).in("status", ["draft", "active", "ready"] as any),
+        supabase.from("treatment_courses").select("id", { count: "exact", head: true }).in("status", ACTIVE_COURSE_STATUSES as any),
       ]);
 
       const sortByTimeThenChair = (a: any, b: any) => {
