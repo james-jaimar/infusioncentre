@@ -39,6 +39,8 @@ import { CalendarIcon, CheckCircle2, Copy, ExternalLink, Loader2, MessageSquare,
 import { cn } from "@/lib/utils";
 import { useTreatmentChairs } from "@/hooks/useTreatmentChairs";
 import { useNurseStaff } from "@/hooks/useNurseStaff";
+import { useAllDoctors } from "@/hooks/useDoctors";
+import { supabase } from "@/integrations/supabase/client";
 import { useUpdateAppointment, useDeleteAppointment, useMarkArrived } from "@/hooks/useAppointments";
 import { useSendAppointmentConfirmationSms } from "@/hooks/useSendSms";
 import { AppointmentWithRelations, AppointmentStatus } from "@/types/appointment";
@@ -72,6 +74,7 @@ interface Props {
 export function AppointmentQuickEditDialog({ open, onOpenChange, appointment }: Props) {
   const { data: chairs = [] } = useTreatmentChairs();
   const { data: nurses = [] } = useNurseStaff();
+  const { data: doctors = [] } = useAllDoctors();
   const update = useUpdateAppointment();
   const del = useDeleteAppointment();
   const markArrived = useMarkArrived();
@@ -82,6 +85,7 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment }: 
   const [duration, setDuration] = useState(60);
   const [chairId, setChairId] = useState<string>("none");
   const [nurseId, setNurseId] = useState<string>("none");
+  const [doctorId, setDoctorId] = useState<string>("none");
   const [status, setStatus] = useState<AppointmentStatus>("scheduled");
   const [notes, setNotes] = useState("");
   const [showReschedule, setShowReschedule] = useState(false);
@@ -100,7 +104,16 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment }: 
     setNurseId(appointment.assigned_nurse_id || "none");
     setStatus(appointment.status);
     setNotes(appointment.notes || "");
-  }, [appointment?.id, open]);
+    const refName = (appointment.patient as any)?.referring_doctor_name as string | null;
+    if (!refName) {
+      setDoctorId("none");
+    } else {
+      const match = (doctors as any[]).find(
+        (d) => `${d.first_name ?? ""} ${d.last_name ?? ""}`.trim() === refName.trim()
+      );
+      setDoctorId(match?.id ?? "none");
+    }
+  }, [appointment?.id, open, doctors]);
 
   if (!appointment) return null;
 
@@ -126,6 +139,34 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment }: 
         },
       });
       toast.success("Appointment updated");
+      // Write referring doctor back to the patient record so it stays in sync
+      try {
+        if (doctorId === "none") {
+          await supabase
+            .from("patients")
+            .update({
+              referring_doctor_name: null,
+              referring_doctor_practice: null,
+              referring_doctor_phone: null,
+            })
+            .eq("id", appointment.patient_id);
+        } else {
+          const doc = (doctors as any[]).find((d) => d.id === doctorId);
+          if (doc) {
+            const refName = `${doc.first_name ?? ""} ${doc.last_name ?? ""}`.trim();
+            await supabase
+              .from("patients")
+              .update({
+                referring_doctor_name: refName,
+                referring_doctor_practice: doc.practice_name ?? null,
+                referring_doctor_phone: doc.phone ?? null,
+              })
+              .eq("id", appointment.patient_id);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to update referring doctor on patient", e);
+      }
       onOpenChange(false);
     } catch (e) {
       toast.error("Failed to update");
@@ -379,6 +420,30 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment }: 
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Referring doctor</Label>
+            <Select value={doctorId} onValueChange={setDoctorId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select referring doctor" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No referring doctor</SelectItem>
+                {(doctors as any[]).map((d) => {
+                  const name =
+                    `${d.first_name ?? ""} ${d.last_name ?? ""}`.trim() ||
+                    d.practice_name ||
+                    "Unnamed doctor";
+                  return (
+                    <SelectItem key={d.id} value={d.id}>
+                      {name}
+                      {d.practice_name ? ` · ${d.practice_name}` : ""}
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
