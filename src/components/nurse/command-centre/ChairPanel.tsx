@@ -6,6 +6,7 @@ import { Armchair, Clock, Activity, ShieldAlert, Wrench, CalendarClock, UserChec
 import { ElapsedTimer } from "./ElapsedTimer";
 import { VitalsCountdown } from "./VitalsCountdown";
 import { AssignPatientPopover } from "./AssignPatientPopover";
+import { getChairColor } from "@/lib/chairColors";
 
 const EXPECTED_DURATION_MS = 2 * 60 * 60 * 1000;
 
