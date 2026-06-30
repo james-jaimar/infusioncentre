@@ -308,11 +308,11 @@ function AppointmentsPanel({ title, emptyText, items }: { title: string; emptyTe
                         {apt.patient.first_name} {apt.patient.last_name}
                       </p>
                       {apt.patient_confirmed_at ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-clinical-success-soft text-clinical-success px-2 py-0.5 text-[11px] font-medium">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-green-600 text-white px-2 py-0.5 text-[11px] font-semibold shadow-sm">
                           <CheckCircle2 className="h-3 w-3" /> Confirmed
                         </span>
                       ) : (
-                        <span className="inline-flex items-center rounded-full bg-muted text-muted-foreground px-2 py-0.5 text-[11px] font-medium">
+                        <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.5 text-[11px] font-semibold">
                           Awaiting confirmation
                         </span>
                       )}
