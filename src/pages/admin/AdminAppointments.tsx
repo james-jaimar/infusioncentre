@@ -74,6 +74,7 @@ import {
   AppointmentStatus,
 } from "@/types/appointment";
 import { cn } from "@/lib/utils";
+import { getChairColor } from "@/lib/chairColors";
 import { AppointmentQuickEditDialog } from "@/components/admin/AppointmentQuickEditDialog";
 import { useNavigate } from "react-router-dom";
 import { AppointmentsListView } from "@/components/admin/appointments/AppointmentsListView";
@@ -858,7 +859,7 @@ function DayChairColumnsView({
   onSlotClick,
 }: {
   day: Date;
-  chairs: { id: string; name: string }[];
+  chairs: { id: string; name: string; display_order?: number | null }[];
   appointments: AppointmentWithRelations[];
   pxPerHour: number;
   onEditAppointment: (apt: AppointmentWithRelations) => void;
@@ -923,14 +924,16 @@ function DayChairColumnsView({
                 a.chair_id === chair.id &&
                 isSameDay(parseISO(a.scheduled_start), day)
             );
+            const cc = getChairColor({ id: chair.id, display_order: chair.display_order ?? null });
             return (
               <div
                 key={chair.id}
-                className="flex-1 min-w-[140px] border-r last:border-r-0"
+                className={`flex-1 min-w-[140px] border-r last:border-r-0 border-t-2 ${cc.border}`}
               >
                 {/* Chair header */}
-                <div className="h-12 border-b flex items-center justify-center bg-muted/20">
-                  <span className="text-sm font-semibold text-foreground">
+                <div className={`h-12 border-b flex items-center justify-center gap-2 ${cc.bg}`}>
+                  <span className={`h-2 w-2 rounded-full ${cc.dot}`} />
+                  <span className={`text-sm font-semibold ${cc.text}`}>
                     {chair.name}
                   </span>
                 </div>
