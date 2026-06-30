@@ -217,6 +217,64 @@ export function AppointmentQuickCreateDialog({
     }
   };
 
+  const handleCreateQuickDoctor = async () => {
+    if (!newDocFirstName.trim() && !newDocLastName.trim() && !newDocPractice.trim()) {
+      toast.error("Enter a doctor name or practice");
+      return;
+    }
+    if (!newDocEmail.trim()) {
+      toast.error("Email is required to create a doctor");
+      return;
+    }
+    setCreatingDoctor(true);
+    try {
+      const tempPassword = `Dr-${Math.random().toString(36).slice(2, 10)}!`;
+      const res = await supabase.functions.invoke("create-staff", {
+        body: {
+          email: newDocEmail.trim(),
+          password: tempPassword,
+          first_name: newDocFirstName.trim(),
+          last_name: newDocLastName.trim(),
+          phone: newDocPhone.trim() || null,
+          role: "doctor",
+          practice_name: newDocPractice.trim() || null,
+        },
+      });
+      if (res.error || (res.data as any)?.error) {
+        throw new Error(
+          (res.data as any)?.error || res.error?.message || "Failed to create doctor"
+        );
+      }
+      // Refresh and select the new doctor
+      await queryClient.invalidateQueries({ queryKey: ["all-doctors"] });
+      const { data: refetched } = await queryClient.fetchQuery({
+        queryKey: ["all-doctors-lookup", newDocEmail.trim()],
+        queryFn: async () => {
+          const r = await supabase
+            .from("doctors")
+            .select("id")
+            .eq("email", newDocEmail.trim())
+            .maybeSingle();
+          return r;
+        },
+      }) as any;
+      const newId = refetched?.id;
+      if (newId) setDoctorId(newId);
+      setShowNewDoctor(false);
+      setNewDocFirstName("");
+      setNewDocLastName("");
+      setNewDocEmail("");
+      setNewDocPhone("");
+      setNewDocPractice("");
+      toast.success("Doctor added");
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || "Couldn't add doctor");
+    } finally {
+      setCreatingDoctor(false);
+    }
+  };
+
   const handleCreate = async () => {
     if (!patientId) {
       toast.error("Pick a patient");
