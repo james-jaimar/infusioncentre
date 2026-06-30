@@ -96,6 +96,7 @@ export function ChairPanel({ chair, assignCandidates = [], onAssignPatient }: Ch
   const isAdmin = location.pathname.startsWith("/admin");
   const occ = chair.occupant;
   const reservation = chair.reserved;
+  const cc = getChairColor({ id: chair.id, display_order: chair.displayOrder });
 
   // Check chair-level status first (non-available states without occupant)
   const chairStatus = (chair as any).status as string | undefined;
@@ -106,7 +107,10 @@ export function ChairPanel({ chair, assignCandidates = [], onAssignPatient }: Ch
     return (
       <div className={`relative overflow-hidden rounded-xl border border-border/50 shadow-clinical-sm ${ui.tint} before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:rounded-l-xl ${ui.accent} flex flex-col justify-center items-center p-6`}>
         {ui.icon}
-        <span className="text-sm font-medium text-muted-foreground">{chair.name}</span>
+        <span className={`inline-flex items-center gap-1.5 text-sm font-semibold ${cc.text}`}>
+          <span className={`h-2 w-2 rounded-full ${cc.dot}`} />
+          {chair.name}
+        </span>
         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold mt-2 ${ui.badge}`}>
           {ui.label}
         </span>
@@ -139,7 +143,10 @@ export function ChairPanel({ chair, assignCandidates = [], onAssignPatient }: Ch
     return (
       <div className={`relative overflow-hidden rounded-xl border border-border/50 shadow-clinical-sm ${ui.tint} before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:rounded-l-xl ${ui.accent} flex flex-col justify-center items-center p-6`}>
         <Armchair className="h-8 w-8 text-muted-foreground/20 mb-2" />
-        <span className="text-sm font-medium text-muted-foreground">{chair.name}</span>
+        <span className={`inline-flex items-center gap-1.5 text-sm font-semibold ${cc.text}`}>
+          <span className={`h-2 w-2 rounded-full ${cc.dot}`} />
+          {chair.name}
+        </span>
         <span className="text-xs text-muted-foreground/60 mt-0.5">Available</span>
         {onAssignPatient && (
           <AssignPatientPopover
@@ -170,9 +177,10 @@ export function ChairPanel({ chair, assignCandidates = [], onAssignPatient }: Ch
     return (
       <div className={`relative overflow-hidden rounded-xl border border-border/40 shadow-clinical-md ${resUi.tint} before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:rounded-l-xl ${resUi.accent} flex flex-col`}>
         <div className="flex items-center justify-between px-4 pt-4 pb-1.5">
-          <div className="flex items-center gap-2 text-muted-foreground">
+          <div className={`flex items-center gap-2 ${cc.text}`}>
+            <span className={`h-2 w-2 rounded-full ${cc.dot}`} />
             <Armchair className="h-4 w-4" />
-            <span className="text-sm">{chair.name}</span>
+            <span className="text-sm font-semibold">{chair.name}</span>
           </div>
           <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${resUi.badge}`}>
             {isCheckedIn ? <UserCheck className="h-3 w-3" /> : <CalendarClock className="h-3 w-3" />}
@@ -211,9 +219,10 @@ export function ChairPanel({ chair, assignCandidates = [], onAssignPatient }: Ch
     <div className={`relative overflow-hidden rounded-xl border border-border/40 shadow-clinical-md ${ui.tint} before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:rounded-l-xl ${ui.accent} flex flex-col`}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-4 pb-1.5">
-        <div className="flex items-center gap-2 text-muted-foreground">
+        <div className={`flex items-center gap-2 ${cc.text}`}>
+          <span className={`h-2 w-2 rounded-full ${cc.dot}`} />
           <Armchair className="h-4 w-4" />
-          <span className="text-sm">{chair.name}</span>
+          <span className="text-sm font-semibold">{chair.name}</span>
         </div>
         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${ui.badge}`}>
           {ui.label}
