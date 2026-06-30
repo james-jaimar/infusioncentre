@@ -74,6 +74,7 @@ import {
   AppointmentStatus,
 } from "@/types/appointment";
 import { cn } from "@/lib/utils";
+import { getChairColor } from "@/lib/chairColors";
 import { AppointmentQuickEditDialog } from "@/components/admin/AppointmentQuickEditDialog";
 import { useNavigate } from "react-router-dom";
 import { AppointmentsListView } from "@/components/admin/appointments/AppointmentsListView";
@@ -673,12 +674,14 @@ export default function AdminAppointments() {
                   {/* Time gutter */}
                   <div className="w-16 shrink-0 bg-muted/30 border-r">
                     <div className="h-[68px] border-b" />
-                    {visibleChairs.map((chair) => (
-                      <div
-                        key={chair.id}
-                        className="border-b text-xs text-muted-foreground relative"
-                        style={{ height: `${HOURS.length * pxPerHour}px` }}
-                      >
+                     {visibleChairs.map((chair) => {
+                       const cc = getChairColor({ id: chair.id, display_order: chair.display_order ?? null });
+                       return (
+                       <div
+                         key={chair.id}
+                         className={`border-b text-xs text-muted-foreground relative ${cc.bg}`}
+                         style={{ height: `${HOURS.length * pxPerHour}px` }}
+                       >
                         {HOURS.map((hour, i) => (
                           <div
                             key={hour}
@@ -688,11 +691,13 @@ export default function AdminAppointments() {
                             {format(setMinutes(setHours(new Date(), hour), 0), "ha")}
                           </div>
                         ))}
-                        <div className="absolute left-1 top-1 text-xs font-medium text-foreground">
-                          {chair.name}
-                        </div>
-                      </div>
-                    ))}
+                         <div className={`absolute left-1 top-1 text-xs font-medium flex items-center gap-1 ${cc.text}`}>
+                           <span className={`h-1.5 w-1.5 rounded-full ${cc.dot}`} />
+                           {chair.name}
+                         </div>
+                       </div>
+                       );
+                     })}
                   </div>
 
                   {/* Day columns */}
@@ -858,7 +863,7 @@ function DayChairColumnsView({
   onSlotClick,
 }: {
   day: Date;
-  chairs: { id: string; name: string }[];
+  chairs: { id: string; name: string; display_order?: number | null }[];
   appointments: AppointmentWithRelations[];
   pxPerHour: number;
   onEditAppointment: (apt: AppointmentWithRelations) => void;
@@ -923,14 +928,16 @@ function DayChairColumnsView({
                 a.chair_id === chair.id &&
                 isSameDay(parseISO(a.scheduled_start), day)
             );
+            const cc = getChairColor({ id: chair.id, display_order: chair.display_order ?? null });
             return (
               <div
                 key={chair.id}
-                className="flex-1 min-w-[140px] border-r last:border-r-0"
+                className={`flex-1 min-w-[140px] border-r last:border-r-0 border-t-2 ${cc.border}`}
               >
                 {/* Chair header */}
-                <div className="h-12 border-b flex items-center justify-center bg-muted/20">
-                  <span className="text-sm font-semibold text-foreground">
+                <div className={`h-12 border-b flex items-center justify-center gap-2 ${cc.bg}`}>
+                  <span className={`h-2 w-2 rounded-full ${cc.dot}`} />
+                  <span className={`text-sm font-semibold ${cc.text}`}>
                     {chair.name}
                   </span>
                 </div>
