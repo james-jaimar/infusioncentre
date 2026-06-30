@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { CalendarClock, ArrowRight, FileWarning } from "lucide-react";
 import { format, differenceInMinutes } from "date-fns";
 import { useOnboardingReadiness } from "@/hooks/useOnboardingChecklist";
+import { getChairColor } from "@/lib/chairColors";
+import { CheckCircle2, Clock } from "lucide-react";
 
 /** Chip showing outstanding-form count for a given appointment. Hidden when ready. */
 function FormsReadinessChip({
@@ -39,7 +41,7 @@ const statusMeta: Record<
   { label: string; pill: string; cta: string; ctaVariant: "default" | "outline" | "secondary" }
 > = {
   scheduled: { label: "Scheduled", pill: "bg-muted text-muted-foreground", cta: "Open", ctaVariant: "outline" },
-  confirmed: { label: "Confirmed", pill: "bg-clinical-info-soft text-clinical-info", cta: "Open", ctaVariant: "outline" },
+  confirmed: { label: "Confirmed", pill: "bg-emerald-600 text-white", cta: "Open", ctaVariant: "outline" },
   checked_in: { label: "Checked In", pill: "bg-clinical-warning-soft text-clinical-warning", cta: "Pre-Assess", ctaVariant: "default" },
   in_progress: { label: "In Progress", pill: "bg-clinical-success-soft text-clinical-success", cta: "Resume", ctaVariant: "default" },
   completed: { label: "Completed", pill: "bg-primary/10 text-primary", cta: "View", ctaVariant: "secondary" },
@@ -89,6 +91,10 @@ export function TodaysSchedule({ appointments }: TodaysScheduleProps) {
                 : minsUntil > 0 && minsUntil < 90
                 ? `In ${minsUntil}m`
                 : format(new Date(a.scheduledStart), "HH:mm");
+            const chairColor = a.chairId
+              ? getChairColor({ id: a.chairId, display_order: a.chairDisplayOrder })
+              : null;
+            const isConfirmed = !!a.patientConfirmedAt || a.status === "confirmed";
 
             return (
               <div
@@ -100,10 +106,19 @@ export function TodaysSchedule({ appointments }: TodaysScheduleProps) {
                     <p className="text-sm font-semibold text-foreground truncate leading-tight">
                       {a.patientName}
                     </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {a.treatmentType}
-                      {a.chairName ? ` · ${a.chairName}` : ""}
-                    </p>
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                      <span className="text-xs text-muted-foreground truncate">
+                        {a.treatmentType}
+                      </span>
+                      {a.chairName && chairColor && (
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full ${chairColor.bg} ${chairColor.text} px-1.5 py-0.5 text-[10px] font-semibold`}
+                        >
+                          <span className={`h-1.5 w-1.5 rounded-full ${chairColor.dot}`} />
+                          {a.chairName}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-xs font-mono font-medium text-foreground tabular-nums">
@@ -122,9 +137,23 @@ export function TodaysSchedule({ appointments }: TodaysScheduleProps) {
                   />
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${meta.pill}`}>
-                    {meta.label}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${meta.pill}`}>
+                      {meta.label}
+                    </span>
+                    {isConfirmed && a.status !== "confirmed" && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600 text-white px-2 py-0.5 text-[10px] font-semibold">
+                        <CheckCircle2 className="h-3 w-3" />
+                        Confirmed
+                      </span>
+                    )}
+                    {!isConfirmed && (a.status === "scheduled") && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 text-[10px] font-semibold">
+                        <Clock className="h-3 w-3" />
+                        Awaiting
+                      </span>
+                    )}
+                  </div>
                   <Button
                     size="sm"
                     variant={meta.ctaVariant}
