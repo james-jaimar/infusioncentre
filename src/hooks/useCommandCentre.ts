@@ -61,6 +61,8 @@ export interface ScheduledAppointment {
   scheduledEnd: string;
   chairId: string | null;
   chairName: string | null;
+  chairDisplayOrder: number | null;
+  patientConfirmedAt: string | null;
   status: string;
   hasTreatment: boolean;
 }
@@ -176,9 +178,10 @@ export function useCommandCentre() {
           scheduled_start,
           scheduled_end,
           chair_id,
+          patient_confirmed_at,
           patient:patients!inner(id, first_name, last_name),
           appointment_type:appointment_types!inner(name, color),
-          chair:treatment_chairs(name)
+          chair:treatment_chairs(name, display_order)
         `)
         .gte("scheduled_start", dayStart)
         .lte("scheduled_start", dayEnd)
@@ -206,6 +209,8 @@ export function useCommandCentre() {
       scheduledEnd: a.scheduled_end,
       chairId: a.chair_id || null,
       chairName: a.chair?.name || null,
+      chairDisplayOrder: typeof a.chair?.display_order === "number" ? a.chair.display_order : null,
+      patientConfirmedAt: a.patient_confirmed_at || null,
       status: a.status,
       hasTreatment: treatedApptIds.has(a.id),
     })
