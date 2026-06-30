@@ -23,7 +23,7 @@ export function useAppointments(startDate?: Date, endDate?: Date) {
         .from("appointments")
         .select(`
           *,
-          patient:patients!inner(id, first_name, last_name, phone),
+          patient:patients!inner(id, first_name, last_name, phone, referring_doctor_name, referring_doctor_practice, referring_doctor_phone),
           appointment_type:appointment_types!inner(*),
           chair:treatment_chairs(*)
         `)
@@ -55,7 +55,7 @@ export function useAppointment(id: string | undefined) {
         .from("appointments")
         .select(`
           *,
-          patient:patients!inner(id, first_name, last_name, phone),
+          patient:patients!inner(id, first_name, last_name, phone, referring_doctor_name, referring_doctor_practice, referring_doctor_phone),
           appointment_type:appointment_types!inner(*),
           chair:treatment_chairs(*)
         `)
