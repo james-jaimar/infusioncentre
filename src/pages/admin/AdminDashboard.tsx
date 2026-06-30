@@ -258,6 +258,15 @@ function AppointmentsPanel({ title, emptyText, items }: { title: string; emptyTe
                   <span className="text-base font-bold text-foreground font-mono tabular-nums shrink-0 w-14">
                     {new Date(apt.scheduled_start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </span>
+                  {apt.chair?.name && (() => {
+                    const c = getChairColor({ id: apt.chair.name, display_order: apt.chair?.display_order ?? null });
+                    return (
+                      <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium border shrink-0 ${c.bg} ${c.text} ${c.border}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${c.dot}`} />
+                        {apt.chair.name}
+                      </span>
+                    );
+                  })()}
                   <div className="min-w-0 flex-1 flex items-center gap-2 flex-wrap">
                     <p className="font-medium text-foreground truncate">
                       {apt.patient.first_name} {apt.patient.last_name}
@@ -271,15 +280,6 @@ function AppointmentsPanel({ title, emptyText, items }: { title: string; emptyTe
                     )}
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
-                    {apt.chair?.name && (() => {
-                      const c = getChairColor({ id: apt.chair.name, display_order: apt.chair?.display_order ?? null });
-                      return (
-                        <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium border ${c.bg} ${c.text} ${c.border}`}>
-                          <span className={`h-1.5 w-1.5 rounded-full ${c.dot}`} />
-                          {apt.chair.name}
-                        </span>
-                      );
-                    })()}
                     {apt.patient_confirmed_at ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-green-600 text-white px-1.5 py-0.5 text-[10px] font-semibold shadow-sm" title="Confirmed">
                         <CheckCircle2 className="h-3 w-3" />
