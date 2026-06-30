@@ -282,9 +282,10 @@ function AppointmentsPanel({ title, emptyText, items }: { title: string; emptyTe
                     )}
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
-                    {apt.patient_confirmed_at ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-green-600 text-white px-1.5 py-0.5 text-[10px] font-semibold shadow-sm" title="Confirmed">
+                    {apt.patient_confirmed_at || apt.status === "confirmed" ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-green-600 text-white px-1.5 py-0.5 text-[10px] font-semibold shadow-sm" title={apt.patient_confirmed_at ? "Patient confirmed via SMS" : "Appointment confirmed"}>
                         <CheckCircle2 className="h-3 w-3" />
+                        Confirmed
                       </span>
                     ) : (
                       <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-800 border border-amber-300 px-1.5 py-0.5 text-[10px] font-semibold" title="Awaiting confirmation">
