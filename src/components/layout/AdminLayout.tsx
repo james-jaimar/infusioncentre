@@ -33,10 +33,10 @@ import { useReferralsAttentionCount } from "@/hooks/useReferralsAttentionCount";
 const navigation = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { name: "Command Centre", href: "/admin/command-centre", icon: Monitor },
+  { name: "Appointments", href: "/admin/appointments", icon: Calendar },
   { name: "Messages", href: "/admin/messages", icon: MessageSquare },
   { name: "Patients", href: "/admin/patients", icon: Users },
   { name: "Doctors", href: "/admin/doctors", icon: Stethoscope },
-  { name: "Appointments", href: "/admin/appointments", icon: Calendar },
   { name: "Referrals", href: "/admin/referrals", icon: FileText },
   { name: "Course Templates", href: "/admin/course-templates", icon: Layers },
   { name: "Form Templates", href: "/admin/form-templates", icon: ClipboardList },
