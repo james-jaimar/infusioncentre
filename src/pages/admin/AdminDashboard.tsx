@@ -253,44 +253,43 @@ function AppointmentsPanel({ title, emptyText, items }: { title: string; emptyTe
                 <Link
                   key={apt.id}
                   to={`/admin/appointments/${apt.id}`}
-                  className="flex items-center justify-between gap-4 px-5 py-4 hover:bg-muted/40 transition-colors"
+                  className="flex items-center gap-3 px-3 py-2 hover:bg-muted/40 transition-colors"
                 >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-medium text-foreground truncate">
-                        {apt.patient.first_name} {apt.patient.last_name}
-                      </p>
-                      {apt.patient_confirmed_at ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-green-600 text-white px-2 py-0.5 text-[11px] font-semibold shadow-sm">
-                          <CheckCircle2 className="h-3 w-3" /> Confirmed
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.5 text-[11px] font-semibold">
-                          Awaiting confirmation
-                        </span>
-                      )}
-                      {apt.chair?.name && (() => {
-                        const c = getChairColor({ id: apt.chair.name, display_order: apt.chair?.display_order ?? null });
-                        return (
-                          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium border ${c.bg} ${c.text} ${c.border}`}>
-                            <span className={`h-1.5 w-1.5 rounded-full ${c.dot}`} />
-                            {apt.chair.name}
-                          </span>
-                        );
-                      })()}
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-0.5 truncate">{apt.appointment_type.name}</p>
-                    {(apt.patient.referring_doctor_name || apt.patient.referring_doctor_practice) && (
-                      <p className="text-xs text-muted-foreground mt-0.5 inline-flex items-center gap-1 truncate">
-                        <Stethoscope className="h-3 w-3" />
-                        {apt.patient.referring_doctor_name || "—"}
-                        {apt.patient.referring_doctor_practice ? ` · ${apt.patient.referring_doctor_practice}` : ""}
-                      </p>
-                    )}
-                  </div>
-                  <span className="text-sm text-muted-foreground font-mono tabular-nums shrink-0">
+                  <span className="text-base font-bold text-foreground font-mono tabular-nums shrink-0 w-14">
                     {new Date(apt.scheduled_start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </span>
+                  <div className="min-w-0 flex-1 flex items-center gap-2 flex-wrap">
+                    <p className="font-medium text-foreground truncate">
+                      {apt.patient.first_name} {apt.patient.last_name}
+                    </p>
+                    <span className="text-xs text-muted-foreground truncate">· {apt.appointment_type.name}</span>
+                    {apt.patient.referring_doctor_name && (
+                      <span className="text-xs text-muted-foreground inline-flex items-center gap-1 truncate">
+                        <Stethoscope className="h-3 w-3" />
+                        {apt.patient.referring_doctor_name}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {apt.chair?.name && (() => {
+                      const c = getChairColor({ id: apt.chair.name, display_order: apt.chair?.display_order ?? null });
+                      return (
+                        <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium border ${c.bg} ${c.text} ${c.border}`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${c.dot}`} />
+                          {apt.chair.name}
+                        </span>
+                      );
+                    })()}
+                    {apt.patient_confirmed_at ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-green-600 text-white px-1.5 py-0.5 text-[10px] font-semibold shadow-sm" title="Confirmed">
+                        <CheckCircle2 className="h-3 w-3" />
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-800 border border-amber-300 px-1.5 py-0.5 text-[10px] font-semibold" title="Awaiting confirmation">
+                        Awaiting
+                      </span>
+                    )}
+                  </div>
                 </Link>
               ))}
             </div>
