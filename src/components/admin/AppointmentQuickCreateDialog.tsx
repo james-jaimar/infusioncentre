@@ -41,6 +41,7 @@ import { useCreateAppointment, useAppointments, useUpdateAppointment } from "@/h
 import { startOfDay, endOfDay } from "date-fns";
 import SendInviteDialog from "./SendInviteDialog";
 import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 
 const TIME_SLOTS = Array.from({ length: 22 }, (_, i) => {
   const hour = Math.floor(i / 2) + 7;
@@ -70,6 +71,7 @@ export function AppointmentQuickCreateDialog({
   const create = useCreateAppointment();
   const createPatient = useCreatePatientQuick();
   const updateAppointment = useUpdateAppointment();
+  const queryClient = useQueryClient();
   // For conflict detection — only fetch the appointments on this day
   const { data: dayAppts = [] } = useAppointments(
     startOfDay(defaultDate),
@@ -93,6 +95,15 @@ export function AppointmentQuickCreateDialog({
   const [newLastName, setNewLastName] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [newPhone, setNewPhone] = useState("");
+
+  // Inline "+ new doctor" mini-form
+  const [showNewDoctor, setShowNewDoctor] = useState(false);
+  const [newDocFirstName, setNewDocFirstName] = useState("");
+  const [newDocLastName, setNewDocLastName] = useState("");
+  const [newDocEmail, setNewDocEmail] = useState("");
+  const [newDocPhone, setNewDocPhone] = useState("");
+  const [newDocPractice, setNewDocPractice] = useState("");
+  const [creatingDoctor, setCreatingDoctor] = useState(false);
 
   // Post-booking success state
   const [booked, setBooked] = useState<null | {
@@ -119,6 +130,12 @@ export function AppointmentQuickCreateDialog({
     setNewLastName("");
     setNewEmail("");
     setNewPhone("");
+    setShowNewDoctor(false);
+    setNewDocFirstName("");
+    setNewDocLastName("");
+    setNewDocEmail("");
+    setNewDocPhone("");
+    setNewDocPractice("");
     setPatientSearch("");
     setBooked(null);
     setShowInvite(false);
