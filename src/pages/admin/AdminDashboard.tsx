@@ -237,53 +237,6 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Active Patients */}
-      <div className="mt-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">Active Patients</h2>
-            <Link
-              to="/admin/patients?state=has_active"
-              className="text-xs font-medium text-primary hover:underline"
-            >
-              View all →
-            </Link>
-          </div>
-          <Card>
-            {activePatients?.length ? (
-              <CardContent className="p-0">
-                <div className="divide-y divide-border">
-                  {activePatients.map((c: any) => (
-                    <Link
-                      key={c.id}
-                      to={`/admin/patients/${c.patient?.id}`}
-                      className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-muted/40 transition-colors"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-foreground truncate">
-                          {c.patient?.first_name} {c.patient?.last_name}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          Updated {formatDistanceToNow(new Date(c.updated_at), { addSuffix: true })}
-                        </p>
-                      </div>
-                      <TreatmentCourseChip
-                        typeName={c.appointment_type?.name ?? "Course"}
-                        color={c.appointment_type?.color}
-                        sessionsCompleted={c.sessions_completed}
-                        totalSessions={c.total_sessions_planned}
-                        status={c.status}
-                      />
-                    </Link>
-                  ))}
-                </div>
-              </CardContent>
-            ) : (
-              <CardContent className="py-8 text-center text-muted-foreground text-sm">
-                No active treatment courses yet.
-              </CardContent>
-            )}
-          </Card>
-      </div>
     </div>
   );
 }
