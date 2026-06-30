@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MessageSquare, Users, Calendar, Activity, Layers, FileText, ArrowRight, UserPlus, ClipboardList, CalendarPlus, CheckCircle2, Stethoscope } from "lucide-react";
 import { Link } from "react-router-dom";
-import { startOfDay, endOfDay, startOfWeek, endOfWeek, formatDistanceToNow } from "date-fns";
+import { startOfDay, endOfDay, startOfWeek, endOfWeek, formatDistanceToNow, addDays } from "date-fns";
 import { useActivePatientsWithCourses } from "@/hooks/useTreatmentCourses";
 import { TreatmentCourseChip } from "@/components/shared/TreatmentCourseChip";
 import { useReferralsAttentionCount } from "@/hooks/useReferralsAttentionCount";
@@ -20,20 +20,33 @@ function useDashboardStats() {
       const weekEnd = endOfWeek(now, { weekStartsOn: 1 }).toISOString();
       const todayStart = startOfDay(now).toISOString();
       const todayEnd = endOfDay(now).toISOString();
+      const tomorrow = addDays(now, 1);
+      const tomorrowStart = startOfDay(tomorrow).toISOString();
+      const tomorrowEnd = endOfDay(tomorrow).toISOString();
 
-      const [contacts, patients, weekAppointments, todayAppointments, activeCourses] = await Promise.all([
+      const [contacts, patients, weekAppointments, todayAppointments, tomorrowAppointments, activeCourses] = await Promise.all([
         supabase.from("contact_submissions").select("id", { count: "exact", head: true }).eq("status", "new"),
         supabase.from("patients").select("id", { count: "exact", head: true }).eq("status", "active"),
         supabase.from("appointments").select("id", { count: "exact", head: true }).gte("scheduled_start", weekStart).lte("scheduled_start", weekEnd),
-        supabase.from("appointments").select("id, status, scheduled_start, patient_confirmed_at, patient:patients!inner(first_name, last_name, referring_doctor_name, referring_doctor_practice), appointment_type:appointment_types!inner(name)").gte("scheduled_start", todayStart).lte("scheduled_start", todayEnd).order("scheduled_start", { ascending: true }).limit(5),
+        supabase.from("appointments").select("id, status, scheduled_start, patient_confirmed_at, chair:treatment_chairs(name, display_order), patient:patients!inner(first_name, last_name, referring_doctor_name, referring_doctor_practice), appointment_type:appointment_types!inner(name)").gte("scheduled_start", todayStart).lte("scheduled_start", todayEnd).order("scheduled_start", { ascending: true }),
+        supabase.from("appointments").select("id, status, scheduled_start, patient_confirmed_at, chair:treatment_chairs(name, display_order), patient:patients!inner(first_name, last_name, referring_doctor_name, referring_doctor_practice), appointment_type:appointment_types!inner(name)").gte("scheduled_start", tomorrowStart).lte("scheduled_start", tomorrowEnd).order("scheduled_start", { ascending: true }),
         supabase.from("treatment_courses").select("id", { count: "exact", head: true }).in("status", ["draft", "active", "ready"] as any),
       ]);
+
+      const sortByTimeThenChair = (a: any, b: any) => {
+        const t = new Date(a.scheduled_start).getTime() - new Date(b.scheduled_start).getTime();
+        if (t !== 0) return t;
+        const ao = a.chair?.display_order ?? 9999;
+        const bo = b.chair?.display_order ?? 9999;
+        return ao - bo;
+      };
 
       return {
         unreadContacts: contacts.count || 0,
         totalPatients: patients.count || 0,
         weekAppointments: weekAppointments.count || 0,
-        todayAppointments: todayAppointments.data || [],
+        todayAppointments: (todayAppointments.data || []).slice().sort(sortByTimeThenChair),
+        tomorrowAppointments: (tomorrowAppointments.data || []).slice().sort(sortByTimeThenChair),
         activeCourses: activeCourses.count || 0,
       };
     },
@@ -166,56 +179,10 @@ export default function AdminDashboard() {
         </Card>
       )}
 
-      {/* Today's Appointments */}
-      <div className="mb-8">
-        <h2 className="text-lg font-semibold mb-4">Today's Appointments</h2>
-        <Card>
-          {stats?.todayAppointments?.length ? (
-            <CardContent className="p-0">
-              <div className="divide-y divide-border">
-                {stats.todayAppointments.map((apt: any) => (
-                  <Link
-                    key={apt.id}
-                    to={`/admin/appointments/${apt.id}`}
-                    className="flex items-center justify-between gap-4 px-5 py-4 hover:bg-muted/40 transition-colors"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-medium text-foreground truncate">
-                          {apt.patient.first_name} {apt.patient.last_name}
-                        </p>
-                        {apt.patient_confirmed_at ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-clinical-success-soft text-clinical-success px-2 py-0.5 text-[11px] font-medium">
-                            <CheckCircle2 className="h-3 w-3" /> Confirmed
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center rounded-full bg-muted text-muted-foreground px-2 py-0.5 text-[11px] font-medium">
-                            Awaiting confirmation
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-0.5 truncate">{apt.appointment_type.name}</p>
-                      {(apt.patient.referring_doctor_name || apt.patient.referring_doctor_practice) && (
-                        <p className="text-xs text-muted-foreground mt-0.5 inline-flex items-center gap-1 truncate">
-                          <Stethoscope className="h-3 w-3" />
-                          {apt.patient.referring_doctor_name || "—"}
-                          {apt.patient.referring_doctor_practice ? ` · ${apt.patient.referring_doctor_practice}` : ""}
-                        </p>
-                      )}
-                    </div>
-                    <span className="text-sm text-muted-foreground font-mono tabular-nums shrink-0">
-                      {new Date(apt.scheduled_start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            </CardContent>
-          ) : (
-            <CardContent className="py-8 text-center text-muted-foreground text-sm">
-              No appointments scheduled for today.
-            </CardContent>
-          )}
-        </Card>
+      {/* Today's & Tomorrow's Appointments */}
+      <div className="mb-8 grid gap-4 lg:grid-cols-2">
+        <AppointmentsPanel title="Today's Appointments" emptyText="No appointments scheduled for today." items={stats?.todayAppointments || []} />
+        <AppointmentsPanel title="Tomorrow's Appointments" emptyText="No appointments scheduled for tomorrow." items={stats?.tomorrowAppointments || []} />
       </div>
 
       {/* Stats grid */}
@@ -316,6 +283,66 @@ export default function AdminDashboard() {
             )}
           </Card>
       </div>
+    </div>
+  );
+}
+
+function AppointmentsPanel({ title, emptyText, items }: { title: string; emptyText: string; items: any[] }) {
+  return (
+    <div>
+      <h2 className="text-lg font-semibold mb-4">{title}</h2>
+      <Card>
+        {items.length ? (
+          <CardContent className="p-0">
+            <div className="divide-y divide-border">
+              {items.map((apt: any) => (
+                <Link
+                  key={apt.id}
+                  to={`/admin/appointments/${apt.id}`}
+                  className="flex items-center justify-between gap-4 px-5 py-4 hover:bg-muted/40 transition-colors"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-medium text-foreground truncate">
+                        {apt.patient.first_name} {apt.patient.last_name}
+                      </p>
+                      {apt.patient_confirmed_at ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-clinical-success-soft text-clinical-success px-2 py-0.5 text-[11px] font-medium">
+                          <CheckCircle2 className="h-3 w-3" /> Confirmed
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full bg-muted text-muted-foreground px-2 py-0.5 text-[11px] font-medium">
+                          Awaiting confirmation
+                        </span>
+                      )}
+                      {apt.chair?.name && (
+                        <span className="inline-flex items-center rounded-full bg-muted text-muted-foreground px-2 py-0.5 text-[11px] font-medium">
+                          {apt.chair.name}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-0.5 truncate">{apt.appointment_type.name}</p>
+                    {(apt.patient.referring_doctor_name || apt.patient.referring_doctor_practice) && (
+                      <p className="text-xs text-muted-foreground mt-0.5 inline-flex items-center gap-1 truncate">
+                        <Stethoscope className="h-3 w-3" />
+                        {apt.patient.referring_doctor_name || "—"}
+                        {apt.patient.referring_doctor_practice ? ` · ${apt.patient.referring_doctor_practice}` : ""}
+                      </p>
+                    )}
+                  </div>
+                  <span className="text-sm text-muted-foreground font-mono tabular-nums shrink-0">
+                    {new Date(apt.scheduled_start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        ) : (
+          <CardContent className="py-8 text-center text-muted-foreground text-sm">
+            {emptyText}
+          </CardContent>
+        )}
+      </Card>
     </div>
   );
 }
