@@ -572,6 +572,32 @@ export function AppointmentQuickCreateDialog({
             )}
           </div>
 
+          <div className="space-y-2">
+            <Label>Referring doctor</Label>
+            <Select value={doctorId} onValueChange={setDoctorId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select referring doctor" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No referring doctor</SelectItem>
+                {(doctors as any[]).map((d) => {
+                  const label =
+                    d.full_name ||
+                    d.practice_name ||
+                    d.email ||
+                    "Unnamed doctor";
+                  const sub = d.full_name && d.practice_name ? d.practice_name : null;
+                  return (
+                    <SelectItem key={d.id} value={d.id}>
+                      {label}
+                      {sub ? ` · ${sub}` : ""}
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Treatment type</Label>
