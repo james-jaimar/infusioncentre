@@ -87,6 +87,7 @@ Deno.serve(async (req) => {
     const tempPassword = send_invite
       ? crypto.randomUUID() + "Aa1!"
       : password;
+    let userId: string;
     const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
       email,
       password: tempPassword,
@@ -98,13 +99,45 @@ Deno.serve(async (req) => {
     });
 
     if (createError) {
-      return new Response(JSON.stringify({ error: createError.message }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+      const msg = (createError.message || "").toLowerCase();
+      const alreadyExists =
+        msg.includes("already been registered") ||
+        msg.includes("already registered") ||
+        msg.includes("already exists") ||
+        (createError as any).code === "email_exists";
 
-    const userId = newUser.user.id;
+      if (!alreadyExists) {
+        return new Response(JSON.stringify({ error: createError.message }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Find the existing auth user by email and reuse them.
+      let existingId: string | null = null;
+      for (let page = 1; page <= 20 && !existingId; page++) {
+        const { data: list, error: listErr } = await adminClient.auth.admin.listUsers({
+          page,
+          perPage: 200,
+        });
+        if (listErr) break;
+        const match = list.users.find(
+          (u) => (u.email || "").toLowerCase() === email.toLowerCase(),
+        );
+        if (match) existingId = match.id;
+        if (list.users.length < 200) break;
+      }
+
+      if (!existingId) {
+        return new Response(
+          JSON.stringify({ error: "A user with this email already exists but could not be located." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      userId = existingId;
+    } else {
+      userId = newUser.user.id;
+    }
 
     // Small delay to let the handle_new_user trigger complete
     await new Promise((resolve) => setTimeout(resolve, 500));
