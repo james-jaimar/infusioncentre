@@ -210,35 +210,6 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      {/* Quick actions */}
-      <div className="mt-8">
-        <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-        <div className="grid gap-4 md:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Manage Patients</CardTitle>
-              <CardDescription>View and edit patient records</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Link to="/admin/patients" className="text-sm font-medium text-primary hover:underline">
-                Go to Patients →
-              </Link>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">View Schedule</CardTitle>
-              <CardDescription>Check today's appointments</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Link to="/admin/appointments" className="text-sm font-medium text-primary hover:underline">
-                Go to Calendar →
-              </Link>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
     </div>
   );
 }
