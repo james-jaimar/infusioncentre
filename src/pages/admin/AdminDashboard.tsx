@@ -51,7 +51,9 @@ function useDashboardStats() {
         activeCourses: activeCourses.count || 0,
       };
     },
-    refetchInterval: 60000,
+    refetchInterval: 30000,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 }
 
