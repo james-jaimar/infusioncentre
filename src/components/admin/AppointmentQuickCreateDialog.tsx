@@ -648,7 +648,85 @@ export function AppointmentQuickCreateDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>Referring doctor</Label>
+            <div className="flex items-center justify-between">
+              <Label>Referring doctor</Label>
+              {!showNewDoctor && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-xs"
+                  onClick={() => setShowNewDoctor(true)}
+                >
+                  <UserPlus className="mr-1 h-3.5 w-3.5" />
+                  Add new doctor
+                </Button>
+              )}
+            </div>
+            {showNewDoctor ? (
+              <div className="rounded-md border border-dashed bg-muted/30 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Add new doctor
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs"
+                    onClick={() => setShowNewDoctor(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    placeholder="First name"
+                    value={newDocFirstName}
+                    onChange={(e) => setNewDocFirstName(e.target.value)}
+                  />
+                  <Input
+                    placeholder="Last name"
+                    value={newDocLastName}
+                    onChange={(e) => setNewDocLastName(e.target.value)}
+                  />
+                  <Input
+                    placeholder="Practice name"
+                    value={newDocPractice}
+                    onChange={(e) => setNewDocPractice(e.target.value)}
+                  />
+                  <Input
+                    placeholder="Phone"
+                    value={newDocPhone}
+                    onChange={(e) => setNewDocPhone(e.target.value)}
+                  />
+                  <Input
+                    className="col-span-2"
+                    placeholder="Email (required)"
+                    type="email"
+                    value={newDocEmail}
+                    onChange={(e) => setNewDocEmail(e.target.value)}
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  className="w-full"
+                  onClick={handleCreateQuickDoctor}
+                  disabled={creatingDoctor}
+                >
+                  {creatingDoctor ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <UserPlus className="mr-1 h-3.5 w-3.5" />
+                      Save doctor
+                    </>
+                  )}
+                </Button>
+                <p className="text-[10px] text-muted-foreground">
+                  A temporary login is created. Full details can be completed later from the Doctors page.
+                </p>
+              </div>
+            ) : (
             <Select value={doctorId} onValueChange={setDoctorId}>
               <SelectTrigger>
                 <SelectValue placeholder="Select referring doctor" />
@@ -671,6 +749,7 @@ export function AppointmentQuickCreateDialog({
                 })}
               </SelectContent>
             </Select>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
