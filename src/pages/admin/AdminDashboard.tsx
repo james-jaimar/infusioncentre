@@ -51,7 +51,6 @@ export default function AdminDashboard() {
   const greeting = profile?.first_name ? `Welcome back, ${profile.first_name}` : "Welcome back";
 
   const statCards = [
-    { name: "Contact Submissions", href: "/admin/contacts", icon: MessageSquare, value: stats?.unreadContacts ?? "—", description: "Unread enquiries", variant: "info" as const },
     { name: "Patients", href: "/admin/patients", icon: Users, value: stats?.totalPatients ?? "—", description: "Active patients", variant: "success" as const },
     { name: "Active Courses", href: "/admin/patients?state=has_active", icon: Layers, value: stats?.activeCourses ?? "—", description: "Treatment courses underway", variant: "warning" as const },
     { name: "Appointments", href: "/admin/appointments", icon: Calendar, value: stats?.weekAppointments ?? "—", description: "This week", variant: "neutral" as const },
@@ -167,8 +166,38 @@ export default function AdminDashboard() {
         </Card>
       )}
 
+      {/* Today's Appointments */}
+      <div className="mb-8">
+        <h2 className="text-lg font-semibold mb-4">Today's Appointments</h2>
+        <Card>
+          {stats?.todayAppointments?.length ? (
+            <CardContent className="p-0">
+              <div className="divide-y divide-border">
+                {stats.todayAppointments.map((apt: any) => (
+                  <div key={apt.id} className="flex items-center justify-between px-5 py-4">
+                    <div>
+                      <p className="font-medium text-foreground">
+                        {apt.patient.first_name} {apt.patient.last_name}
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-0.5">{apt.appointment_type.name}</p>
+                    </div>
+                    <span className="text-sm text-muted-foreground font-mono tabular-nums">
+                      {new Date(apt.scheduled_start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          ) : (
+            <CardContent className="py-8 text-center text-muted-foreground text-sm">
+              No appointments scheduled for today.
+            </CardContent>
+          )}
+        </Card>
+      </div>
+
       {/* Stats grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3">
         {statCards.map((stat) => (
           <Link key={stat.name} to={stat.href}>
             <Card className="hover:shadow-clinical-lg transition-shadow">
@@ -192,18 +221,7 @@ export default function AdminDashboard() {
       {/* Quick actions */}
       <div className="mt-8">
         <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">View Contact Submissions</CardTitle>
-              <CardDescription>Review and respond to website enquiries</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Link to="/admin/contacts" className="text-sm font-medium text-primary hover:underline">
-                Go to Contacts →
-              </Link>
-            </CardContent>
-          </Card>
+        <div className="grid gap-4 md:grid-cols-2">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Manage Patients</CardTitle>
@@ -229,38 +247,8 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Today's Appointments + Active Patients */}
-      <div className="mt-8 grid gap-6 lg:grid-cols-2">
-        <div>
-          <h2 className="text-lg font-semibold mb-4">Today's Appointments</h2>
-          <Card>
-            {stats?.todayAppointments?.length ? (
-              <CardContent className="p-0">
-                <div className="divide-y divide-border">
-                  {stats.todayAppointments.map((apt: any) => (
-                    <div key={apt.id} className="flex items-center justify-between px-5 py-4">
-                      <div>
-                        <p className="font-medium text-foreground">
-                          {apt.patient.first_name} {apt.patient.last_name}
-                        </p>
-                        <p className="text-sm text-muted-foreground mt-0.5">{apt.appointment_type.name}</p>
-                      </div>
-                      <span className="text-sm text-muted-foreground font-mono tabular-nums">
-                        {new Date(apt.scheduled_start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            ) : (
-              <CardContent className="py-8 text-center text-muted-foreground text-sm">
-                No appointments scheduled for today.
-              </CardContent>
-            )}
-          </Card>
-        </div>
-
-        <div>
+      {/* Active Patients */}
+      <div className="mt-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">Active Patients</h2>
             <Link
@@ -305,7 +293,6 @@ export default function AdminDashboard() {
               </CardContent>
             )}
           </Card>
-        </div>
       </div>
     </div>
   );
