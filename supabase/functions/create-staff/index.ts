@@ -87,6 +87,7 @@ Deno.serve(async (req) => {
     const tempPassword = send_invite
       ? crypto.randomUUID() + "Aa1!"
       : password;
+    let userId: string;
     const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
       email,
       password: tempPassword,
@@ -98,13 +99,45 @@ Deno.serve(async (req) => {
     });
 
     if (createError) {
-      return new Response(JSON.stringify({ error: createError.message }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+      const msg = (createError.message || "").toLowerCase();
+      const alreadyExists =
+        msg.includes("already been registered") ||
+        msg.includes("already registered") ||
+        msg.includes("already exists") ||
+        (createError as any).code === "email_exists";
 
-    const userId = newUser.user.id;
+      if (!alreadyExists) {
+        return new Response(JSON.stringify({ error: createError.message }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Find the existing auth user by email and reuse them.
+      let existingId: string | null = null;
+      for (let page = 1; page <= 20 && !existingId; page++) {
+        const { data: list, error: listErr } = await adminClient.auth.admin.listUsers({
+          page,
+          perPage: 200,
+        });
+        if (listErr) break;
+        const match = list.users.find(
+          (u) => (u.email || "").toLowerCase() === email.toLowerCase(),
+        );
+        if (match) existingId = match.id;
+        if (list.users.length < 200) break;
+      }
+
+      if (!existingId) {
+        return new Response(
+          JSON.stringify({ error: "A user with this email already exists but could not be located." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      userId = existingId;
+    } else {
+      userId = newUser.user.id;
+    }
 
     // Small delay to let the handle_new_user trigger complete
     await new Promise((resolve) => setTimeout(resolve, 500));
@@ -141,16 +174,36 @@ Deno.serve(async (req) => {
     // If this is a doctor account, create the matching doctors row so the
     // Doctors area and referral flows can find them.
     if (role === "doctor") {
-      await adminClient.from("doctors").insert({
-        user_id: userId,
-        email,
-        phone: phone || null,
-        practice_name: practice_name || null,
-        practice_number: practice_number || null,
-        specialisation: specialisation || null,
-        tenant_id: tenantId,
-        is_active: true,
-      });
+      const { data: existingDoc } = await adminClient
+        .from("doctors")
+        .select("id")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (existingDoc) {
+        await adminClient
+          .from("doctors")
+          .update({
+            email,
+            phone: phone || null,
+            practice_name: practice_name || null,
+            practice_number: practice_number || null,
+            specialisation: specialisation || null,
+            tenant_id: tenantId,
+            is_active: true,
+          })
+          .eq("id", (existingDoc as any).id);
+      } else {
+        await adminClient.from("doctors").insert({
+          user_id: userId,
+          email,
+          phone: phone || null,
+          practice_name: practice_name || null,
+          practice_number: practice_number || null,
+          specialisation: specialisation || null,
+          tenant_id: tenantId,
+          is_active: true,
+        });
+      }
     }
 
     // If invite mode, trigger a password reset email so the user can set their own password
