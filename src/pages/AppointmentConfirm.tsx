@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,7 @@ const PREVIEW_INFO: ApptInfo = {
 
 export default function AppointmentConfirm() {
   const { token } = useParams<{ token: string }>();
+  const navigate = useNavigate();
   const isPreview = token === "preview";
 
   const [loading, setLoading] = useState(!isPreview);
@@ -76,6 +77,14 @@ export default function AppointmentConfirm() {
   }, [token]);
 
   const brand = info.brand ?? PREVIEW_INFO.brand!;
+  const goToConfirmation = (action: "confirmed" | "cancelled" | "change_requested") => {
+    const params = new URLSearchParams({ action });
+    if (brand.name) params.set("clinic", brand.name);
+    if (brand.phone) params.set("phone", brand.phone);
+    if (brand.email) params.set("email", brand.email);
+    navigate(`/appointment/confirmed?${params.toString()}`);
+  };
+
   const scheduledLabel = useMemo(() => {
     if (!info.scheduled_start) return "";
     return new Date(info.scheduled_start).toLocaleString("en-ZA", {
@@ -98,22 +107,34 @@ export default function AppointmentConfirm() {
   const handleConfirm = async () => {
     setBusy("confirm");
     const res = await runAction("confirm");
-    if (!res.ok) setError(res.error);
     setBusy("");
+    if (!res.ok) {
+      setError(res.error);
+      return;
+    }
+    goToConfirmation("confirmed");
   };
   const handleCancel = async () => {
     setBusy("cancel");
     const res = await runAction("cancel", cancelMsg);
-    if (!res.ok) setError(res.error);
     setBusy("");
     setShowCancel(false);
+    if (!res.ok) {
+      setError(res.error);
+      return;
+    }
+    goToConfirmation("cancelled");
   };
   const handleChange = async () => {
     setBusy("change");
     const res = await runAction("request_change", changeMsg);
-    if (!res.ok) setError(res.error);
     setBusy("");
     setShowChange(false);
+    if (!res.ok) {
+      setError(res.error);
+      return;
+    }
+    goToConfirmation("change_requested");
   };
 
   return (
