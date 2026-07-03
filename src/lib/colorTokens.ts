@@ -3,6 +3,8 @@
 export type TokenKey =
   | "primary"
   | "primary_foreground"
+  | "button_primary"
+  | "button_primary_foreground"
   | "secondary"
   | "secondary_foreground"
   | "accent"
@@ -27,6 +29,8 @@ export type TokenKey =
 export const TOKEN_CSS_VAR: Record<TokenKey, string[]> = {
   primary: ["primary"],
   primary_foreground: ["primary-foreground"],
+  button_primary: ["btn-primary"],
+  button_primary_foreground: ["btn-primary-foreground"],
   secondary: ["secondary"],
   secondary_foreground: ["secondary-foreground"],
   accent: ["accent"],
@@ -51,6 +55,8 @@ export const TOKEN_CSS_VAR: Record<TokenKey, string[]> = {
 export const DEFAULT_TOKENS: Record<TokenKey, string> = {
   primary: "#1F3A5F",
   primary_foreground: "#FFFFFF",
+  button_primary: "#1F3A5F",
+  button_primary_foreground: "#FFFFFF",
   secondary: "#F1F4F7",
   secondary_foreground: "#1F3A5F",
   accent: "#1F3A5F",
@@ -90,8 +96,8 @@ export const TOKEN_GROUPS: TokenGroup[] = [
   {
     label: "Buttons",
     tokens: [
-      { key: "primary", label: "Primary button", description: "Main action buttons (Save, Create, Confirm)" },
-      { key: "primary_foreground", label: "Primary text", description: "Text/icon on primary buttons" },
+      { key: "button_primary", label: "Primary button", description: "Main action buttons (Save, Create, Confirm)" },
+      { key: "button_primary_foreground", label: "Primary text", description: "Text/icon on primary buttons" },
       { key: "secondary", label: "Secondary button", description: "Neutral / outline button surface" },
       { key: "secondary_foreground", label: "Secondary text" },
       { key: "success", label: "Submit / confirm", description: "Green form-submit style button" },
