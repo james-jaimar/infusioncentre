@@ -625,20 +625,6 @@ export function AppointmentQuickCreateDialog({
                       </button>
                     </CommandEmpty>
                     <CommandGroup>
-                      <CommandItem
-                        value="__add_new__"
-                        onSelect={() => {
-                          const parts = patientSearch.trim().split(/\s+/);
-                          setNewFirstName(parts[0] || "");
-                          setNewLastName(parts.slice(1).join(" ") || "");
-                          setShowNewPatient(true);
-                          setPatientPickerOpen(false);
-                        }}
-                        className="text-primary"
-                      >
-                        <UserPlus className="mr-2 h-4 w-4" />
-                        Add new patient…
-                      </CommandItem>
                       {filteredPatients.map((p) => (
                         <CommandItem
                           key={p.id}
