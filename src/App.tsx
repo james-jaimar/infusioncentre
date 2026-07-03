@@ -95,6 +95,7 @@ import InviteLanding from "./pages/InviteLanding";
 import PendingApproval from "./pages/PendingApproval";
 import PublicForm from "./pages/PublicForm";
 import AppointmentConfirm from "./pages/AppointmentConfirm";
+import AppointmentConfirmed from "./pages/AppointmentConfirmed";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -130,6 +131,7 @@ const App = () => (
 
             {/* Public appointment confirmation */}
             <Route path="/appointment/confirm/:token" element={<AppointmentConfirm />} />
+            <Route path="/appointment/confirmed" element={<AppointmentConfirmed />} />
 
             {/* Auth routes */}
             <Route path="/login" element={<Login />} />
