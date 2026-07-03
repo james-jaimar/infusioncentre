@@ -157,8 +157,20 @@ export default function AppearanceSettingsTab() {
               <button className="px-4 h-10 rounded-md font-medium bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]">
                 Primary button
               </button>
-              <button className="px-4 h-10 rounded-md font-medium border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--foreground))]">
+              <button className="px-4 h-10 rounded-md font-medium bg-[hsl(var(--secondary))] text-[hsl(var(--secondary-foreground))]">
                 Secondary
+              </button>
+              <button className="px-4 h-10 rounded-md font-medium" style={{ background: `hsl(${hexToHslString(values.success)})`, color: `hsl(${hexToHslString(values.success_foreground)})` }}>
+                Submit
+              </button>
+              <button className="px-4 h-10 rounded-md font-medium" style={{ background: `hsl(${hexToHslString(values.danger)})`, color: `hsl(${hexToHslString(values.danger_foreground)})` }}>
+                Delete
+              </button>
+              <button className="px-4 h-10 rounded-md font-medium" style={{ background: `hsl(${hexToHslString(values.warning)})`, color: `hsl(${hexToHslString(values.warning_foreground)})` }}>
+                Warning
+              </button>
+              <button className="px-4 h-10 rounded-md font-medium" style={{ background: `hsl(${hexToHslString(values.info)})`, color: `hsl(${hexToHslString(values.info_foreground)})` }}>
+                Info
               </button>
               <a href="#" onClick={e => e.preventDefault()} className="underline" style={{ color: `hsl(${hexToHslString(values.link) || "0 0% 0%"})` }}>
                 A sample link
