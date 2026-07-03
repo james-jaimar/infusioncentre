@@ -37,6 +37,14 @@
     --destructive: 0 55% 42%;
     --destructive-foreground: 0 0% 100%;
 
+    /* ── Semantic button colours (shared with state tokens) ── */
+    --success: 155 46% 33%;
+    --success-foreground: 0 0% 100%;
+    --warning: 37 64% 47%;
+    --warning-foreground: 0 0% 100%;
+    --info: 212 52% 43%;
+    --info-foreground: 0 0% 100%;
+
     --border: 213 20% 80%;              /* stronger panel edges */
     --input: 213 20% 80%;
     --ring: 213 51% 25%;
