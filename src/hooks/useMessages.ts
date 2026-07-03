@@ -123,22 +123,37 @@ export interface Conversation {
   last_message?: string;
   last_message_at?: string;
   unread_count: number;
+  last_kind?: "message" | "note";
 }
 
 export function useConversations() {
   return useQuery({
     queryKey: ["conversations"],
     queryFn: async () => {
-      // Get all messages grouped by conversation
-      const { data: messages, error } = await supabase
-        .from("messages")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
+      // Get all messages grouped by conversation + all patient notes
+      const [msgsRes, notesRes] = await Promise.all([
+        supabase.from("messages").select("*").order("created_at", { ascending: false }),
+        supabase
+          .from("patient_notes" as any)
+          .select("id, patient_id, content, created_at")
+          .order("created_at", { ascending: false }),
+      ]);
+      if (msgsRes.error) throw msgsRes.error;
+      const messages = msgsRes.data ?? [];
+      const notes = ((notesRes.data ?? []) as unknown as Array<{
+        id: string; patient_id: string; content: string; created_at: string;
+      }>);
 
       // Get patient and doctor info
-      const patientIds = [...new Set((messages || []).filter(m => m.patient_id).map(m => m.patient_id!))];
-      const doctorIds = [...new Set((messages || []).filter(m => m.doctor_id).map(m => m.doctor_id!))];
+      const patientIds = [
+        ...new Set([
+          ...messages.filter((m) => m.patient_id).map((m) => m.patient_id!),
+          ...notes.map((n) => n.patient_id),
+        ]),
+      ];
+      const doctorIds = [
+        ...new Set(messages.filter((m) => m.doctor_id).map((m) => m.doctor_id!)),
+      ];
 
       const [patientsRes, doctorsRes] = await Promise.all([
         patientIds.length > 0
@@ -155,7 +170,7 @@ export function useConversations() {
       // Group into conversations
       const convMap = new Map<string, Conversation>();
 
-      for (const msg of (messages || [])) {
+      for (const msg of messages) {
         const key = msg.patient_id
           ? `patient-${msg.patient_id}`
           : `doctor-${msg.doctor_id}`;
@@ -183,11 +198,39 @@ export function useConversations() {
             last_message: msg.content,
             last_message_at: msg.created_at,
             unread_count: 0,
+            last_kind: "message",
           });
         }
 
         if (!msg.is_read) {
           convMap.get(key)!.unread_count++;
+        }
+      }
+
+      // Fold patient notes into their conversations (create one if none exists).
+      for (const note of notes) {
+        const key = `patient-${note.patient_id}`;
+        let conv = convMap.get(key);
+        if (!conv) {
+          const p = patients.get(note.patient_id);
+          conv = {
+            type: "admin_patient",
+            patient_id: note.patient_id,
+            name: p ? `${p.first_name} ${p.last_name}` : "Patient",
+            subtitle: p?.email || undefined,
+            last_message: note.content,
+            last_message_at: note.created_at,
+            unread_count: 0,
+            last_kind: "note",
+          };
+          convMap.set(key, conv);
+          continue;
+        }
+        // If this note is more recent than the current last_message, promote it
+        if (!conv.last_message_at || note.created_at > conv.last_message_at) {
+          conv.last_message = note.content;
+          conv.last_message_at = note.created_at;
+          conv.last_kind = "note";
         }
       }
 
