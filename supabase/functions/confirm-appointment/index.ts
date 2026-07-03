@@ -72,16 +72,17 @@ Deno.serve(async (req) => {
       actionResult = "cancelled";
     } else if (action === "request_change") {
       const patientId = (appt as any).patients?.id ?? null;
-      await admin.from("communication_log").insert({
-        tenant_id: (appt as any).tenant_id,
-        patient_id: patientId,
-        channel: "sms",
-        direction: "inbound",
-        subject: "Patient requested appointment date change",
-        body: message?.trim() || "Patient requested a change of date via SMS confirmation link (no message).",
-        related_entity_type: "appointment",
-        related_entity_id: appt.id,
-      }).select().maybeSingle();
+      const when = new Date((appt as any).scheduled_start).toLocaleString("en-ZA", {
+        timeZone: "Africa/Johannesburg",
+      });
+      const note = `📱 Patient requested a date change via SMS confirmation link.\nOriginal appointment: ${when}\nMessage: ${message?.trim() || "(none provided)"}`;
+      if (patientId) {
+        await admin.from("patient_notes").insert({
+          patient_id: patientId,
+          tenant_id: (appt as any).tenant_id,
+          content: note,
+        });
+      }
       actionResult = "change_requested";
     }
 
