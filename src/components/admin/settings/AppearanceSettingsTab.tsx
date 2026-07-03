@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,11 @@ export default function AppearanceSettingsTab() {
     ...DEFAULT_TOKENS,
     ...saved,
   }));
+
+  // Re-sync when the tenant (and therefore saved tokens) finishes loading.
+  useEffect(() => {
+    setValues({ ...DEFAULT_TOKENS, ...saved });
+  }, [saved]);
 
   const dirty = (Object.keys(DEFAULT_TOKENS) as TokenKey[]).some(
     k => (saved[k] ?? DEFAULT_TOKENS[k]).toLowerCase() !== values[k].toLowerCase(),
