@@ -91,6 +91,7 @@ export function AppointmentQuickCreateDialog({
 
   // Inline "+ new patient" mini-form
   const [showNewPatient, setShowNewPatient] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
   const [newFirstName, setNewFirstName] = useState("");
   const [newLastName, setNewLastName] = useState("");
   const [newEmail, setNewEmail] = useState("");
