@@ -5,8 +5,10 @@ export type TokenKey =
   | "primary_foreground"
   | "button_primary"
   | "button_primary_foreground"
+  | "button_primary_hover"
   | "secondary"
   | "secondary_foreground"
+  | "secondary_hover"
   | "accent"
   | "link"
   | "background"
@@ -18,12 +20,16 @@ export type TokenKey =
   | "muted_foreground"
   | "success"
   | "success_foreground"
+  | "success_hover"
   | "warning"
   | "warning_foreground"
+  | "warning_hover"
   | "danger"
   | "danger_foreground"
+  | "danger_hover"
   | "info"
-  | "info_foreground";
+  | "info_foreground"
+  | "info_hover";
 
 // CSS variable name each token maps to (without leading `--`).
 export const TOKEN_CSS_VAR: Record<TokenKey, string[]> = {
