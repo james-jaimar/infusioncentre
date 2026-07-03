@@ -507,7 +507,21 @@ export function AppointmentQuickCreateDialog({
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label>Patient</Label>
+            <div className="flex items-center justify-between">
+              <Label>Patient</Label>
+              {!showNewPatient && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-xs"
+                  onClick={() => setShowNewPatient(true)}
+                >
+                  <UserPlus className="mr-1 h-3.5 w-3.5" />
+                  Add new patient
+                </Button>
+              )}
+            </div>
             {showNewPatient ? (
               <div className="rounded-md border border-dashed bg-muted/30 p-3 space-y-2">
                 <div className="flex items-center justify-between">
@@ -525,25 +539,31 @@ export function AppointmentQuickCreateDialog({
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <Input
+                    className="col-span-2"
+                    placeholder="Title (e.g. Mr, Mrs, Dr)"
+                    value={newTitle}
+                    onChange={(e) => setNewTitle(e.target.value)}
+                  />
+                  <Input
                     placeholder="First name"
                     value={newFirstName}
                     onChange={(e) => setNewFirstName(e.target.value)}
                   />
                   <Input
-                    placeholder="Last name"
+                    placeholder="Surname"
                     value={newLastName}
                     onChange={(e) => setNewLastName(e.target.value)}
-                  />
-                  <Input
-                    placeholder="Mobile"
-                    value={newPhone}
-                    onChange={(e) => setNewPhone(e.target.value)}
                   />
                   <Input
                     placeholder="Email"
                     type="email"
                     value={newEmail}
                     onChange={(e) => setNewEmail(e.target.value)}
+                  />
+                  <Input
+                    placeholder="Phone"
+                    value={newPhone}
+                    onChange={(e) => setNewPhone(e.target.value)}
                   />
                 </div>
                 <Button
