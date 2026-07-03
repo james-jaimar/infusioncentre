@@ -107,13 +107,16 @@ export default function AppearanceSettingsTab() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        {TOKEN_GROUPS.map(group => (
-          <Card key={group.label}>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {TOKEN_GROUPS.map(group => {
+          const isButtons = group.label === "Buttons";
+          return (
+          <Card key={group.label} className={isButtons ? "lg:col-span-2" : undefined}>
             <CardHeader className="pb-3">
               <CardTitle className="text-base">{group.label}</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent>
+              <div className={isButtons ? "grid gap-x-6 gap-y-3 sm:grid-cols-2" : "space-y-3"}>
               {group.tokens.map(t => (
                 <div key={t.key} className="space-y-1">
                   <div className="flex items-baseline justify-between">
@@ -146,9 +149,11 @@ export default function AppearanceSettingsTab() {
                   </div>
                 </div>
               ))}
+              </div>
             </CardContent>
           </Card>
-        ))}
+          );
+        })}
       </div>
 
       <Card>
