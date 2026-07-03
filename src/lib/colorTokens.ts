@@ -90,6 +90,8 @@ export const TOKEN_GROUPS: TokenGroup[] = [
   {
     label: "Buttons",
     tokens: [
+      { key: "primary", label: "Primary button", description: "Main action buttons (Save, Create, Confirm)" },
+      { key: "primary_foreground", label: "Primary text", description: "Text/icon on primary buttons" },
       { key: "secondary", label: "Secondary button", description: "Neutral / outline button surface" },
       { key: "secondary_foreground", label: "Secondary text" },
       { key: "success", label: "Submit / confirm", description: "Green form-submit style button" },
