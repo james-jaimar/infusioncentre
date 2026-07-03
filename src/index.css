@@ -38,6 +38,8 @@
     --destructive-foreground: 0 0% 100%;
 
     /* ── Semantic button colours (shared with state tokens) ── */
+    --btn-primary: 213 51% 25%;
+    --btn-primary-foreground: 0 0% 100%;
     --success: 155 46% 33%;
     --success-foreground: 0 0% 100%;
     --warning: 37 64% 47%;
