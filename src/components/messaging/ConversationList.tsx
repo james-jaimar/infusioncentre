@@ -65,7 +65,12 @@ export function ConversationList({ conversations, selectedPatientId, selectedDoc
                     <p className="text-xs text-muted-foreground truncate">{conv.subtitle}</p>
                   )}
                   {conv.last_message && (
-                    <p className="text-xs text-muted-foreground truncate mt-0.5">{conv.last_message}</p>
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">
+                      {conv.last_kind === "note" && (
+                        <span className="text-amber-700 font-medium">Note: </span>
+                      )}
+                      {conv.last_message}
+                    </p>
                   )}
                   {conv.last_message_at && (
                     <p className="text-[10px] text-muted-foreground mt-0.5">
