@@ -132,6 +132,11 @@
     @apply font-semibold tracking-tight;
   }
 
+  /* Default anchor colour follows the --link token (falls back to primary). */
+  a:not([class*="text-"]):not([class*="bg-"]) {
+    color: hsl(var(--link, var(--primary)));
+  }
+
   /* Public-facing pages use Exo for headings */
   .public-layout h1,
   .public-layout h2,
