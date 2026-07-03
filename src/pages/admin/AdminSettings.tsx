@@ -23,7 +23,6 @@ export default function AdminSettings() {
         <ScrollArea className="w-full">
           <TabsList className="inline-flex w-auto">
             <TabsTrigger value="clinic">Clinic</TabsTrigger>
-            <TabsTrigger value="appearance">Appearance</TabsTrigger>
             <TabsTrigger value="chairs">Chairs</TabsTrigger>
             <TabsTrigger value="types">Appointment Types</TabsTrigger>
             <TabsTrigger value="protocols">Protocols</TabsTrigger>
@@ -32,6 +31,7 @@ export default function AdminSettings() {
             <TabsTrigger value="notifications">Email Notifications</TabsTrigger>
             <TabsTrigger value="sms">SMS</TabsTrigger>
             <TabsTrigger value="features">Feature Flags</TabsTrigger>
+            <TabsTrigger value="appearance">Appearance</TabsTrigger>
           </TabsList>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
