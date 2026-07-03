@@ -40,12 +40,18 @@
     /* ── Semantic button colours (shared with state tokens) ── */
     --btn-primary: 213 51% 25%;
     --btn-primary-foreground: 0 0% 100%;
+    --btn-primary-hover: 213 51% 32%;
+    --secondary-hover: 210 20% 92%;
     --success: 155 46% 33%;
     --success-foreground: 0 0% 100%;
+    --success-hover: 155 46% 28%;
     --warning: 37 64% 47%;
     --warning-foreground: 0 0% 100%;
+    --warning-hover: 37 64% 40%;
     --info: 212 52% 43%;
     --info-foreground: 0 0% 100%;
+    --info-hover: 212 52% 36%;
+    --destructive-hover: 0 55% 36%;
 
     --border: 213 20% 80%;              /* stronger panel edges */
     --input: 213 20% 80%;
