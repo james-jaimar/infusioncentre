@@ -254,6 +254,7 @@ export function useCreatePatientQuick() {
 
   return useMutation({
     mutationFn: async (input: {
+      title?: string | null;
       first_name: string;
       last_name: string;
       email?: string | null;
@@ -262,11 +263,12 @@ export function useCreatePatientQuick() {
       const { data, error } = await supabase
         .from('patients')
         .insert({
+          title: input.title?.trim() || null,
           first_name: input.first_name.trim(),
           last_name: input.last_name.trim(),
           email: input.email?.trim() || null,
           phone: input.phone?.trim() || null,
-        })
+        } as any)
         .select()
         .single();
 

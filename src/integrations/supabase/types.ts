@@ -1885,6 +1885,7 @@ export type Database = {
           referring_doctor_practice: string | null
           status: Database["public"]["Enums"]["patient_status"]
           tenant_id: string
+          title: string | null
           updated_at: string
           user_id: string | null
         }
@@ -1915,6 +1916,7 @@ export type Database = {
           referring_doctor_practice?: string | null
           status?: Database["public"]["Enums"]["patient_status"]
           tenant_id?: string
+          title?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -1945,6 +1947,7 @@ export type Database = {
           referring_doctor_practice?: string | null
           status?: Database["public"]["Enums"]["patient_status"]
           tenant_id?: string
+          title?: string | null
           updated_at?: string
           user_id?: string | null
         }
