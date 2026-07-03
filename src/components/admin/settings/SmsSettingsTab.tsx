@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { MessageSquare, Save, Send, PlayCircle } from "lucide-react";
+import { MessageSquare, Save, Send, PlayCircle, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import {
   useClinicSettings,
@@ -232,6 +232,21 @@ export default function SmsSettingsTab() {
             <p className="text-[11px] text-muted-foreground">
               The {`{{confirm_link}}`} tag becomes <code className="text-[10px]">{`<base>/appointment/confirm/<token>`}</code>.
             </p>
+            <div className="pt-2">
+              <a
+                href="/appointment/confirm/preview"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+              >
+                <ExternalLink className="h-3 w-3" />
+                Preview the confirmation page patients see
+              </a>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Opens the branded page (confirm / cancel / request new date) with sample data.
+                Edit it in <code className="text-[10px]">src/pages/AppointmentConfirm.tsx</code>.
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>
