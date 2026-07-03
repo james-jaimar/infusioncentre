@@ -70,6 +70,9 @@
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 213 40% 35%;
     --sidebar-ring: 213 51% 25%;
+
+    /* ── Link colour ── */
+    --link: 212 52% 43%;
   }
 
   .dark {
