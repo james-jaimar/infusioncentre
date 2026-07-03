@@ -204,6 +204,7 @@ export function AppointmentQuickCreateDialog({
     }
     try {
       const p = await createPatient.mutateAsync({
+        title: newTitle || null,
         first_name: newFirstName,
         last_name: newLastName,
         email: newEmail || null,
@@ -211,6 +212,7 @@ export function AppointmentQuickCreateDialog({
       });
       setPatientId(p.id);
       setShowNewPatient(false);
+      setNewTitle("");
       toast.success(`Added ${p.first_name} ${p.last_name}`);
     } catch (e) {
       toast.error("Couldn't create patient");
