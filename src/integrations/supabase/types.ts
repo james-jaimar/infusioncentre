@@ -2400,6 +2400,7 @@ export type Database = {
           secondary_color: string | null
           settings: Json
           slug: string
+          theme_tokens: Json | null
           updated_at: string
         }
         Insert: {
@@ -2418,6 +2419,7 @@ export type Database = {
           secondary_color?: string | null
           settings?: Json
           slug: string
+          theme_tokens?: Json | null
           updated_at?: string
         }
         Update: {
@@ -2436,6 +2438,7 @@ export type Database = {
           secondary_color?: string | null
           settings?: Json
           slug?: string
+          theme_tokens?: Json | null
           updated_at?: string
         }
         Relationships: []

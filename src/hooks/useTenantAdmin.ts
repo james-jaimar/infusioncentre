@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tenant } from "@/contexts/TenantContext";
+import type { ThemeTokens } from "@/lib/colorTokens";
 
 export function useTenants() {
   return useQuery({
@@ -94,5 +95,22 @@ export function useSubscriptionUsage(tenantId: string | null) {
       return data;
     },
     enabled: !!tenantId,
+  });
+}
+
+export function useUpdateTenantTheme() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ tenantId, tokens }: { tenantId: string; tokens: ThemeTokens | null }) => {
+      const { error } = await supabase
+        .from("tenants")
+        .update({ theme_tokens: tokens as never })
+        .eq("id", tenantId);
+      if (error) throw error;
+    },
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["tenant", vars.tenantId] });
+      qc.invalidateQueries({ queryKey: ["tenants-all"] });
+    },
   });
 }

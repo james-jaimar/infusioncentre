@@ -9,6 +9,7 @@ import FeatureFlagsTab from "@/components/admin/settings/FeatureFlagsTab";
 import EmailNotificationsTab from "@/components/admin/settings/EmailNotificationsTab";
 import ClinicSettingsTab from "@/components/admin/settings/ClinicSettingsTab";
 import SmsSettingsTab from "@/components/admin/settings/SmsSettingsTab";
+import AppearanceSettingsTab from "@/components/admin/settings/AppearanceSettingsTab";
 
 export default function AdminSettings() {
   return (
@@ -22,6 +23,7 @@ export default function AdminSettings() {
         <ScrollArea className="w-full">
           <TabsList className="inline-flex w-auto">
             <TabsTrigger value="clinic">Clinic</TabsTrigger>
+            <TabsTrigger value="appearance">Appearance</TabsTrigger>
             <TabsTrigger value="chairs">Chairs</TabsTrigger>
             <TabsTrigger value="types">Appointment Types</TabsTrigger>
             <TabsTrigger value="protocols">Protocols</TabsTrigger>
@@ -35,6 +37,7 @@ export default function AdminSettings() {
         </ScrollArea>
 
         <TabsContent value="clinic"><ClinicSettingsTab /></TabsContent>
+        <TabsContent value="appearance"><AppearanceSettingsTab /></TabsContent>
         <TabsContent value="chairs"><ChairsSettingsTab /></TabsContent>
         <TabsContent value="types"><AppointmentTypesTab /></TabsContent>
         <TabsContent value="protocols"><ProtocolConfigTab /></TabsContent>

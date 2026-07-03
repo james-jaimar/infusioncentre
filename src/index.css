@@ -70,6 +70,9 @@
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 213 40% 35%;
     --sidebar-ring: 213 51% 25%;
+
+    /* ── Link colour ── */
+    --link: 212 52% 43%;
   }
 
   .dark {
@@ -127,6 +130,11 @@
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Inter', system-ui, sans-serif;
     @apply font-semibold tracking-tight;
+  }
+
+  /* Default anchor colour follows the --link token (falls back to primary). */
+  a:not([class*="text-"]):not([class*="bg-"]) {
+    color: hsl(var(--link, var(--primary)));
   }
 
   /* Public-facing pages use Exo for headings */
