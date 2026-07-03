@@ -15,16 +15,30 @@ Deno.serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    const token = url.searchParams.get("token") ?? (await req.json().catch(() => ({}))).token;
+    const body = await req.json().catch(() => ({} as Record<string, unknown>));
+    const token = (url.searchParams.get("token") ?? (body as any).token) as string | undefined;
+    const action = ((url.searchParams.get("action") ?? (body as any).action ?? "info") as string).toLowerCase();
+    const message = ((body as any).message ?? "") as string;
     if (!token) {
       return new Response(JSON.stringify({ error: "Missing token" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    // Load branding
+    const { data: brandRows } = await admin
+      .from("clinic_settings")
+      .select("key,value")
+      .in("key", ["business_name", "business_phone", "business_email"]);
+    const brand: Record<string, string> = {};
+    (brandRows ?? []).forEach((r: any) => {
+      const v = typeof r.value === "string" ? r.value : (r.value?.value ?? "");
+      brand[r.key] = String(v ?? "");
+    });
+
     const { data: appt, error } = await admin
       .from("appointments")
-      .select("id, scheduled_start, patient_confirmed_at, status, patients(first_name, last_name), appointment_types(name)")
+      .select("id, tenant_id, scheduled_start, patient_confirmed_at, status, cancellation_reason, patients(id, first_name, last_name), appointment_types(name)")
       .eq("confirmation_token", token)
       .maybeSingle();
     if (error) throw error;
@@ -34,20 +48,57 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (!appt.patient_confirmed_at) {
+    let actionResult: string | null = null;
+
+    if (action === "confirm") {
+      if (!appt.patient_confirmed_at) {
+        await admin
+          .from("appointments")
+          .update({
+            patient_confirmed_at: new Date().toISOString(),
+            status: appt.status === "scheduled" ? "confirmed" : appt.status,
+          })
+          .eq("id", appt.id);
+      }
+      actionResult = "confirmed";
+    } else if (action === "cancel") {
       await admin
         .from("appointments")
-        .update({ patient_confirmed_at: new Date().toISOString() })
+        .update({
+          status: "cancelled",
+          cancellation_reason: message?.trim() || "Cancelled by patient via SMS link",
+        })
         .eq("id", appt.id);
+      actionResult = "cancelled";
+    } else if (action === "request_change") {
+      const patientId = (appt as any).patients?.id ?? null;
+      await admin.from("communication_log").insert({
+        tenant_id: (appt as any).tenant_id,
+        patient_id: patientId,
+        channel: "sms",
+        direction: "inbound",
+        subject: "Patient requested appointment date change",
+        body: message?.trim() || "Patient requested a change of date via SMS confirmation link (no message).",
+        related_entity_type: "appointment",
+        related_entity_id: appt.id,
+      }).select().maybeSingle();
+      actionResult = "change_requested";
     }
 
     return new Response(
       JSON.stringify({
         success: true,
+        action: actionResult,
         already: !!appt.patient_confirmed_at,
+        status: actionResult === "cancelled" ? "cancelled" : appt.status,
         scheduled_start: appt.scheduled_start,
         patient_name: `${(appt as any).patients?.first_name ?? ""} ${(appt as any).patients?.last_name ?? ""}`.trim(),
         treatment_type: (appt as any).appointment_types?.name ?? null,
+        brand: {
+          name: brand.business_name || "Infusion Centre",
+          phone: brand.business_phone || "",
+          email: brand.business_email || "",
+        },
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
