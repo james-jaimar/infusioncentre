@@ -3,6 +3,8 @@
 export type TokenKey =
   | "primary"
   | "primary_foreground"
+  | "button_primary"
+  | "button_primary_foreground"
   | "secondary"
   | "secondary_foreground"
   | "accent"
