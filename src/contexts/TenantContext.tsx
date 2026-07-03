@@ -73,8 +73,6 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     const appliedVars = tenant.theme_tokens
       ? applyThemeTokens(root, tenant.theme_tokens)
       : [];
-    // eslint-disable-next-line no-console
-    console.log("[theme] applied tenant theme_tokens=", tenant.theme_tokens, "vars=", appliedVars);
 
     return () => {
       root.style.removeProperty('--tenant-primary');
