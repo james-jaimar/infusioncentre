@@ -3,6 +3,8 @@
 export type TokenKey =
   | "primary"
   | "primary_foreground"
+  | "secondary"
+  | "secondary_foreground"
   | "accent"
   | "link"
   | "background"
@@ -13,14 +15,20 @@ export type TokenKey =
   | "foreground"
   | "muted_foreground"
   | "success"
+  | "success_foreground"
   | "warning"
+  | "warning_foreground"
   | "danger"
-  | "info";
+  | "danger_foreground"
+  | "info"
+  | "info_foreground";
 
 // CSS variable name each token maps to (without leading `--`).
 export const TOKEN_CSS_VAR: Record<TokenKey, string[]> = {
   primary: ["primary"],
   primary_foreground: ["primary-foreground"],
+  secondary: ["secondary"],
+  secondary_foreground: ["secondary-foreground"],
   accent: ["accent"],
   link: ["link"],
   background: ["background"],
@@ -30,15 +38,21 @@ export const TOKEN_CSS_VAR: Record<TokenKey, string[]> = {
   ring: ["ring"],
   foreground: ["foreground", "card-foreground", "popover-foreground"],
   muted_foreground: ["muted-foreground"],
-  success: ["state-success"],
-  warning: ["state-warning"],
+  success: ["state-success", "success"],
+  success_foreground: ["success-foreground"],
+  warning: ["state-warning", "warning"],
+  warning_foreground: ["warning-foreground"],
   danger: ["destructive", "state-danger"],
-  info: ["state-info"],
+  danger_foreground: ["destructive-foreground"],
+  info: ["state-info", "info"],
+  info_foreground: ["info-foreground"],
 };
 
 export const DEFAULT_TOKENS: Record<TokenKey, string> = {
   primary: "#1F3A5F",
   primary_foreground: "#FFFFFF",
+  secondary: "#F1F4F7",
+  secondary_foreground: "#1F3A5F",
   accent: "#1F3A5F",
   link: "#356DA8",
   background: "#E4E9EE",
@@ -49,9 +63,13 @@ export const DEFAULT_TOKENS: Record<TokenKey, string> = {
   foreground: "#2E3E52",
   muted_foreground: "#6B7C8F",
   success: "#2E7D61",
+  success_foreground: "#FFFFFF",
   warning: "#C48A2D",
+  warning_foreground: "#FFFFFF",
   danger: "#A23B3B",
+  danger_foreground: "#FFFFFF",
   info: "#356DA8",
+  info_foreground: "#FFFFFF",
 };
 
 export interface TokenGroup {
@@ -67,6 +85,21 @@ export const TOKEN_GROUPS: TokenGroup[] = [
       { key: "primary_foreground", label: "Primary text", description: "Text on primary colour" },
       { key: "accent", label: "Accent", description: "Highlights, secondary CTAs" },
       { key: "link", label: "Link", description: "Anchor tag colour" },
+    ],
+  },
+  {
+    label: "Buttons",
+    tokens: [
+      { key: "secondary", label: "Secondary button", description: "Neutral / outline button surface" },
+      { key: "secondary_foreground", label: "Secondary text" },
+      { key: "success", label: "Submit / confirm", description: "Green form-submit style button" },
+      { key: "success_foreground", label: "Submit text" },
+      { key: "danger", label: "Delete / destructive", description: "Delete & destructive buttons" },
+      { key: "danger_foreground", label: "Delete text" },
+      { key: "warning", label: "Warning button" },
+      { key: "warning_foreground", label: "Warning text" },
+      { key: "info", label: "Info button" },
+      { key: "info_foreground", label: "Info text" },
     ],
   },
   {
@@ -89,10 +122,10 @@ export const TOKEN_GROUPS: TokenGroup[] = [
   {
     label: "State",
     tokens: [
-      { key: "success", label: "Success" },
-      { key: "warning", label: "Warning" },
-      { key: "danger", label: "Danger" },
-      { key: "info", label: "Info" },
+      { key: "success", label: "Success (shared with submit button)" },
+      { key: "warning", label: "Warning (shared with button)" },
+      { key: "danger", label: "Danger (shared with delete button)" },
+      { key: "info", label: "Info (shared with button)" },
     ],
   },
 ];
