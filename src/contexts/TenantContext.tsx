@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { applyThemeTokens, type ThemeTokens } from "@/lib/colorTokens";
 
 export interface Tenant {
   id: string;
@@ -18,6 +19,7 @@ export interface Tenant {
   is_active: boolean;
   settings: Record<string, unknown>;
   billing_email: string | null;
+  theme_tokens: ThemeTokens | null;
 }
 
 interface TenantContextType {
@@ -67,11 +69,16 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     if (tenant.accent_color && tenant.accent_color !== '#E8A87C') {
       root.style.setProperty('--tenant-accent', tenant.accent_color);
     }
-    
+
+    const appliedVars = tenant.theme_tokens
+      ? applyThemeTokens(root, tenant.theme_tokens)
+      : [];
+
     return () => {
       root.style.removeProperty('--tenant-primary');
       root.style.removeProperty('--tenant-secondary');
       root.style.removeProperty('--tenant-accent');
+      for (const v of appliedVars) root.style.removeProperty(`--${v}`);
     };
   }, [tenant]);
 
