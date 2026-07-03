@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useConversations, useMessages, useSendMessage, useMarkMessagesRead } from "@/hooks/useMessages";
+import { usePatientNotes } from "@/hooks/usePatientNotes";
 import { ConversationList } from "@/components/messaging/ConversationList";
 import { ChatThread } from "@/components/messaging/ChatThread";
 import { ChatInput } from "@/components/messaging/ChatInput";
@@ -25,6 +26,8 @@ export default function AdminMessages() {
     doctorId: selectedDoctorId,
     conversationType: selectedConvType,
   });
+
+  const { data: patientNotes = [] } = usePatientNotes(selectedPatientId);
 
   // Mark messages as read when viewing
   useEffect(() => {
@@ -94,6 +97,9 @@ export default function AdminMessages() {
                 messages={messages}
                 currentUserId={user?.id || ""}
                 isLoading={msgsLoading}
+                notes={selectedPatientId ? patientNotes.map(n => ({
+                  id: n.id, content: n.content, created_at: n.created_at,
+                })) : []}
               />
               <ChatInput onSend={handleSend} disabled={sendMessage.isPending} />
             </>
