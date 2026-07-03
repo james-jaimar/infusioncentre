@@ -120,8 +120,18 @@ export default function PatientLayout() {
         <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-4 lg:hidden">
           <button onClick={() => setSidebarOpen(true)}>
             <Menu className="h-6 w-6" />
+            {unreadCount > 0 && (
+              <span className="absolute top-2 left-6 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full px-1.5 min-w-[18px] text-center">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
           </button>
           <span className="font-semibold">Patient Portal</span>
+          {unreadCount > 0 && (
+            <span className="ml-auto bg-destructive text-destructive-foreground text-xs font-bold rounded-full px-2 py-0.5 min-w-[20px] text-center">
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          )}
         </header>
 
         {/* Page content */}
