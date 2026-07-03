@@ -159,7 +159,7 @@ export default function AppearanceSettingsTab() {
         <CardContent>
           <div style={previewStyle} className="rounded-md border p-6 bg-[hsl(var(--background))] text-[hsl(var(--foreground))] space-y-4">
             <div className="flex flex-wrap items-center gap-3">
-              <button className="px-4 h-10 rounded-md font-medium bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]">
+              <button className="px-4 h-10 rounded-md font-medium" style={{ background: `hsl(${hexToHslString(values.button_primary)})`, color: `hsl(${hexToHslString(values.button_primary_foreground)})` }}>
                 Primary button
               </button>
               <button className="px-4 h-10 rounded-md font-medium bg-[hsl(var(--secondary))] text-[hsl(var(--secondary-foreground))]">
