@@ -2,7 +2,8 @@ import { useEffect, useRef } from "react";
 import { Message } from "@/hooks/useMessages";
 import { format, isToday, isYesterday } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { StickyNote } from "lucide-react";
+import { StickyNote, MailOpen } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export interface ThreadNote {
   id: string;
@@ -15,6 +16,7 @@ interface Props {
   currentUserId: string;
   isLoading?: boolean;
   notes?: ThreadNote[];
+  onMarkUnread?: (messageId: string) => void;
 }
 
 function formatMessageDate(dateStr: string) {
@@ -28,7 +30,7 @@ type ThreadItem =
   | { kind: "message"; created_at: string; msg: Message }
   | { kind: "note"; created_at: string; note: ThreadNote };
 
-export function ChatThread({ messages, currentUserId, isLoading, notes = [] }: Props) {
+export function ChatThread({ messages, currentUserId, isLoading, notes = [], onMarkUnread }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const items: ThreadItem[] = [
@@ -106,7 +108,24 @@ export function ChatThread({ messages, currentUserId, isLoading, notes = [] }: P
                   </span>
                 </div>
               )}
-              <div className={`flex ${isMine ? "justify-end" : "justify-start"} mb-1`}>
+              <div className={`group flex items-center gap-2 ${isMine ? "justify-end" : "justify-start"} mb-1`}>
+                {!isMine && onMarkUnread && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onMarkUnread(msg.id)}
+                    className="order-2 h-7 px-2 text-xs opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                    title={msg.is_read ? "Mark as unread" : "Already unread"}
+                    disabled={!msg.is_read}
+                  >
+                    <MailOpen className="h-3.5 w-3.5 mr-1" />
+                    Mark unread
+                  </Button>
+                )}
+                <div
+                  className={`order-1 relative ${!isMine && !msg.is_read ? "ring-2 ring-primary/60 rounded-2xl" : ""}`}
+                >
                 <div
                   className={`max-w-[75%] px-3 py-2 rounded-2xl text-sm ${
                     isPatientUpdate && !isMine
@@ -131,6 +150,7 @@ export function ChatThread({ messages, currentUserId, isLoading, notes = [] }: P
                     {format(new Date(msg.created_at), "HH:mm")}
                     {isMine && msg.is_read && " ✓✓"}
                   </p>
+                </div>
                 </div>
               </div>
             </div>

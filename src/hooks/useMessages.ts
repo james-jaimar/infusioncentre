@@ -114,6 +114,25 @@ export function useMarkMessagesRead() {
   });
 }
 
+export function useMarkMessageUnread() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ messageId }: { messageId: string }) => {
+      const { error } = await supabase
+        .from("messages")
+        .update({ is_read: false, read_at: null })
+        .eq("id", messageId);
+      if (error) throw error;
+      return messageId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["messages"] });
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      queryClient.invalidateQueries({ queryKey: ["unread-message-count"] });
+    },
+  });
+}
+
 export interface Conversation {
   type: "admin_patient" | "admin_doctor";
   patient_id?: string;

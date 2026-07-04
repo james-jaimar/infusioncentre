@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useConversations, useMessages, useSendMessage, useMarkMessagesRead } from "@/hooks/useMessages";
+import { useState, useRef } from "react";
+import { useConversations, useMessages, useSendMessage, useMarkMessagesRead, useMarkMessageUnread } from "@/hooks/useMessages";
 import { usePatientNotes } from "@/hooks/usePatientNotes";
 import { ConversationList } from "@/components/messaging/ConversationList";
 import { ChatThread } from "@/components/messaging/ChatThread";
@@ -16,6 +16,7 @@ export default function AdminMessages() {
   const { data: conversations = [], isLoading: convsLoading } = useConversations();
   const sendMessage = useSendMessage();
   const markRead = useMarkMessagesRead();
+  const markUnread = useMarkMessageUnread();
 
   const [selectedPatientId, setSelectedPatientId] = useState<string>();
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>();
@@ -29,14 +30,35 @@ export default function AdminMessages() {
 
   const { data: patientNotes = [] } = usePatientNotes(selectedPatientId);
 
-  // Mark messages as read when viewing
+  // Auto-mark unread messages as read once per conversation selection.
+  // Skips any message the admin has explicitly flagged unread this session,
+  // so "Mark unread" stays sticky until they navigate away and back.
+  const seenConvKeyRef = useRef<string | null>(null);
+  const keptUnreadRef = useRef<Set<string>>(new Set());
+  const convKey = selectedPatientId
+    ? `p:${selectedPatientId}`
+    : selectedDoctorId
+    ? `d:${selectedDoctorId}`
+    : null;
+
   useEffect(() => {
-    if (!messages.length || !user) return;
+    if (!convKey || !user || !messages.length) return;
+    if (seenConvKeyRef.current === convKey) return;
+    seenConvKeyRef.current = convKey;
+    keptUnreadRef.current = new Set();
     const unread = messages.filter((m) => !m.is_read && m.sender_id !== user.id);
     if (unread.length > 0) {
       markRead.mutate({ messageIds: unread.map((m) => m.id) });
     }
-  }, [messages, user]);
+  }, [convKey, messages, user]);
+
+  const handleMarkUnread = (messageId: string) => {
+    keptUnreadRef.current.add(messageId);
+    markUnread.mutate(
+      { messageId },
+      { onError: (e: any) => toast({ title: e.message, variant: "destructive" }) }
+    );
+  };
 
   const handleSend = (content: string) => {
     if (!user) return;
@@ -100,6 +122,7 @@ export default function AdminMessages() {
                 notes={selectedPatientId ? patientNotes.map(n => ({
                   id: n.id, content: n.content, created_at: n.created_at,
                 })) : []}
+                onMarkUnread={handleMarkUnread}
               />
               <ChatInput onSend={handleSend} disabled={sendMessage.isPending} />
             </>
