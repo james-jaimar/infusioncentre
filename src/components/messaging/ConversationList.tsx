@@ -53,10 +53,21 @@ export function ConversationList({ conversations, selectedPatientId, selectedDoc
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium truncate">{conv.name}</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p
+                      className={`text-sm truncate ${
+                        conv.unread_count > 0
+                          ? "font-bold text-foreground"
+                          : "font-medium"
+                      }`}
+                    >
+                      {conv.name}
+                    </p>
                     {conv.unread_count > 0 && (
-                      <Badge variant="default" className="ml-1 h-5 min-w-[20px] text-xs">
+                      <Badge
+                        variant="default"
+                        className="ml-1 h-5 min-w-[20px] text-xs px-1.5 flex items-center justify-center"
+                      >
                         {conv.unread_count}
                       </Badge>
                     )}
@@ -65,7 +76,13 @@ export function ConversationList({ conversations, selectedPatientId, selectedDoc
                     <p className="text-xs text-muted-foreground truncate">{conv.subtitle}</p>
                   )}
                   {conv.last_message && (
-                    <p className="text-xs text-muted-foreground truncate mt-0.5">
+                    <p
+                      className={`text-xs truncate mt-0.5 ${
+                        conv.unread_count > 0
+                          ? "text-foreground font-semibold"
+                          : "text-muted-foreground"
+                      }`}
+                    >
                       {conv.last_kind === "note" && (
                         <span className="text-amber-700 font-medium">Note: </span>
                       )}
