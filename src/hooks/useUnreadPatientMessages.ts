@@ -17,7 +17,6 @@ export function useUnreadPatientMessages() {
       const { data, error } = await supabase
         .from("messages")
         .select("id, patient_id, content, created_at, sender_role, is_read")
-        .eq("sender_role", "patient")
         .eq("is_read", false)
         .not("patient_id", "is", null)
         .order("created_at", { ascending: false })
