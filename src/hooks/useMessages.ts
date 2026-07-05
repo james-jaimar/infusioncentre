@@ -110,6 +110,8 @@ export function useMarkMessagesRead() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["messages"] });
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      queryClient.invalidateQueries({ queryKey: ["unread-patient-messages"] });
+      queryClient.invalidateQueries({ queryKey: ["unread-message-count"] });
     },
   });
 }
@@ -129,6 +131,7 @@ export function useMarkMessageUnread() {
       queryClient.invalidateQueries({ queryKey: ["messages"] });
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
       queryClient.invalidateQueries({ queryKey: ["unread-message-count"] });
+      queryClient.invalidateQueries({ queryKey: ["unread-patient-messages"] });
     },
   });
 }
