@@ -10,9 +10,7 @@ export default function DashboardActionsPanel() {
   const { data: requests, isLoading } = usePendingChangeRequests();
   const resolve = useResolveChangeRequest();
 
-  if (isLoading) return null;
   const items = requests ?? [];
-  if (!items.length) return null;
 
   const handleDismiss = async (id: string) => {
     try {
@@ -49,6 +47,14 @@ export default function DashboardActionsPanel() {
         </div>
 
         <div className="divide-y divide-border rounded-md border">
+          {isLoading && (
+            <div className="p-4 text-sm text-muted-foreground">Loading…</div>
+          )}
+          {!isLoading && items.length === 0 && (
+            <div className="p-4 text-sm text-muted-foreground">
+              No pending reschedule requests. You're all caught up.
+            </div>
+          )}
           {items.map((req) => {
             const apt = req.appointment;
             const dateStr = apt
