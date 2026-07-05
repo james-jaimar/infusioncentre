@@ -403,7 +403,15 @@ export default function PatientDetail() {
       )}
 
       {/* Tabs */}
-      <Tabs defaultValue="profile">
+      <Tabs
+        value={searchParams.get("tab") || "profile"}
+        onValueChange={(v) => {
+          const next = new URLSearchParams(searchParams);
+          if (v === "profile") next.delete("tab");
+          else next.set("tab", v);
+          setSearchParams(next, { replace: true });
+        }}
+      >
         {patient && (
           <PatientPipelinePanel
             patient={{
