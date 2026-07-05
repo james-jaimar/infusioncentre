@@ -222,10 +222,13 @@ function AppointmentsPanel({ title, emptyText, items }: { title: string; emptyTe
         {items.length ? (
           <CardContent className="p-0">
             <div className="divide-y divide-border">
-              {items.map((apt: any) => (
+              {items.map((apt: any) => {
+                const d = new Date(apt.scheduled_start);
+                const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+                return (
                 <Link
                   key={apt.id}
-                  to={`/admin/appointments/${apt.id}`}
+                  to={`/admin/appointments?view=day&date=${dateStr}&apt=${apt.id}`}
                   className="flex items-center gap-3 px-3 py-2 hover:bg-muted/40 transition-colors"
                 >
                   <span className="text-base font-bold text-foreground font-mono tabular-nums shrink-0 w-14">
