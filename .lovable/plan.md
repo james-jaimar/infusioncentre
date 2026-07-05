@@ -1,115 +1,32 @@
 ## Goal
 
-Add a new **Appearance** tab in Admin → Settings where admins can customize the standard UI colors (buttons, links, backgrounds, borders, state colors) with a live preview, saved per tenant and applied globally at runtime via CSS variables.
+From Gayle's dashboard, clicking any row in **Today's Appointments** or **Tomorrow's Appointments** should take her straight into the calendar (`/admin/appointments`) on the correct day, with the quick-edit modal for that appointment already open — so she can immediately resend an SMS, reschedule, mark arrived, etc., without a second click.
 
-## Where it plugs in
+This keeps the calendar as the single "everything appointments" surface and turns the dashboard panels into a true action list.
 
-- New tab in `src/pages/admin/AdminSettings.tsx` between **Clinic** and **Chairs**: "Appearance".
-- New component `src/components/admin/settings/AppearanceSettingsTab.tsx`.
-- Reuses the existing tenant branding pipeline in `src/contexts/TenantContext.tsx` (already writes CSS vars on `:root` from the `tenants` row) — we extend it to cover more tokens.
+## Changes
 
-## Editable tokens (industry-standard set)
+1. **`src/pages/admin/AdminDashboard.tsx`** — change the appointment row link
+   - Today it links to `/admin/appointments/{id}` (the full detail page).
+   - Change it to `/admin/appointments?view=day&date=YYYY-MM-DD&apt={id}` where `date` is the appointment's scheduled day.
+   - Keep the row's visual design; only the destination changes.
 
-Grouped for clarity, each rendered as a color-picker + hex input (like `TenantForm.tsx`), with a "Reset to default" per token:
+2. **`src/pages/admin/AdminAppointments.tsx`** — honour the new query param
+   - It already reads `view` via `useSearchParams` and holds `editingApt` state for the quick-edit modal.
+   - Add a `date` param handler: if present, set `currentDate` to that day.
+   - Add an `apt` param handler: once the day's appointments are loaded, find the matching appointment and call `setEditingApt(...)`. Then strip `apt` (and `date`) from the URL via `setSearchParams` so a manual refresh doesn't keep re-opening the modal, and closing the modal doesn't leave stale params behind.
+   - If the ID isn't found in the current fetch (e.g. filters exclude it), fall back to a `toast` and skip — no crash.
 
-**Brand**
-- Primary (buttons, active states) → `--primary`
-- Primary foreground (text on primary) → `--primary-foreground`
-- Accent (secondary CTAs, highlights) → `--accent`
-- Link color (anchor tags) → new `--link` token
+3. **No changes** to `AppointmentQuickEditDialog`, the detail page, or any data hooks. The detail page (`/admin/appointments/:id`) stays available for the "Full page" link inside the modal and for anyone with a bookmarked URL.
 
-**Surfaces**
-- Page background → `--background`
-- Card / panel background → `--card`
-- Muted surface → `--muted`
-- Border / divider → `--border`
-- Ring (focus outline) → `--ring`
+## UX notes
 
-**Text**
-- Foreground (body text) → `--foreground`
-- Muted foreground → `--muted-foreground`
+- Row click → calendar in Day view, jumped to the right date, modal open. One click, no extra navigation.
+- The modal already exposes: reschedule, send SMS confirmation, mark arrived, send portal login, edit chair/nurse/status/notes, delete, and a "Full page" escape hatch. That covers the actions Gayle takes on an awaiting/late appointment.
+- Because we scrub `?apt=...` after opening, browser back from the modal returns her to the dashboard naturally and the calendar URL stays clean.
 
-**State**
-- Success → `--state-success`
-- Warning → `--state-warning`
-- Danger / destructive → `--destructive` (and mirrors to `--state-danger`)
-- Info → `--state-info`
+## Out of scope (happy to tackle next, just flagging)
 
-Sidebar colors stay on the tenant's primary derivation (not user-editable in v1) to keep the nav coherent.
-
-## Storage
-
-Extend the existing `tenants` row rather than adding a new table — branding is already tenant-scoped there. Add a JSONB column `theme_tokens` on `public.tenants` shaped like:
-
-```json
-{
-  "primary": "#1F3A5F",
-  "primary_foreground": "#FFFFFF",
-  "accent": "#1F3A5F",
-  "link": "#356DA8",
-  "background": "#E4E9EE",
-  "card": "#FFFFFF",
-  "muted": "#EDF0F3",
-  "border": "#C4CDD6",
-  "ring": "#1F3A5F",
-  "foreground": "#2E3E52",
-  "muted_foreground": "#6B7C8F",
-  "success": "#2E7D61",
-  "warning": "#C48A2D",
-  "danger": "#A23B3B",
-  "info": "#356DA8"
-}
-```
-
-Nullable — when null, the app falls back to the CSS defaults in `src/index.css`. Only admins can update (`has_role(auth.uid(),'admin')` policy on `tenants` already exists).
-
-## Runtime application
-
-Extend `TenantContext.tsx` so its existing `useEffect` also iterates `tenant.theme_tokens` and writes each entry to `:root` as the matching HSL variable. We convert stored hex → HSL string (`H S% L%`) in a small helper `src/lib/colorTokens.ts` so it slots straight into the existing `hsl(var(--x))` consumers — no component changes needed.
-
-`--link` gets applied through a small global rule in `src/index.css`:
-
-```css
-a { color: hsl(var(--link, var(--primary))); }
-```
-
-so anchors follow the token when set and fall back to primary.
-
-## UI (AppearanceSettingsTab)
-
-```text
-┌─ Appearance ───────────────────────────────┐
-│ [Reset all to defaults]     [Save changes] │
-│                                            │
-│  Brand         Surfaces      Text   State  │  (cards side by side, wrap)
-│  ┌──────────┐ ┌──────────┐  ┌────┐ ┌────┐  │
-│  │ swatches │ │ swatches │  │... │ │... │  │
-│  └──────────┘ └──────────┘  └────┘ └────┘  │
-│                                            │
-│  ── Live preview ──                        │
-│  Sample button / link / card / alert       │
-│  rendered inline so admins see the effect  │
-│  before saving.                            │
-└────────────────────────────────────────────┘
-```
-
-Each token: `<input type="color">` + hex text input + small "reset" ghost button. Preview panel re-renders using local (unsaved) values injected as inline `style="--primary: ...; ..."` on the preview container.
-
-## Technical details
-
-1. **Migration** (`ALTER TABLE public.tenants ADD COLUMN theme_tokens jsonb;`). No new table so no new GRANTs needed.
-2. **`src/lib/colorTokens.ts`** — `hexToHslString(hex)` and `DEFAULT_TOKENS` map (mirrors `index.css` defaults) plus a `TOKEN_GROUPS` metadata array driving the UI.
-3. **`src/contexts/TenantContext.tsx`** — after fetching tenant, walk `theme_tokens` and `root.style.setProperty('--<name>', hexToHslString(value))`; clean up on unmount. Update `Tenant` type to include `theme_tokens`.
-4. **`src/hooks/useTenantAdmin.ts`** — add `useUpdateTenantTheme({ tenantId, tokens })` mutation writing to `tenants.theme_tokens` and invalidating the `["tenant", tenantId]` query so the change applies immediately.
-5. **`src/components/admin/settings/AppearanceSettingsTab.tsx`** — new component; reads current tokens from `useTenant()`, local edit state, live preview panel, save + reset-all.
-6. **`src/pages/admin/AdminSettings.tsx`** — new `<TabsTrigger value="appearance">Appearance</TabsTrigger>` and matching `<TabsContent>`.
-7. **`src/index.css`** — add `a { color: hsl(var(--link, var(--primary))); }` (scoped to app content, not the sidebar which sets its own text color) and declare `--link` default.
-
-## Out of scope for this pass
-
-- Typography / font picker
-- Per-role themes
-- Sidebar color customization
-- Import/export theme presets (can add later once the token set is stable)
-
-Let me know if you'd like typography or preset themes included in this pass, otherwise I'll build exactly the above.
+- Grouping the dashboard panel by status ("2 awaiting confirmation" pinned to the top as an action bucket).
+- Adding a compact status filter on the dashboard panels themselves.
+- Retiring or slimming `/admin/appointments/:id` — worth a separate conversation once we see whether the modal covers ~everything Gayle needs day-to-day.
