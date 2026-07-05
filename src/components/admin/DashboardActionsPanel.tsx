@@ -10,9 +10,7 @@ export default function DashboardActionsPanel() {
   const { data: requests, isLoading } = usePendingChangeRequests();
   const resolve = useResolveChangeRequest();
 
-  if (isLoading) return null;
   const items = requests ?? [];
-  if (!items.length) return null;
 
   const handleDismiss = async (id: string) => {
     try {
