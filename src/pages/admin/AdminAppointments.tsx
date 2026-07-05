@@ -326,6 +326,19 @@ export default function AdminAppointments() {
   );
   const [currentDate, setCurrentDate] = useState(new Date());
 
+  // Deep-link support: honour ?date=YYYY-MM-DD once on mount so callers
+  // (e.g. the admin dashboard) can jump the calendar to a specific day.
+  useEffect(() => {
+    const dateParam = searchParams.get("date");
+    if (dateParam) {
+      const parsed = parseISO(dateParam);
+      if (!isNaN(parsed.getTime())) {
+        setCurrentDate(parsed);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Filters
   const [chairFilter, setChairFilter] = useState<Set<string>>(new Set());
   const [typeFilter, setTypeFilter] = useState<Set<string>>(new Set());
@@ -373,6 +386,29 @@ export default function AdminAppointments() {
     dateRange.start,
     dateRange.end
   );
+
+  // Deep-link support: honour ?apt=<id> by auto-opening the quick-edit modal
+  // once the appointment appears in the fetched range, then scrub the params.
+  useEffect(() => {
+    const aptId = searchParams.get("apt");
+    if (!aptId || isLoading) return;
+    const match = rawAppointments.find((a) => a.id === aptId);
+    if (match) {
+      setEditingApt(match);
+      const next = new URLSearchParams(searchParams);
+      next.delete("apt");
+      next.delete("date");
+      setSearchParams(next, { replace: true });
+    } else if (rawAppointments.length > 0) {
+      // Range loaded but ID not found — clear params so we stop trying.
+      const next = new URLSearchParams(searchParams);
+      next.delete("apt");
+      next.delete("date");
+      setSearchParams(next, { replace: true });
+      toast.error("Appointment not found on this day");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rawAppointments, isLoading]);
   const { data: chairs = [] } = useTreatmentChairs();
   const { data: types = [] } = useAppointmentTypes();
   const { data: nurses = [] } = useNurseStaff();
