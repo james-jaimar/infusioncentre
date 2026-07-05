@@ -183,6 +183,8 @@ export default function AdminDashboard() {
         </Card>
       )}
 
+      <DashboardActionsPanel />
+
       {/* Today's & Tomorrow's Appointments */}
       <div className="mb-8 grid gap-4 lg:grid-cols-2">
         <AppointmentsPanel title="Today's Appointments" emptyText="No appointments scheduled for today." items={stats?.todayAppointments || []} />
