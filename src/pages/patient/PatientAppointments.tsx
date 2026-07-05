@@ -3,13 +3,26 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, MapPin } from "lucide-react";
+import { Calendar, Clock, MapPin, CalendarClock } from "lucide-react";
 import { format } from "date-fns";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { useCreateChangeRequest } from "@/hooks/useAppointmentChangeRequests";
 
 export default function PatientAppointments() {
   const { user } = useAuth();
   const [appointments, setAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [patientRow, setPatientRow] = useState<{ id: string; tenant_id: string } | null>(null);
+  const [changeApt, setChangeApt] = useState<any | null>(null);
+  const [preferredDate, setPreferredDate] = useState("");
+  const [preferredWindow, setPreferredWindow] = useState("");
+  const [reason, setReason] = useState("");
+  const createRequest = useCreateChangeRequest();
 
   useEffect(() => {
     if (!user) return;
@@ -17,10 +30,11 @@ export default function PatientAppointments() {
       // Get patient id
       const { data: patient } = await supabase
         .from("patients")
-        .select("id")
+        .select("id, tenant_id")
         .eq("user_id", user.id)
         .single();
       if (!patient) { setLoading(false); return; }
+      setPatientRow({ id: patient.id, tenant_id: patient.tenant_id });
 
       const { data } = await supabase
         .from("appointments")
@@ -43,6 +57,31 @@ export default function PatientAppointments() {
     in_progress: "bg-purple-100 text-purple-700",
     completed: "bg-gray-100 text-gray-700",
     cancelled: "bg-red-100 text-red-700",
+  };
+
+  const openChange = (appt: any) => {
+    setChangeApt(appt);
+    setPreferredDate("");
+    setPreferredWindow("");
+    setReason("");
+  };
+
+  const submitChange = async () => {
+    if (!patientRow || !changeApt) return;
+    try {
+      await createRequest.mutateAsync({
+        appointment_id: changeApt.id,
+        patient_id: patientRow.id,
+        tenant_id: patientRow.tenant_id,
+        preferred_date: preferredDate || null,
+        preferred_time_window: preferredWindow || null,
+        reason: reason || null,
+      });
+      toast.success("Request sent — the clinic will be in touch");
+      setChangeApt(null);
+    } catch (e: any) {
+      toast.error(e.message || "Could not send request");
+    }
   };
 
   const AppointmentCard = ({ appt }: { appt: any }) => (
@@ -72,6 +111,14 @@ export default function PatientAppointments() {
         )}
         {appt.notes && (
           <p className="mt-2 text-xs text-muted-foreground">{appt.notes}</p>
+        )}
+        {new Date(appt.scheduled_start) >= new Date() && appt.status !== "cancelled" && appt.status !== "completed" && (
+          <div className="mt-3 flex justify-end">
+            <Button size="sm" variant="outline" onClick={() => openChange(appt)}>
+              <CalendarClock className="h-3.5 w-3.5 mr-1.5" />
+              Request date change
+            </Button>
+          </div>
         )}
       </CardContent>
     </Card>
@@ -105,6 +152,37 @@ export default function PatientAppointments() {
           </div>
         </div>
       )}
+
+      <Dialog open={!!changeApt} onOpenChange={(o) => !o && setChangeApt(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Request appointment change</DialogTitle>
+          </DialogHeader>
+          {changeApt && (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Current: <strong>{format(new Date(changeApt.scheduled_start), "EEEE, dd MMM yyyy 'at' HH:mm")}</strong>
+              </p>
+              <div>
+                <Label htmlFor="pref-date">Preferred new date (optional)</Label>
+                <Input id="pref-date" type="date" value={preferredDate} onChange={(e) => setPreferredDate(e.target.value)} />
+              </div>
+              <div>
+                <Label htmlFor="pref-window">Preferred time of day (optional)</Label>
+                <Input id="pref-window" placeholder="e.g. morning, after 2pm" value={preferredWindow} onChange={(e) => setPreferredWindow(e.target.value)} />
+              </div>
+              <div>
+                <Label htmlFor="reason">Reason (optional)</Label>
+                <Textarea id="reason" placeholder="Anything the clinic should know" value={reason} onChange={(e) => setReason(e.target.value)} />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setChangeApt(null)}>Cancel</Button>
+            <Button onClick={submitChange} disabled={createRequest.isPending}>Send request</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
