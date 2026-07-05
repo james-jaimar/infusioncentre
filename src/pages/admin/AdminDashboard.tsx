@@ -11,6 +11,7 @@ import { useReferralsAttentionCount } from "@/hooks/useReferralsAttentionCount";
 import { usePatientPipelineCounts } from "@/hooks/usePatientPipelineCounts";
 import { STAGE_LABEL, ACTIVE_COURSE_STATUSES } from "@/lib/patientPipeline";
 import { getChairColor } from "@/lib/chairColors";
+import DashboardActionsPanel from "@/components/admin/DashboardActionsPanel";
 
 function useDashboardStats() {
   return useQuery({
@@ -181,6 +182,8 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
       )}
+
+      <DashboardActionsPanel />
 
       {/* Today's & Tomorrow's Appointments */}
       <div className="mb-8 grid gap-4 lg:grid-cols-2">
