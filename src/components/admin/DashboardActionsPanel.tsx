@@ -1,16 +1,20 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CalendarClock, Check, X, ArrowRight } from "lucide-react";
+import { CalendarClock, Check, X, ArrowRight, MessageSquare } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatDistanceToNow, format } from "date-fns";
 import { usePendingChangeRequests, useResolveChangeRequest } from "@/hooks/useAppointmentChangeRequests";
+import { useUnreadPatientMessages } from "@/hooks/useUnreadPatientMessages";
 import { toast } from "sonner";
 
 export default function DashboardActionsPanel() {
   const { data: requests, isLoading } = usePendingChangeRequests();
   const resolve = useResolveChangeRequest();
+  const { data: unreadMsgs, isLoading: msgsLoading } = useUnreadPatientMessages();
 
   const items = requests ?? [];
+  const msgs = unreadMsgs ?? [];
+  const totalCount = items.length + msgs.length;
 
   const handleDismiss = async (id: string) => {
     try {
@@ -42,19 +46,49 @@ export default function DashboardActionsPanel() {
             <p className="text-xs text-muted-foreground">Patient requests waiting on you</p>
           </div>
           <span className="ml-auto inline-flex items-center justify-center h-6 min-w-6 px-1.5 rounded-full bg-clinical-warning text-white text-xs font-semibold tabular-nums">
-            {items.length}
+            {totalCount}
           </span>
         </div>
 
         <div className="divide-y divide-border rounded-md border">
-          {isLoading && (
+          {(isLoading || msgsLoading) && items.length === 0 && msgs.length === 0 && (
             <div className="p-4 text-sm text-muted-foreground">Loading…</div>
           )}
-          {!isLoading && items.length === 0 && (
+          {!isLoading && !msgsLoading && items.length === 0 && msgs.length === 0 && (
             <div className="p-4 text-sm text-muted-foreground">
-              No pending reschedule requests. You're all caught up.
+              Nothing needs your attention right now. You're all caught up.
             </div>
           )}
+          {msgs.map((m) => (
+            <div key={`msg-${m.patient_id}`} className="flex items-center gap-3 p-3 flex-wrap">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+                    <MessageSquare className="h-3 w-3" /> Unread message
+                  </span>
+                  <span className="font-semibold text-foreground truncate">
+                    {m.patient_first_name} {m.patient_last_name}
+                  </span>
+                  {m.unread_count > 1 && (
+                    <span className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold tabular-nums">
+                      {m.unread_count}
+                    </span>
+                  )}
+                  <span className="text-xs text-muted-foreground">
+                    · {formatDistanceToNow(new Date(m.last_created_at), { addSuffix: true })}
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground truncate">{m.last_content}</p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button asChild size="sm">
+                  <Link to={`/admin/patients/${m.patient_id}?tab=messages`}>
+                    Open <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          ))}
           {items.map((req) => {
             const apt = req.appointment;
             const dateStr = apt
