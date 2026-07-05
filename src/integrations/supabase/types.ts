@@ -14,6 +14,75 @@ export type Database = {
   }
   public: {
     Tables: {
+      appointment_change_requests: {
+        Row: {
+          appointment_id: string
+          created_at: string
+          id: string
+          patient_id: string
+          preferred_date: string | null
+          preferred_time_window: string | null
+          reason: string | null
+          request_type: string
+          requested_by: string | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          appointment_id: string
+          created_at?: string
+          id?: string
+          patient_id: string
+          preferred_date?: string | null
+          preferred_time_window?: string | null
+          reason?: string | null
+          request_type?: string
+          requested_by?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          appointment_id?: string
+          created_at?: string
+          id?: string
+          patient_id?: string
+          preferred_date?: string | null
+          preferred_time_window?: string | null
+          reason?: string | null
+          request_type?: string
+          requested_by?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_change_requests_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_change_requests_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointment_reminders: {
         Row: {
           appointment_id: string
