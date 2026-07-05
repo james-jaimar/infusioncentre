@@ -268,7 +268,8 @@ function AppointmentsPanel({ title, emptyText, items }: { title: string; emptyTe
                     )}
                   </div>
                 </Link>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         ) : (
