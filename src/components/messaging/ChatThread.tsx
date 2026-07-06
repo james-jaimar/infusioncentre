@@ -2,8 +2,22 @@ import { useEffect, useRef } from "react";
 import { Message } from "@/hooks/useMessages";
 import { format, isToday, isYesterday } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { StickyNote, MailOpen } from "lucide-react";
+import { StickyNote, MailOpen, MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import type { LucideIcon } from "lucide-react";
+
+export interface MessageAction {
+  label: string;
+  icon?: LucideIcon;
+  onSelect: () => void;
+}
 
 export interface ThreadNote {
   id: string;
@@ -17,6 +31,8 @@ interface Props {
   isLoading?: boolean;
   notes?: ThreadNote[];
   onMarkUnread?: (messageId: string) => void;
+  /** Extra quick actions shown in the per-message dropdown (admin threads). */
+  extraActions?: MessageAction[];
 }
 
 function formatMessageDate(dateStr: string) {
@@ -30,7 +46,14 @@ type ThreadItem =
   | { kind: "message"; created_at: string; msg: Message }
   | { kind: "note"; created_at: string; note: ThreadNote };
 
-export function ChatThread({ messages, currentUserId, isLoading, notes = [], onMarkUnread }: Props) {
+export function ChatThread({
+  messages,
+  currentUserId,
+  isLoading,
+  notes = [],
+  onMarkUnread,
+  extraActions,
+}: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const items: ThreadItem[] = [
@@ -109,19 +132,45 @@ export function ChatThread({ messages, currentUserId, isLoading, notes = [], onM
                 </div>
               )}
               <div className={`group flex items-center gap-2 ${isMine ? "justify-end" : "justify-start"} mb-1`}>
-                {!isMine && onMarkUnread && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onMarkUnread(msg.id)}
-                    className="order-2 h-7 px-2 text-xs opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
-                    title={msg.is_read ? "Create action item" : "Already an action item"}
-                    disabled={!msg.is_read}
-                  >
-                    <MailOpen className="h-3.5 w-3.5 mr-1" />
-                    Create action item
-                  </Button>
+                {!isMine && (onMarkUnread || (extraActions && extraActions.length > 0)) && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="order-2 h-7 px-2 text-xs opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                        title="Message actions"
+                      >
+                        <MoreVertical className="h-3.5 w-3.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      {onMarkUnread && (
+                        <DropdownMenuItem
+                          disabled={!msg.is_read}
+                          onSelect={() => onMarkUnread(msg.id)}
+                        >
+                          <MailOpen className="h-3.5 w-3.5 mr-2" />
+                          {msg.is_read ? "Flag as action item" : "Already an action item"}
+                        </DropdownMenuItem>
+                      )}
+                      {extraActions && extraActions.length > 0 && (
+                        <>
+                          {onMarkUnread && <DropdownMenuSeparator />}
+                          {extraActions.map((a) => {
+                            const Icon = a.icon;
+                            return (
+                              <DropdownMenuItem key={a.label} onSelect={() => a.onSelect()}>
+                                {Icon && <Icon className="h-3.5 w-3.5 mr-2" />}
+                                {a.label}
+                              </DropdownMenuItem>
+                            );
+                          })}
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
                 <div
                   className={`order-1 relative ${!isMine && !msg.is_read ? "ring-2 ring-primary/60 rounded-2xl" : ""}`}

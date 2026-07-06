@@ -1,4 +1,5 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useConversations, useMessages, useSendMessage, useMarkMessagesRead, useMarkMessageUnread } from "@/hooks/useMessages";
 import { ConversationList } from "@/components/messaging/ConversationList";
 import { ChatThread } from "@/components/messaging/ChatThread";
@@ -6,12 +7,13 @@ import { ChatInput } from "@/components/messaging/ChatInput";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, CalendarPlus, CalendarClock, User, FileText } from "lucide-react";
 import { useEffect } from "react";
 
 export default function AdminMessages() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { data: conversations = [], isLoading: convsLoading } = useConversations();
   const sendMessage = useSendMessage();
   const markRead = useMarkMessagesRead();
@@ -57,6 +59,45 @@ export default function AdminMessages() {
       { onError: (e: any) => toast({ title: e.message, variant: "destructive" }) }
     );
   };
+
+  const extraActions = useMemo(() => {
+    if (selectedPatientId) {
+      return [
+        {
+          label: "New appointment",
+          icon: CalendarPlus,
+          onSelect: () =>
+            navigate(`/admin/appointments/new?patient_id=${selectedPatientId}`),
+        },
+        {
+          label: "Reschedule appointment",
+          icon: CalendarClock,
+          onSelect: () =>
+            navigate(`/admin/appointments?patient=${selectedPatientId}`),
+        },
+        {
+          label: "Open patient record",
+          icon: User,
+          onSelect: () => navigate(`/admin/patients/${selectedPatientId}`),
+        },
+      ];
+    }
+    if (selectedDoctorId) {
+      return [
+        {
+          label: "Open doctor record",
+          icon: User,
+          onSelect: () => navigate(`/admin/doctors/${selectedDoctorId}`),
+        },
+        {
+          label: "View referrals",
+          icon: FileText,
+          onSelect: () => navigate(`/admin/referrals?doctor=${selectedDoctorId}`),
+        },
+      ];
+    }
+    return [];
+  }, [selectedPatientId, selectedDoctorId, navigate]);
 
   const handleSend = (content: string) => {
     if (!user) return;
@@ -118,6 +159,7 @@ export default function AdminMessages() {
                 currentUserId={user?.id || ""}
                 isLoading={msgsLoading}
                 onMarkUnread={handleMarkUnread}
+                extraActions={extraActions}
               />
               <ChatInput onSend={handleSend} disabled={sendMessage.isPending} />
             </>
