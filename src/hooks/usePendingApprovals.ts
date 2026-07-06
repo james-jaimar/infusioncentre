@@ -47,12 +47,18 @@ export function usePendingApprovals() {
 export function useApproveAccount() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (userId: string) => {
+    mutationFn: async ({ userId, patientId }: { userId: string; patientId: string | null }) => {
       const { error } = await supabase
         .from("profiles")
         .update({ is_approved: true } as any)
         .eq("user_id", userId);
       if (error) throw error;
+      if (patientId) {
+        const { error: emailErr } = await supabase.functions.invoke("send-patient-invite", {
+          body: { action: "notify-activation", patient_id: patientId },
+        });
+        if (emailErr) console.error("Activation email failed:", emailErr);
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pending-approvals"] });

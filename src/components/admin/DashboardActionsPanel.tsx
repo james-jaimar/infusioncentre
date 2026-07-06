@@ -20,9 +20,9 @@ export default function DashboardActionsPanel() {
   const pending = approvals ?? [];
   const totalCount = items.length + msgs.length + pending.length;
 
-  const handleApprove = async (userId: string) => {
+  const handleApprove = async (userId: string, patientId: string | null) => {
     try {
-      await approveAccount.mutateAsync(userId);
+      await approveAccount.mutateAsync({ userId, patientId });
       toast.success("Account approved");
     } catch (e: any) {
       toast.error(e.message || "Could not approve");
@@ -100,7 +100,7 @@ export default function DashboardActionsPanel() {
                 )}
                 <Button
                   size="sm"
-                  onClick={() => handleApprove(a.user_id)}
+                  onClick={() => handleApprove(a.user_id, a.patient_id)}
                   disabled={approveAccount.isPending}
                 >
                   <Check className="h-3.5 w-3.5 mr-1" /> Approve

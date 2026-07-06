@@ -61,6 +61,14 @@ export default function PatientAccountTab({
         .eq("user_id", patientUserId);
       if (error) throw error;
       toast.success(newValue ? "Account approved" : "Account approval revoked");
+      if (newValue && patientEmail) {
+        supabase.functions.invoke("send-patient-invite", {
+          body: { action: "notify-activation", patient_id: patientId },
+        }).then(({ error: emailErr }) => {
+          if (emailErr) console.error("Activation email failed:", emailErr);
+          else toast.success(`Activation email sent to ${patientEmail}`);
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ['patient-approval', patientUserId] });
     } catch (err: any) {
       toast.error(err.message || "Failed to update approval status");
