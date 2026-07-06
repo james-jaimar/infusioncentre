@@ -120,3 +120,59 @@ export function useSendAppointmentConfirmationSms() {
     },
   });
 }
+
+export function useSendAppointmentRescheduleSms() {
+  return useMutation({
+    mutationFn: async (input: SendAppointmentSmsInput) => {
+      const { data: rows, error: sErr } = await supabase
+        .from("clinic_settings")
+        .select("key,value")
+        .in("key", [
+          "sms_enabled",
+          "sms_sender_id",
+          "sms_reschedule_template",
+          "sms_confirm_base_url",
+          "business_name",
+        ]);
+      if (sErr) throw sErr;
+      const s: Record<string, unknown> = {};
+      (rows ?? []).forEach((r: any) => { s[r.key] = r.value; });
+
+      const template = (s.sms_reschedule_template as string) ||
+        "Hi {{first_name}}, your {{treatment_type}} appointment has been rescheduled to {{date}} at {{time}}. Tap {{confirm_link}} to confirm or request another time. — {{clinic_name}}";
+      const base = ((s.sms_confirm_base_url as string) ||
+        "https://infusioncentre.jaimar.dev").replace(/\/$/, "");
+      const senderId = (s.sms_sender_id as string) || undefined;
+      const clinic = (s.business_name as string) || "the Infusion Centre";
+
+      // Always regenerate the token so a fresh confirm link reflects the new slot.
+      const token = crypto.randomUUID();
+      await supabase
+        .from("appointments")
+        .update({ confirmation_token: token, patient_confirmed_at: null })
+        .eq("id", input.appointmentId);
+
+      const message = fillTemplate(template, {
+        first_name: input.firstName ?? "there",
+        time: formatTime(input.scheduledStart),
+        date: formatDate(input.scheduledStart),
+        treatment_type: input.treatmentType ?? "treatment",
+        clinic_name: clinic,
+        confirm_link: `${base}/appointment/confirm/${token}`,
+      });
+
+      const { data, error } = await supabase.functions.invoke("send-sms", {
+        body: {
+          to: input.phone,
+          message,
+          sender_id: senderId,
+          related_entity_type: "appointment_reschedule",
+          related_entity_id: input.appointmentId,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return { ...data, message };
+    },
+  });
+}
