@@ -41,6 +41,74 @@ async function sendEmailViaSMTP(payload: {
 
 const SITE_URL = "https://infusioncentre.lovable.app";
 
+function buildAccountActivatedHtml(patientName: string): string {
+  const loginUrl = `${SITE_URL}/login`;
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background-color:#f4f4f5;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f5;padding:40px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;overflow:hidden;">
+        <tr><td style="background-color:#3E5B84;padding:30px;text-align:center;">
+          <h1 style="color:#ffffff;margin:0;font-size:24px;">The Johannesburg Infusion Centre</h1>
+        </td></tr>
+        <tr><td style="padding:40px 30px;">
+          <h2 style="color:#1a1a1a;margin:0 0 16px;">Your account is active, ${patientName}!</h2>
+          <p style="color:#4a4a4a;font-size:16px;line-height:1.5;">
+            Good news — your patient portal account has been approved and is ready to use.
+            You can now sign in to view appointments, complete forms, and message the clinic.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:30px 0;">
+            <tr><td style="background-color:#3E5B84;border-radius:6px;padding:14px 32px;">
+              <a href="${loginUrl}" style="color:#ffffff;text-decoration:none;font-size:16px;font-weight:bold;">Sign In</a>
+            </td></tr>
+          </table>
+          <p style="color:#999;font-size:12px;margin-top:20px;">
+            If the button doesn't work, copy and paste this link into your browser:<br/>
+            <a href="${loginUrl}" style="color:#3E5B84;">${loginUrl}</a>
+          </p>
+        </td></tr>
+        <tr><td style="background-color:#f9fafb;padding:20px 30px;text-align:center;">
+          <p style="color:#999;font-size:12px;margin:0;">
+            The Johannesburg Infusion Centre<br/>
+            This is an automated message, please do not reply.
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
+async function sendAccountActivatedEmail(
+  adminClient: ReturnType<typeof createClient>,
+  patientId: string
+) {
+  try {
+    const { data: patient } = await adminClient
+      .from("patients")
+      .select("first_name, last_name, email")
+      .eq("id", patientId)
+      .maybeSingle();
+    if (!patient?.email) return;
+    const name = `${patient.first_name ?? ""} ${patient.last_name ?? ""}`.trim() || "there";
+    const html = buildAccountActivatedHtml(name);
+    await sendEmailViaSMTP({
+      to: patient.email,
+      subject: "Your patient portal account is active",
+      html,
+      text: `Hi ${name},\n\nYour patient portal account has been approved. Sign in at ${SITE_URL}/login.\n\nThe Johannesburg Infusion Centre`,
+      related_entity_type: "account_activation",
+      related_entity_id: patientId,
+    });
+  } catch (e) {
+    console.error("Failed to send activation email:", e);
+  }
+}
+
 function buildInviteEmailHtml(patientName: string, inviteLink: string, expiresAt: string): string {
   const expiryDate = new Date(expiresAt).toLocaleDateString("en-ZA", {
     day: "numeric", month: "long", year: "numeric",
