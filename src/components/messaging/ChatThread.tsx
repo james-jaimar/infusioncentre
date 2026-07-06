@@ -16,7 +16,7 @@ import type { LucideIcon } from "lucide-react";
 export interface MessageAction {
   label: string;
   icon?: LucideIcon;
-  onSelect: () => void;
+  onSelect: (messageId: string) => void;
 }
 
 export interface ThreadNote {
