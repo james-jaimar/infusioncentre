@@ -137,6 +137,7 @@ function CalendarEventCard({
   const nurseLookup = useContext(NurseLookupContext);
   const rescheduleSet = useContext(RescheduleRequestContext);
   const hasRescheduleRequest = rescheduleSet.has(apt.id);
+  const wasRescheduled = !!(apt as any).reschedule_reason;
   const nurseName = apt.assigned_nurse_id
     ? nurseLookup.get(apt.assigned_nurse_id) ?? null
     : null;
@@ -183,6 +184,14 @@ function CalendarEventCard({
               title={`Patient confirmed via SMS link on ${format(parseISO(apt.patient_confirmed_at), "MMM d, h:mm a")}`}
             >
               ✓ Confirmed
+            </Badge>
+          ) : null}
+          {wasRescheduled && !hasRescheduleRequest ? (
+            <Badge
+              className="h-4 px-1 text-[9px] bg-indigo-600 text-white hover:bg-indigo-600"
+              title={`Rescheduled — confirmation SMS resent to patient.\nReason: ${(apt as any).reschedule_reason}`}
+            >
+              ⟳ Rescheduled · SMS
             </Badge>
           ) : null}
           {sessionNo ? (
