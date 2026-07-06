@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Appointment, AppointmentWithRelations, AppointmentFormData } from "@/types/appointment";
 import { addMinutes, endOfDay } from "date-fns";
+import { useRealtimeInvalidate } from "./useRealtimeInvalidate";
 
 interface BulkAppointmentData {
   patient_id: string;
@@ -16,7 +17,7 @@ interface BulkAppointmentData {
 }
 
 export function useAppointments(startDate?: Date, endDate?: Date) {
-  return useQuery({
+  const query = useQuery({
     queryKey: ["appointments", startDate?.toISOString(), endDate?.toISOString()],
     queryFn: async () => {
       let query = supabase
@@ -43,6 +44,20 @@ export function useAppointments(startDate?: Date, endDate?: Date) {
       return data as unknown as AppointmentWithRelations[];
     },
   });
+
+  useRealtimeInvalidate("appointments-list", [
+    {
+      table: "appointments",
+      invalidate: [
+        ["appointments"],
+        ["appointment"],
+        ["admin-dashboard-stats"],
+        ["command-centre"],
+      ],
+    },
+  ]);
+
+  return query;
 }
 
 export function useAppointment(id: string | undefined) {
