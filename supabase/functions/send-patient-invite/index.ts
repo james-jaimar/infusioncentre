@@ -250,11 +250,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Handle link-account action — admin recovery tool for stuck accounts
-    if (action === "link-account") {
-      // fall through
-    }
-
     // Handle notify-activation action — sends confirmation email when admin approves
     if (action === "notify-activation") {
       const { patient_id } = body;
