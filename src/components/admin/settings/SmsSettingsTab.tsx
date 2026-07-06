@@ -19,6 +19,7 @@ const SMS_KEYS = [
   "sms_sender_id",
   "sms_reminder_send_hour",
   "sms_reminder_template",
+  "sms_reschedule_template",
   "sms_confirm_base_url",
 ] as const;
 
@@ -219,6 +220,21 @@ export default function SmsSettingsTab() {
               Include <code className="text-[10px]">{`{{confirm_link}}`}</code> to let the patient
               tap a personal link and confirm they'll attend. Their confirmation is recorded
               against the appointment.
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs">Reschedule notification template</Label>
+            <Textarea
+              rows={3}
+              value={(vals.sms_reschedule_template as string) ?? ""}
+              onChange={(e) => setVal("sms_reschedule_template", e.target.value)}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Sent automatically to the patient when an appointment is rescheduled.
+              Same merge tags as the reminder template above. Include{" "}
+              <code className="text-[10px]">{`{{confirm_link}}`}</code> so they can
+              confirm the new slot or request another time.
             </p>
           </div>
 
