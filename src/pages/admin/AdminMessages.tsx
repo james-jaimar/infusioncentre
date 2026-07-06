@@ -7,7 +7,7 @@ import { ChatInput } from "@/components/messaging/ChatInput";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
-import { MessageCircle, CalendarPlus, CalendarClock, User, FileText } from "lucide-react";
+import { MessageCircle, CalendarPlus, MailOpen, MessageSquarePlus, User, FileText } from "lucide-react";
 import { useEffect } from "react";
 
 export default function AdminMessages() {
@@ -61,42 +61,55 @@ export default function AdminMessages() {
   };
 
   const extraActions = useMemo(() => {
+    // Three action-item types on every incoming message. Each one flags the
+    // message unread (so it shows in the action-item bucket) and — where
+    // applicable — jumps to the right screen to complete the action.
     if (selectedPatientId) {
       return [
         {
-          label: "New appointment",
+          label: "Message patient",
+          icon: MessageSquarePlus,
+          onSelect: (id: string) => handleMarkUnread(id),
+        },
+        {
+          label: "Create appointment",
           icon: CalendarPlus,
-          onSelect: () =>
-            navigate(`/admin/appointments/new?patient_id=${selectedPatientId}`),
+          onSelect: (id: string) => {
+            handleMarkUnread(id);
+            navigate(`/admin/appointments/new?patient_id=${selectedPatientId}`);
+          },
         },
         {
-          label: "Reschedule appointment",
-          icon: CalendarClock,
-          onSelect: () =>
-            navigate(`/admin/appointments?patient=${selectedPatientId}`),
-        },
-        {
-          label: "Open patient record",
-          icon: User,
-          onSelect: () => navigate(`/admin/patients/${selectedPatientId}`),
+          label: "Flag as action item",
+          icon: MailOpen,
+          onSelect: (id: string) => handleMarkUnread(id),
         },
       ];
     }
     if (selectedDoctorId) {
       return [
         {
-          label: "Open doctor record",
-          icon: User,
-          onSelect: () => navigate(`/admin/doctors/${selectedDoctorId}`),
+          label: "Message doctor",
+          icon: MessageSquarePlus,
+          onSelect: (id: string) => handleMarkUnread(id),
         },
         {
-          label: "View referrals",
-          icon: FileText,
-          onSelect: () => navigate(`/admin/referrals?doctor=${selectedDoctorId}`),
+          label: "Open doctor record",
+          icon: User,
+          onSelect: (id: string) => {
+            handleMarkUnread(id);
+            navigate(`/admin/doctors/${selectedDoctorId}`);
+          },
+        },
+        {
+          label: "Flag as action item",
+          icon: MailOpen,
+          onSelect: (id: string) => handleMarkUnread(id),
         },
       ];
     }
     return [];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPatientId, selectedDoctorId, navigate]);
 
   const handleSend = (content: string) => {
