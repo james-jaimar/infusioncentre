@@ -91,11 +91,17 @@ export default function DashboardActionsPanel() {
           )}
           {flags.map((f) => {
             const patientName = [f.patient_first_name, f.patient_last_name].filter(Boolean).join(" ") || "Patient";
+            const flagStyles: Record<string, string> = {
+              complete_onboarding: "bg-amber-200/70 text-amber-900",
+              message_patient: "bg-cyan-100 text-cyan-800",
+              create_appointment: "bg-purple-100 text-purple-800",
+            };
+            const badgeClass = flagStyles[f.flag_type] ?? "bg-clinical-warning-soft text-clinical-warning";
             return (
               <div key={`flag-${f.id}`} className="flex items-center gap-3 p-3 flex-wrap">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-clinical-warning-soft text-clinical-warning px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+                    <span className={`inline-flex items-center gap-1 rounded-full ${badgeClass} px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide`}>
                       <Flag className="h-3 w-3" /> {FLAG_LABELS[f.flag_type]}
                     </span>
                     <span className="font-semibold text-foreground truncate">{patientName}</span>
