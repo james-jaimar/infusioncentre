@@ -1,19 +1,23 @@
 import { useState, useRef, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 import { useConversations, useMessages, useSendMessage, useMarkMessagesRead, useMarkMessageUnread } from "@/hooks/useMessages";
+import {
+  useMessageFlagsForThread,
+  useToggleMessageFlag,
+  FLAG_LABELS,
+  type MessageFlagType,
+} from "@/hooks/useMessageFlags";
 import { ConversationList } from "@/components/messaging/ConversationList";
 import { ChatThread } from "@/components/messaging/ChatThread";
 import { ChatInput } from "@/components/messaging/ChatInput";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
-import { MessageCircle, CalendarPlus, MailOpen, MessageSquarePlus, User, FileText } from "lucide-react";
+import { MessageCircle, CalendarPlus, ClipboardList, MessageSquarePlus } from "lucide-react";
 import { useEffect } from "react";
 
 export default function AdminMessages() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const navigate = useNavigate();
   const { data: conversations = [], isLoading: convsLoading } = useConversations();
   const sendMessage = useSendMessage();
   const markRead = useMarkMessagesRead();
@@ -28,6 +32,9 @@ export default function AdminMessages() {
     doctorId: selectedDoctorId,
     conversationType: selectedConvType,
   });
+
+  const { data: threadFlags = [] } = useMessageFlagsForThread(selectedPatientId);
+  const toggleFlag = useToggleMessageFlag();
 
 
   // Auto-mark unread messages as read once per conversation selection.
@@ -60,57 +67,60 @@ export default function AdminMessages() {
     );
   };
 
-  const extraActions = useMemo(() => {
-    // Three action-item types on every incoming message. Each one flags the
-    // message unread (so it shows in the action-item bucket) and — where
-    // applicable — jumps to the right screen to complete the action.
-    if (selectedPatientId) {
-      return [
-        {
-          label: "Message patient",
-          icon: MessageSquarePlus,
-          onSelect: (id: string) => handleMarkUnread(id),
-        },
-        {
-          label: "Create appointment",
-          icon: CalendarPlus,
-          onSelect: (id: string) => {
-            handleMarkUnread(id);
-            navigate(`/admin/appointments/new?patient_id=${selectedPatientId}`);
-          },
-        },
-        {
-          label: "Flag as action item",
-          icon: MailOpen,
-          onSelect: (id: string) => handleMarkUnread(id),
-        },
-      ];
+  const flagsByMessage = useMemo(() => {
+    const map = new Map<string, Map<MessageFlagType, string>>();
+    for (const f of threadFlags) {
+      if (!map.has(f.message_id)) map.set(f.message_id, new Map());
+      map.get(f.message_id)!.set(f.flag_type, f.id);
     }
-    if (selectedDoctorId) {
-      return [
-        {
-          label: "Message doctor",
-          icon: MessageSquarePlus,
-          onSelect: (id: string) => handleMarkUnread(id),
+    return map;
+  }, [threadFlags]);
+
+  const handleToggleFlag = (
+    messageId: string,
+    flagType: MessageFlagType,
+    existingId: string | null
+  ) => {
+    toggleFlag.mutate(
+      {
+        messageId,
+        patientId: selectedPatientId ?? null,
+        flagType,
+        existingId,
+      },
+      {
+        onSuccess: (res) => {
+          toast({
+            title:
+              res.action === "added"
+                ? `Flagged: ${FLAG_LABELS[flagType]}`
+                : `Removed flag: ${FLAG_LABELS[flagType]}`,
+          });
         },
-        {
-          label: "Open doctor record",
-          icon: User,
-          onSelect: (id: string) => {
-            handleMarkUnread(id);
-            navigate(`/admin/doctors/${selectedDoctorId}`);
-          },
-        },
-        {
-          label: "Flag as action item",
-          icon: MailOpen,
-          onSelect: (id: string) => handleMarkUnread(id),
-        },
-      ];
-    }
-    return [];
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPatientId, selectedDoctorId, navigate]);
+        onError: (e: any) =>
+          toast({ title: e.message || "Could not update flag", variant: "destructive" }),
+      }
+    );
+  };
+
+  const flagActionDefs: { type: MessageFlagType; icon: any }[] = [
+    { type: "message_patient", icon: MessageSquarePlus },
+    { type: "create_appointment", icon: CalendarPlus },
+    { type: "complete_onboarding", icon: ClipboardList },
+  ];
+
+  const buildMessageActions = (msgId: string) => {
+    if (!selectedPatientId) return [];
+    const existing = flagsByMessage.get(msgId);
+    return flagActionDefs.map(({ type, icon }) => {
+      const existingId = existing?.get(type) ?? null;
+      return {
+        label: existingId ? `✓ ${FLAG_LABELS[type]}` : FLAG_LABELS[type],
+        icon,
+        onSelect: (id: string) => handleToggleFlag(id, type, existingId),
+      };
+    });
+  };
 
   const handleSend = (content: string) => {
     if (!user) return;
@@ -172,7 +182,7 @@ export default function AdminMessages() {
                 currentUserId={user?.id || ""}
                 isLoading={msgsLoading}
                 onMarkUnread={handleMarkUnread}
-                extraActions={extraActions}
+                buildActions={selectedPatientId ? buildMessageActions : undefined}
               />
               <ChatInput onSend={handleSend} disabled={sendMessage.isPending} />
             </>
