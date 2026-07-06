@@ -1,11 +1,16 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CalendarClock, Check, X, ArrowRight, MessageSquare, UserCheck } from "lucide-react";
+import { CalendarClock, Check, X, ArrowRight, MessageSquare, UserCheck, Flag } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatDistanceToNow, format } from "date-fns";
 import { usePendingChangeRequests, useResolveChangeRequest } from "@/hooks/useAppointmentChangeRequests";
 import { useUnreadPatientMessages } from "@/hooks/useUnreadPatientMessages";
 import { usePendingApprovals, useApproveAccount } from "@/hooks/usePendingApprovals";
+import {
+  usePendingMessageFlags,
+  useResolveMessageFlag,
+  FLAG_LABELS,
+} from "@/hooks/useMessageFlags";
 import { toast } from "sonner";
 
 export default function DashboardActionsPanel() {
@@ -14,11 +19,23 @@ export default function DashboardActionsPanel() {
   const { data: unreadMsgs, isLoading: msgsLoading } = useUnreadPatientMessages();
   const { data: approvals, isLoading: approvalsLoading } = usePendingApprovals();
   const approveAccount = useApproveAccount();
+  const { data: msgFlags, isLoading: flagsLoading } = usePendingMessageFlags();
+  const resolveFlag = useResolveMessageFlag();
 
   const items = requests ?? [];
   const msgs = unreadMsgs ?? [];
   const pending = approvals ?? [];
-  const totalCount = items.length + msgs.length + pending.length;
+  const flags = msgFlags ?? [];
+  const totalCount = items.length + msgs.length + pending.length + flags.length;
+
+  const handleResolveFlag = async (id: string) => {
+    try {
+      await resolveFlag.mutateAsync(id);
+      toast.success("Flag resolved");
+    } catch (e: any) {
+      toast.error(e.message || "Could not resolve flag");
+    }
+  };
 
   const handleApprove = async (userId: string, patientId: string | null) => {
     try {
