@@ -69,6 +69,7 @@ import { useAppointments, useMoveAppointment } from "@/hooks/useAppointments";
 import { useTreatmentChairs } from "@/hooks/useTreatmentChairs";
 import { useAppointmentTypes } from "@/hooks/useAppointmentTypes";
 import { useNurseStaff } from "@/hooks/useNurseStaff";
+import { usePendingChangeRequests } from "@/hooks/useAppointmentChangeRequests";
 import {
   AppointmentWithRelations,
   AppointmentStatus,
@@ -101,6 +102,7 @@ const STATUS_BG: Record<AppointmentStatus, string> = {
 
 // Lookup map of nurse user_id -> display name, provided by the page-level component.
 const NurseLookupContext = createContext<Map<string, string>>(new Map());
+const RescheduleRequestContext = createContext<Set<string>>(new Set());
 
 function CalendarEventCard({
   apt,
@@ -133,6 +135,8 @@ function CalendarEventCard({
   const height = Math.max(28, (durationMin / 60) * pxPerHour);
   const sessionNo = (apt as any).session_number as number | null;
   const nurseLookup = useContext(NurseLookupContext);
+  const rescheduleSet = useContext(RescheduleRequestContext);
+  const hasRescheduleRequest = rescheduleSet.has(apt.id);
   const nurseName = apt.assigned_nurse_id
     ? nurseLookup.get(apt.assigned_nurse_id) ?? null
     : null;
@@ -148,13 +152,15 @@ function CalendarEventCard({
       {...(attributes ?? {})}
       className={cn(
         "absolute left-1 right-1 rounded-md border-l-4 px-2 py-1 text-xs cursor-grab overflow-hidden shadow-sm hover:shadow-md transition-shadow select-none touch-none",
-        STATUS_BG[apt.status],
+        hasRescheduleRequest
+          ? "bg-red-100 dark:bg-red-950/50 ring-2 ring-red-500 animate-pulse"
+          : STATUS_BG[apt.status],
         isDragging && "opacity-50 cursor-grabbing"
       )}
       style={{
         top: `${Math.max(0, top)}px`,
         height: `${height}px`,
-        borderLeftColor: apt.appointment_type.color,
+        borderLeftColor: hasRescheduleRequest ? "#ef4444" : apt.appointment_type.color,
         ...extraStyle,
       }}
     >
@@ -163,6 +169,14 @@ function CalendarEventCard({
           {apt.patient.first_name} {apt.patient.last_name}
         </div>
         <div className="flex items-center gap-1 shrink-0">
+          {hasRescheduleRequest ? (
+            <Badge
+              className="h-4 px-1 text-[9px] bg-red-600 text-white hover:bg-red-600"
+              title="Patient requested a reschedule"
+            >
+              ⟳ Reschedule
+            </Badge>
+          ) : null}
           {apt.patient_confirmed_at ? (
             <Badge
               className="h-4 px-1 text-[9px] bg-emerald-600 text-white hover:bg-emerald-600"
@@ -412,6 +426,16 @@ export default function AdminAppointments() {
   const { data: chairs = [] } = useTreatmentChairs();
   const { data: types = [] } = useAppointmentTypes();
   const { data: nurses = [] } = useNurseStaff();
+  const { data: pendingChangeRequests = [] } = usePendingChangeRequests();
+  const rescheduleRequestSet = useMemo(
+    () =>
+      new Set(
+        (pendingChangeRequests || [])
+          .filter((r) => r.request_type === "reschedule")
+          .map((r) => r.appointment_id)
+      ),
+    [pendingChangeRequests]
+  );
   const move = useMoveAppointment();
 
   const appointments = useMemo(() => {
@@ -564,6 +588,7 @@ export default function AdminAppointments() {
 
   return (
     <NurseLookupContext.Provider value={nurseLookup}>
+    <RescheduleRequestContext.Provider value={rescheduleRequestSet}>
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -865,6 +890,7 @@ export default function AdminAppointments() {
         />
       )}
     </div>
+    </RescheduleRequestContext.Provider>
     </NurseLookupContext.Provider>
   );
 }
