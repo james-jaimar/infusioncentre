@@ -81,14 +81,54 @@ export default function DashboardActionsPanel() {
         </div>
 
         <div className="divide-y divide-border rounded-md border">
-          {(isLoading || msgsLoading || approvalsLoading) && items.length === 0 && msgs.length === 0 && pending.length === 0 && (
+          {(isLoading || msgsLoading || approvalsLoading || flagsLoading) && items.length === 0 && msgs.length === 0 && pending.length === 0 && flags.length === 0 && (
             <div className="p-4 text-sm text-muted-foreground">Loading…</div>
           )}
-          {!isLoading && !msgsLoading && !approvalsLoading && items.length === 0 && msgs.length === 0 && pending.length === 0 && (
+          {!isLoading && !msgsLoading && !approvalsLoading && !flagsLoading && items.length === 0 && msgs.length === 0 && pending.length === 0 && flags.length === 0 && (
             <div className="p-4 text-sm text-muted-foreground">
               Nothing needs your attention right now. You're all caught up.
             </div>
           )}
+          {flags.map((f) => {
+            const patientName = [f.patient_first_name, f.patient_last_name].filter(Boolean).join(" ") || "Patient";
+            return (
+              <div key={`flag-${f.id}`} className="flex items-center gap-3 p-3 flex-wrap">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-clinical-warning-soft text-clinical-warning px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+                      <Flag className="h-3 w-3" /> {FLAG_LABELS[f.flag_type]}
+                    </span>
+                    <span className="font-semibold text-foreground truncate">{patientName}</span>
+                    <span className="text-xs text-muted-foreground">
+                      · flagged {formatDistanceToNow(new Date(f.created_at), { addSuffix: true })}
+                    </span>
+                  </div>
+                  {f.message_content && (
+                    <p className="mt-1 text-sm text-muted-foreground truncate">
+                      "{f.message_content}"
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {f.patient_id && (
+                    <Button asChild size="sm" variant="outline">
+                      <Link to={`/admin/patients/${f.patient_id}?tab=messages`}>
+                        Open <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                      </Link>
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleResolveFlag(f.id)}
+                    disabled={resolveFlag.isPending}
+                  >
+                    <Check className="h-3.5 w-3.5 mr-1" /> Done
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
           {pending.map((a) => (
             <div key={`approval-${a.user_id}`} className="flex items-center gap-3 p-3 flex-wrap">
               <div className="min-w-0 flex-1">
