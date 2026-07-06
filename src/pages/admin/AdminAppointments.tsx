@@ -891,6 +891,7 @@ export default function AdminAppointments() {
       )}
     </div>
     </NurseLookupContext.Provider>
+    </RescheduleRequestContext.Provider>
   );
 }
 
