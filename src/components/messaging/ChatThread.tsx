@@ -127,7 +127,7 @@ export function ChatThread({ messages, currentUserId, isLoading, notes = [], onM
                   className={`order-1 relative ${!isMine && !msg.is_read ? "ring-2 ring-primary/60 rounded-2xl" : ""}`}
                 >
                 <div
-                  className={`max-w-[75%] px-3 py-2 rounded-2xl text-sm ${
+                  className={`max-w-[85%] md:max-w-[70%] lg:max-w-[60%] min-w-[120px] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
                     isPatientUpdate && !isMine
                       ? "bg-accent text-accent-foreground border border-primary/30 rounded-bl-md"
                       : isMine
