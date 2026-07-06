@@ -116,11 +116,11 @@ export function ChatThread({ messages, currentUserId, isLoading, notes = [], onM
                     size="sm"
                     onClick={() => onMarkUnread(msg.id)}
                     className="order-2 h-7 px-2 text-xs opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
-                    title={msg.is_read ? "Mark as unread" : "Already unread"}
+                    title={msg.is_read ? "Create action item" : "Already an action item"}
                     disabled={!msg.is_read}
                   >
                     <MailOpen className="h-3.5 w-3.5 mr-1" />
-                    Mark unread
+                    Create action item
                   </Button>
                 )}
                 <div
