@@ -53,7 +53,7 @@ export function ChatThread({ messages, currentUserId, isLoading, notes = [], onM
   if (items.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
-        No messages or notes yet.
+        No messages yet.
       </div>
     );
   }
