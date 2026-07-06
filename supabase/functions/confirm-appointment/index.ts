@@ -86,7 +86,15 @@ Deno.serve(async (req) => {
         .maybeSingle();
       const existing = (currentAppt as any)?.notes?.trim();
       const merged = existing ? `${existing}\n\n${note}` : note;
-      await admin.from("appointments").update({ notes: merged }).eq("id", appt.id);
+      await admin
+        .from("appointments")
+        .update({
+          notes: merged,
+          // Clear any prior confirmation — patient wants to move this appointment
+          patient_confirmed_at: null,
+          status: appt.status === "confirmed" ? "scheduled" : appt.status,
+        })
+        .eq("id", appt.id);
 
       if (patientId) {
         await admin.from("appointment_change_requests").insert({
