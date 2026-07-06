@@ -1,6 +1,5 @@
 import { useState, useRef } from "react";
 import { useConversations, useMessages, useSendMessage, useMarkMessagesRead, useMarkMessageUnread } from "@/hooks/useMessages";
-import { usePatientNotes } from "@/hooks/usePatientNotes";
 import { ConversationList } from "@/components/messaging/ConversationList";
 import { ChatThread } from "@/components/messaging/ChatThread";
 import { ChatInput } from "@/components/messaging/ChatInput";
@@ -28,7 +27,6 @@ export default function AdminMessages() {
     conversationType: selectedConvType,
   });
 
-  const { data: patientNotes = [] } = usePatientNotes(selectedPatientId);
 
   // Auto-mark unread messages as read once per conversation selection.
   // Skips any message the admin has explicitly flagged unread this session,
@@ -119,9 +117,6 @@ export default function AdminMessages() {
                 messages={messages}
                 currentUserId={user?.id || ""}
                 isLoading={msgsLoading}
-                notes={selectedPatientId ? patientNotes.map(n => ({
-                  id: n.id, content: n.content, created_at: n.created_at,
-                })) : []}
                 onMarkUnread={handleMarkUnread}
               />
               <ChatInput onSend={handleSend} disabled={sendMessage.isPending} />
