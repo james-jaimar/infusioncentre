@@ -75,13 +75,20 @@ Deno.serve(async (req) => {
       const when = new Date((appt as any).scheduled_start).toLocaleString("en-ZA", {
         timeZone: "Africa/Johannesburg",
       });
-      const note = `📱 Patient requested a date change via SMS confirmation link.\nOriginal appointment: ${when}\nMessage: ${message?.trim() || "(none provided)"}`;
+      const stamp = new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg" });
+      const note = `📱 [${stamp}] Patient requested a date change via SMS confirmation link.\nOriginal appointment: ${when}\nMessage: ${message?.trim() || "(none provided)"}`;
+
+      // Append to appointment notes so it shows in the appointment modal
+      const { data: currentAppt } = await admin
+        .from("appointments")
+        .select("notes")
+        .eq("id", appt.id)
+        .maybeSingle();
+      const existing = (currentAppt as any)?.notes?.trim();
+      const merged = existing ? `${existing}\n\n${note}` : note;
+      await admin.from("appointments").update({ notes: merged }).eq("id", appt.id);
+
       if (patientId) {
-        await admin.from("patient_notes").insert({
-          patient_id: patientId,
-          tenant_id: (appt as any).tenant_id,
-          content: note,
-        });
         await admin.from("appointment_change_requests").insert({
           appointment_id: appt.id,
           patient_id: patientId,
