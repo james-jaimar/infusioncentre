@@ -177,7 +177,7 @@ function CalendarEventCard({
               ⟳ Reschedule
             </Badge>
           ) : null}
-          {apt.patient_confirmed_at ? (
+          {apt.patient_confirmed_at && !hasRescheduleRequest ? (
             <Badge
               className="h-4 px-1 text-[9px] bg-emerald-600 text-white hover:bg-emerald-600"
               title={`Patient confirmed via SMS link on ${format(parseISO(apt.patient_confirmed_at), "MMM d, h:mm a")}`}
