@@ -426,6 +426,16 @@ export default function AdminAppointments() {
   const { data: chairs = [] } = useTreatmentChairs();
   const { data: types = [] } = useAppointmentTypes();
   const { data: nurses = [] } = useNurseStaff();
+  const { data: pendingChangeRequests = [] } = usePendingChangeRequests();
+  const rescheduleRequestSet = useMemo(
+    () =>
+      new Set(
+        (pendingChangeRequests || [])
+          .filter((r) => r.request_type === "reschedule")
+          .map((r) => r.appointment_id)
+      ),
+    [pendingChangeRequests]
+  );
   const move = useMoveAppointment();
 
   const appointments = useMemo(() => {
@@ -578,6 +588,7 @@ export default function AdminAppointments() {
 
   return (
     <NurseLookupContext.Provider value={nurseLookup}>
+    <RescheduleRequestContext.Provider value={rescheduleRequestSet}>
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
