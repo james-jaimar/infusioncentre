@@ -16,7 +16,7 @@ import type { LucideIcon } from "lucide-react";
 export interface MessageAction {
   label: string;
   icon?: LucideIcon;
-  onSelect: () => void;
+  onSelect: (messageId: string) => void;
 }
 
 export interface ThreadNote {
@@ -132,7 +132,7 @@ export function ChatThread({
                 </div>
               )}
               <div className={`group flex items-center gap-2 ${isMine ? "justify-end" : "justify-start"} mb-1`}>
-                {!isMine && (onMarkUnread || (extraActions && extraActions.length > 0)) && (
+                {!isMine && extraActions && extraActions.length > 0 && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
@@ -146,29 +146,15 @@ export function ChatThread({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56">
-                      {onMarkUnread && (
-                        <DropdownMenuItem
-                          disabled={!msg.is_read}
-                          onSelect={() => onMarkUnread(msg.id)}
-                        >
-                          <MailOpen className="h-3.5 w-3.5 mr-2" />
-                          {msg.is_read ? "Flag as action item" : "Already an action item"}
-                        </DropdownMenuItem>
-                      )}
-                      {extraActions && extraActions.length > 0 && (
-                        <>
-                          {onMarkUnread && <DropdownMenuSeparator />}
-                          {extraActions.map((a) => {
-                            const Icon = a.icon;
-                            return (
-                              <DropdownMenuItem key={a.label} onSelect={() => a.onSelect()}>
-                                {Icon && <Icon className="h-3.5 w-3.5 mr-2" />}
-                                {a.label}
-                              </DropdownMenuItem>
-                            );
-                          })}
-                        </>
-                      )}
+                      {extraActions.map((a) => {
+                        const Icon = a.icon;
+                        return (
+                          <DropdownMenuItem key={a.label} onSelect={() => a.onSelect(msg.id)}>
+                            {Icon && <Icon className="h-3.5 w-3.5 mr-2" />}
+                            {a.label}
+                          </DropdownMenuItem>
+                        );
+                      })}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
