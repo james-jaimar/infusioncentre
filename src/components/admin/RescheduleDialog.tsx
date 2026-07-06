@@ -14,6 +14,7 @@ import { CalendarIcon, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTreatmentChairs } from "@/hooks/useTreatmentChairs";
 import { useRescheduleAppointment } from "@/hooks/useAppointments";
+import { useSendAppointmentRescheduleSms } from "@/hooks/useSendSms";
 import { AppointmentWithRelations } from "@/types/appointment";
 
 interface RescheduleDialogProps {
@@ -40,6 +41,7 @@ export function RescheduleDialog({ open, onOpenChange, appointment }: Reschedule
 
   const { data: chairs = [] } = useTreatmentChairs();
   const reschedule = useRescheduleAppointment();
+  const sendRescheduleSms = useSendAppointmentRescheduleSms();
 
   const handleSubmit = async () => {
     if (!newDate) {
@@ -71,6 +73,26 @@ export function RescheduleDialog({ open, onOpenChange, appointment }: Reschedule
         reason,
       });
       toast.success("Appointment rescheduled");
+
+      const phone = appointment.patient.phone;
+      if (phone) {
+        try {
+          await sendRescheduleSms.mutateAsync({
+            appointmentId: appointment.id,
+            phone,
+            firstName: appointment.patient.first_name,
+            scheduledStart: scheduledStart.toISOString(),
+            treatmentType: appointment.appointment_type?.name ?? null,
+          });
+          toast.success("Reschedule SMS sent to patient");
+        } catch (smsErr) {
+          const msg = smsErr instanceof Error ? smsErr.message : "Unknown error";
+          toast.error(`Could not send reschedule SMS: ${msg}`);
+        }
+      } else {
+        toast.info("No patient phone on file — SMS not sent");
+      }
+
       onOpenChange(false);
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : "Failed to reschedule";
