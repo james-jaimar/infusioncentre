@@ -56,14 +56,50 @@ export default function AppointmentConfirm() {
 
   const runAction = async (action: "info" | "confirm" | "cancel" | "request_change", message?: string) => {
     if (isPreview) return { ok: true } as const;
-    const { data, error: err } = await supabase.functions.invoke("confirm-appointment", {
-      body: { token: token ?? "", action, message },
-    });
-    if (err || data?.error) {
-      return { ok: false as const, error: data?.error ?? err?.message ?? "Something went wrong" };
+    // Manual fetch with a generous 60s timeout + retries — SA mobile networks
+    // can be slow, and the default fetch/edge invocation was timing out.
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/confirm-appointment`;
+    const anon = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+    const attempt = async (timeoutMs: number) => {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), timeoutMs);
+      try {
+        const resp = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: anon,
+            Authorization: `Bearer ${anon}`,
+          },
+          body: JSON.stringify({ token: token ?? "", action, message }),
+          signal: ctrl.signal,
+        });
+        const data = await resp.json().catch(() => ({}));
+        return { resp, data };
+      } finally {
+        clearTimeout(t);
+      }
+    };
+    const timeouts = [60000, 60000, 90000];
+    let lastErr = "Something went wrong";
+    for (const ms of timeouts) {
+      try {
+        const { resp, data } = await attempt(ms);
+        if (!resp.ok || data?.error) {
+          lastErr = data?.error ?? `Request failed (${resp.status})`;
+          if (resp.status >= 500) continue; // retry server errors
+          return { ok: false as const, error: lastErr };
+        }
+        setInfo((prev) => ({ ...prev, ...data }));
+        return { ok: true as const };
+      } catch (e) {
+        lastErr = (e as Error).name === "AbortError"
+          ? "The connection is slow. Please try again."
+          : ((e as Error).message || lastErr);
+        // retry on network/abort
+      }
     }
-    setInfo((prev) => ({ ...prev, ...data }));
-    return { ok: true as const };
+    return { ok: false as const, error: lastErr };
   };
 
   useEffect(() => {
