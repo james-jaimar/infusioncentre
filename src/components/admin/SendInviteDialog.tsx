@@ -12,7 +12,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Send, Loader2, CheckCircle2, Clock, XCircle, RotateCw } from "lucide-react";
+import { Send, Loader2, CheckCircle2, Clock, XCircle, RotateCw, Info } from "lucide-react";
 import { usePatientInvites, useSendInvite, useRevokeInvite, type PatientInvite } from "@/hooks/usePatientInvites";
 
 interface SendInviteDialogProps {
@@ -53,7 +53,10 @@ export default function SendInviteDialog({
   const sendInvite = useSendInvite();
   const revokeInvite = useRevokeInvite();
 
-  const pendingInvite = invites?.find((i) => i.status === "pending");
+  const isExpired = (invite: PatientInvite) =>
+    invite.status === "pending" && new Date(invite.expires_at) < new Date();
+
+  const activeInvite = invites?.find((i) => i.status === "pending" && !isExpired(i));
 
   const handleSendInvite = async () => {
     if (!email) {
@@ -102,9 +105,6 @@ export default function SendInviteDialog({
       default: return <Clock className="h-4 w-4 text-primary" />;
     }
   };
-
-  const isExpired = (invite: PatientInvite) =>
-    invite.status === "pending" && new Date(invite.expires_at) < new Date();
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -155,8 +155,31 @@ export default function SendInviteDialog({
             ) : (
               <Send className="mr-2 h-4 w-4" />
             )}
-            Send Invite Email
+            {activeInvite ? "Resend Invite Email" : "Send Invite Email"}
           </Button>
+          <p className="flex items-start gap-1.5 text-xs text-muted-foreground -mt-2">
+            <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            Sending a new invite automatically revokes any previous pending link
+            so only the latest one works.
+          </p>
+
+          {/* Active invite callout */}
+          {activeInvite && (
+            <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-1">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium text-foreground">
+                  Active invite
+                </span>
+                <Badge variant="secondary" className="text-xs">pending</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Sent {new Date(activeInvite.created_at).toLocaleString("en-ZA")} to{" "}
+                <span className="font-medium">{activeInvite.email}</span>. Expires{" "}
+                {new Date(activeInvite.expires_at).toLocaleDateString("en-ZA")}.
+              </p>
+            </div>
+          )}
 
           {/* Invite History */}
           {invites && invites.length > 0 && (
