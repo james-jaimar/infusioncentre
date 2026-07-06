@@ -206,6 +206,9 @@ Deno.serve(async (req) => {
         adminClient.from("patient_invites").update({ status: "accepted", accepted_at: new Date().toISOString() }).eq("id", inviteData.id),
       ]);
 
+      // Notify patient their account is active (fire-and-forget)
+      sendAccountActivatedEmail(adminClient, inviteData.patient_id);
+
       return new Response(
         JSON.stringify({ success: true }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -285,6 +288,8 @@ Deno.serve(async (req) => {
           .eq("patient_id", patient_id)
           .eq("status", "pending"),
       ]);
+
+      sendAccountActivatedEmail(adminClient, patient_id);
 
       return new Response(
         JSON.stringify({ success: true, user_id: matchedUser.id }),
