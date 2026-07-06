@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useRealtimeInvalidate } from "./useRealtimeInvalidate";
 
 export interface AppointmentChangeRequest {
   id: string;
@@ -21,7 +22,7 @@ export interface AppointmentChangeRequest {
 }
 
 export function usePendingChangeRequests() {
-  return useQuery({
+  const query = useQuery({
     queryKey: ["appointment-change-requests", "pending"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -36,6 +37,15 @@ export function usePendingChangeRequests() {
     },
     refetchInterval: 30000,
   });
+
+  useRealtimeInvalidate("acr-pending", [
+    {
+      table: "appointment_change_requests",
+      invalidate: [["appointment-change-requests"]],
+    },
+  ]);
+
+  return query;
 }
 
 export function useCreateChangeRequest() {

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { derivePatientStage, ACTIVE_COURSE_STATUSES, type PatientStage } from "@/lib/patientPipeline";
+import { useRealtimeInvalidate } from "./useRealtimeInvalidate";
 
 export type PipelineCounts = Record<PatientStage, number> & { total_active: number };
 
@@ -19,7 +20,7 @@ const EMPTY: PipelineCounts = {
 };
 
 export function usePatientPipelineCounts() {
-  return useQuery({
+  const query = useQuery({
     queryKey: ["patient-pipeline-counts"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -57,4 +58,12 @@ export function usePatientPipelineCounts() {
     },
     refetchInterval: 60000,
   });
+
+  useRealtimeInvalidate("patient-pipeline", [
+    { table: "patients", invalidate: [["patient-pipeline-counts"]] },
+    { table: "onboarding_checklists", invalidate: [["patient-pipeline-counts"]] },
+    { table: "appointments", invalidate: [["patient-pipeline-counts"]] },
+  ]);
+
+  return query;
 }

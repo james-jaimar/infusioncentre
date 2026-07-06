@@ -29,6 +29,7 @@ import { useEffect, useState } from "react";
 import logo from "@/assets/logo.png";
 import { useUnreadMessageCount } from "@/hooks/useUnreadMessages";
 import { useReferralsAttentionCount } from "@/hooks/useReferralsAttentionCount";
+import RealtimeNotifications from "@/components/admin/RealtimeNotifications";
 
 const navigation = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
@@ -208,6 +209,7 @@ export default function AdminLayout() {
 
         {/* Page content */}
         <main className="flex-1 p-4 lg:p-8">
+          <RealtimeNotifications />
           <Outlet />
         </main>
       </div>
