@@ -252,6 +252,27 @@ Deno.serve(async (req) => {
 
     // Handle link-account action — admin recovery tool for stuck accounts
     if (action === "link-account") {
+      // fall through
+    }
+
+    // Handle notify-activation action — sends confirmation email when admin approves
+    if (action === "notify-activation") {
+      const { patient_id } = body;
+      if (!patient_id) {
+        return new Response(
+          JSON.stringify({ error: "patient_id is required" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const adminClient = createClient(supabaseUrl, serviceRoleKey);
+      await sendAccountActivatedEmail(adminClient, patient_id);
+      return new Response(
+        JSON.stringify({ success: true }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (action === "link-account") {
       const { patient_id, email } = body;
       if (!patient_id || !email) {
         return new Response(
