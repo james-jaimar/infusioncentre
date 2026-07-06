@@ -253,6 +253,9 @@ Deno.serve(async (req) => {
     // Handle link-account action — admin recovery tool for stuck accounts
     if (action === "link-account") {
       const { patient_id, email } = body;
+      if (action === "notify-activation") {
+        // handled below
+      }
       if (!patient_id || !email) {
         return new Response(
           JSON.stringify({ error: "patient_id and email are required" }),
