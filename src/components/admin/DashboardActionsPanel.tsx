@@ -207,10 +207,10 @@ export default function DashboardActionsPanel() {
               ? `${new Date(apt.scheduled_start).getFullYear()}-${String(new Date(apt.scheduled_start).getMonth() + 1).padStart(2, "0")}-${String(new Date(apt.scheduled_start).getDate()).padStart(2, "0")}`
               : null;
             return (
-              <div key={req.id} className="flex items-center gap-3 p-3 flex-wrap">
+              <div key={req.id} className="flex items-center gap-3 p-3 flex-wrap bg-red-50 border-l-4 border-red-400">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-clinical-warning-soft text-clinical-warning px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-red-200 text-red-900 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
                       Reschedule request
                     </span>
                     <span className="font-medium text-foreground truncate">
