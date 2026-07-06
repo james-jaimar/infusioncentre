@@ -1546,6 +1546,60 @@ export type Database = {
           },
         ]
       }
+      message_action_flags: {
+        Row: {
+          created_at: string
+          created_by: string
+          flag_type: string
+          id: string
+          message_id: string
+          patient_id: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          flag_type: string
+          id?: string
+          message_id: string
+          patient_id?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          flag_type?: string
+          id?: string
+          message_id?: string
+          patient_id?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_action_flags_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_action_flags_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string
