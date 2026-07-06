@@ -82,6 +82,14 @@ Deno.serve(async (req) => {
           tenant_id: (appt as any).tenant_id,
           content: note,
         });
+        await admin.from("appointment_change_requests").insert({
+          appointment_id: appt.id,
+          patient_id: patientId,
+          tenant_id: (appt as any).tenant_id,
+          request_type: "reschedule",
+          reason: message?.trim() || "Requested via SMS confirmation link",
+          status: "pending",
+        });
       }
       actionResult = "change_requested";
     }
