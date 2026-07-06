@@ -119,9 +119,6 @@ export default function AdminMessages() {
                 messages={messages}
                 currentUserId={user?.id || ""}
                 isLoading={msgsLoading}
-                notes={selectedPatientId ? patientNotes.map(n => ({
-                  id: n.id, content: n.content, created_at: n.created_at,
-                })) : []}
                 onMarkUnread={handleMarkUnread}
               />
               <ChatInput onSend={handleSend} disabled={sendMessage.isPending} />
