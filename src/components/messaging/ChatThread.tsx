@@ -33,6 +33,8 @@ interface Props {
   onMarkUnread?: (messageId: string) => void;
   /** Extra quick actions shown in the per-message dropdown (admin threads). */
   extraActions?: MessageAction[];
+  /** Per-message action builder — takes precedence over extraActions when provided. */
+  buildActions?: (messageId: string) => MessageAction[];
 }
 
 function formatMessageDate(dateStr: string) {
@@ -53,6 +55,7 @@ export function ChatThread({
   notes = [],
   onMarkUnread,
   extraActions,
+  buildActions,
 }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -132,7 +135,11 @@ export function ChatThread({
                 </div>
               )}
               <div className={`group flex items-center gap-2 ${isMine ? "justify-end" : "justify-start"} mb-1`}>
-                {!isMine && extraActions && extraActions.length > 0 && (
+                {(() => {
+                  if (isMine) return null;
+                  const actions = buildActions ? buildActions(msg.id) : extraActions;
+                  if (!actions || actions.length === 0) return null;
+                  return (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
@@ -146,7 +153,7 @@ export function ChatThread({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56">
-                      {extraActions.map((a) => {
+                      {actions.map((a) => {
                         const Icon = a.icon;
                         return (
                           <DropdownMenuItem key={a.label} onSelect={() => a.onSelect(msg.id)}>
@@ -157,7 +164,8 @@ export function ChatThread({
                       })}
                     </DropdownMenuContent>
                   </DropdownMenu>
-                )}
+                  );
+                })()}
                 <div
                   className={`order-1 relative ${!isMine && !msg.is_read ? "ring-2 ring-primary/60 rounded-2xl" : ""}`}
                 >

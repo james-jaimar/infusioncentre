@@ -1,11 +1,16 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CalendarClock, Check, X, ArrowRight, MessageSquare, UserCheck } from "lucide-react";
+import { CalendarClock, Check, X, ArrowRight, MessageSquare, UserCheck, Flag } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatDistanceToNow, format } from "date-fns";
 import { usePendingChangeRequests, useResolveChangeRequest } from "@/hooks/useAppointmentChangeRequests";
 import { useUnreadPatientMessages } from "@/hooks/useUnreadPatientMessages";
 import { usePendingApprovals, useApproveAccount } from "@/hooks/usePendingApprovals";
+import {
+  usePendingMessageFlags,
+  useResolveMessageFlag,
+  FLAG_LABELS,
+} from "@/hooks/useMessageFlags";
 import { toast } from "sonner";
 
 export default function DashboardActionsPanel() {
@@ -14,11 +19,23 @@ export default function DashboardActionsPanel() {
   const { data: unreadMsgs, isLoading: msgsLoading } = useUnreadPatientMessages();
   const { data: approvals, isLoading: approvalsLoading } = usePendingApprovals();
   const approveAccount = useApproveAccount();
+  const { data: msgFlags, isLoading: flagsLoading } = usePendingMessageFlags();
+  const resolveFlag = useResolveMessageFlag();
 
   const items = requests ?? [];
   const msgs = unreadMsgs ?? [];
   const pending = approvals ?? [];
-  const totalCount = items.length + msgs.length + pending.length;
+  const flags = msgFlags ?? [];
+  const totalCount = items.length + msgs.length + pending.length + flags.length;
+
+  const handleResolveFlag = async (id: string) => {
+    try {
+      await resolveFlag.mutateAsync(id);
+      toast.success("Flag resolved");
+    } catch (e: any) {
+      toast.error(e.message || "Could not resolve flag");
+    }
+  };
 
   const handleApprove = async (userId: string, patientId: string | null) => {
     try {
@@ -64,14 +81,54 @@ export default function DashboardActionsPanel() {
         </div>
 
         <div className="divide-y divide-border rounded-md border">
-          {(isLoading || msgsLoading || approvalsLoading) && items.length === 0 && msgs.length === 0 && pending.length === 0 && (
+          {(isLoading || msgsLoading || approvalsLoading || flagsLoading) && items.length === 0 && msgs.length === 0 && pending.length === 0 && flags.length === 0 && (
             <div className="p-4 text-sm text-muted-foreground">Loading…</div>
           )}
-          {!isLoading && !msgsLoading && !approvalsLoading && items.length === 0 && msgs.length === 0 && pending.length === 0 && (
+          {!isLoading && !msgsLoading && !approvalsLoading && !flagsLoading && items.length === 0 && msgs.length === 0 && pending.length === 0 && flags.length === 0 && (
             <div className="p-4 text-sm text-muted-foreground">
               Nothing needs your attention right now. You're all caught up.
             </div>
           )}
+          {flags.map((f) => {
+            const patientName = [f.patient_first_name, f.patient_last_name].filter(Boolean).join(" ") || "Patient";
+            return (
+              <div key={`flag-${f.id}`} className="flex items-center gap-3 p-3 flex-wrap">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-clinical-warning-soft text-clinical-warning px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+                      <Flag className="h-3 w-3" /> {FLAG_LABELS[f.flag_type]}
+                    </span>
+                    <span className="font-semibold text-foreground truncate">{patientName}</span>
+                    <span className="text-xs text-muted-foreground">
+                      · flagged {formatDistanceToNow(new Date(f.created_at), { addSuffix: true })}
+                    </span>
+                  </div>
+                  {f.message_content && (
+                    <p className="mt-1 text-sm text-muted-foreground truncate">
+                      "{f.message_content}"
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {f.patient_id && (
+                    <Button asChild size="sm" variant="outline">
+                      <Link to={`/admin/patients/${f.patient_id}?tab=messages`}>
+                        Open <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                      </Link>
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleResolveFlag(f.id)}
+                    disabled={resolveFlag.isPending}
+                  >
+                    <Check className="h-3.5 w-3.5 mr-1" /> Done
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
           {pending.map((a) => (
             <div key={`approval-${a.user_id}`} className="flex items-center gap-3 p-3 flex-wrap">
               <div className="min-w-0 flex-1">
