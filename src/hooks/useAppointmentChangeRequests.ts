@@ -20,7 +20,7 @@ export interface AppointmentChangeRequest {
     scheduled_end: string;
     appointment_type?: { name: string } | null;
   } | null;
-  patient?: { id: string; first_name: string; last_name: string } | null;
+  patient?: { id: string; first_name: string; last_name: string; phone: string | null } | null;
 }
 
 export function usePendingChangeRequests() {
@@ -30,7 +30,7 @@ export function usePendingChangeRequests() {
       const { data, error } = await supabase
         .from("appointment_change_requests" as any)
         .select(
-          "id, appointment_id, patient_id, request_type, preferred_date, preferred_time_window, reason, status, created_at, new_appointment_id, sms_sent_at, appointment:appointments(id, scheduled_start, scheduled_end, appointment_type:appointment_types(name)), patient:patients(id, first_name, last_name)"
+          "id, appointment_id, patient_id, request_type, preferred_date, preferred_time_window, reason, status, created_at, new_appointment_id, sms_sent_at, appointment:appointments(id, scheduled_start, scheduled_end, appointment_type:appointment_types(name)), patient:patients(id, first_name, last_name, phone)"
         )
         .in("status", ["pending", "rescheduled_pending_sms"])
         .order("created_at", { ascending: false });
