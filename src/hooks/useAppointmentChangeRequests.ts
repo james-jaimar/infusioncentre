@@ -12,13 +12,15 @@ export interface AppointmentChangeRequest {
   reason: string | null;
   status: string;
   created_at: string;
+  new_appointment_id?: string | null;
+  sms_sent_at?: string | null;
   appointment?: {
     id: string;
     scheduled_start: string;
     scheduled_end: string;
     appointment_type?: { name: string } | null;
   } | null;
-  patient?: { id: string; first_name: string; last_name: string } | null;
+  patient?: { id: string; first_name: string; last_name: string; phone: string | null } | null;
 }
 
 export function usePendingChangeRequests() {
@@ -28,9 +30,9 @@ export function usePendingChangeRequests() {
       const { data, error } = await supabase
         .from("appointment_change_requests" as any)
         .select(
-          "id, appointment_id, patient_id, request_type, preferred_date, preferred_time_window, reason, status, created_at, appointment:appointments(id, scheduled_start, scheduled_end, appointment_type:appointment_types(name)), patient:patients(id, first_name, last_name)"
+          "id, appointment_id, patient_id, request_type, preferred_date, preferred_time_window, reason, status, created_at, new_appointment_id, sms_sent_at, appointment:appointments(id, scheduled_start, scheduled_end, appointment_type:appointment_types(name)), patient:patients(id, first_name, last_name, phone)"
         )
-        .eq("status", "pending")
+        .in("status", ["pending", "rescheduled_pending_sms"])
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data || []) as unknown as AppointmentChangeRequest[];
@@ -94,6 +96,44 @@ export function useResolveChangeRequest() {
           resolved_at: new Date().toISOString(),
           resolved_by: user?.id ?? null,
           resolution_notes: input.notes ?? null,
+        })
+        .eq("id", input.id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["appointment-change-requests"] }),
+  });
+}
+
+export function useMarkRequestRescheduled() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { id: string; new_appointment_id: string }) => {
+      const { error } = await supabase
+        .from("appointment_change_requests" as any)
+        .update({
+          status: "rescheduled_pending_sms",
+          new_appointment_id: input.new_appointment_id,
+        })
+        .eq("id", input.id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["appointment-change-requests"] }),
+  });
+}
+
+export function useMarkRequestSmsSent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { id: string }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      const nowIso = new Date().toISOString();
+      const { error } = await supabase
+        .from("appointment_change_requests" as any)
+        .update({
+          status: "resolved",
+          sms_sent_at: nowIso,
+          resolved_at: nowIso,
+          resolved_by: user?.id ?? null,
         })
         .eq("id", input.id);
       if (error) throw error;

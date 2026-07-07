@@ -1,9 +1,14 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CalendarClock, Check, X, ArrowRight, MessageSquare, UserCheck, Flag } from "lucide-react";
+import { CalendarClock, Check, X, ArrowRight, MessageSquare, UserCheck, Flag, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatDistanceToNow, format } from "date-fns";
-import { usePendingChangeRequests, useResolveChangeRequest } from "@/hooks/useAppointmentChangeRequests";
+import {
+  usePendingChangeRequests,
+  useResolveChangeRequest,
+  useMarkRequestSmsSent,
+} from "@/hooks/useAppointmentChangeRequests";
+import { useSendAppointmentRescheduleSms } from "@/hooks/useSendSms";
 import { useUnreadPatientMessages } from "@/hooks/useUnreadPatientMessages";
 import { usePendingApprovals, useApproveAccount } from "@/hooks/usePendingApprovals";
 import {
@@ -12,11 +17,45 @@ import {
   FLAG_LABELS,
 } from "@/hooks/useMessageFlags";
 import { toast } from "sonner";
+import { useState } from "react";
 
 export default function DashboardActionsPanel() {
   const { data: requests, isLoading } = usePendingChangeRequests();
   const resolve = useResolveChangeRequest();
+  const markSmsSent = useMarkRequestSmsSent();
+  const sendRescheduleSms = useSendAppointmentRescheduleSms();
+  const [smsBusyId, setSmsBusyId] = useState<string | null>(null);
   const { data: unreadMsgs, isLoading: msgsLoading } = useUnreadPatientMessages();
+  const handleSendSmsFromList = async (req: any) => {
+    const apt = req.appointment;
+    const phone = req.patient?.phone ?? null;
+    if (!apt) {
+      toast.error("Appointment not found");
+      return;
+    }
+    // Need phone — fall back to opening the appointment if missing on this row
+    if (!phone) {
+      toast.info("No phone on file — open the appointment to review.");
+      return;
+    }
+    try {
+      setSmsBusyId(req.id);
+      await sendRescheduleSms.mutateAsync({
+        appointmentId: apt.id,
+        phone,
+        firstName: req.patient?.first_name ?? "",
+        scheduledStart: apt.scheduled_start,
+        treatmentType: apt.appointment_type?.name ?? null,
+      });
+      await markSmsSent.mutateAsync({ id: req.id });
+      toast.success("Reschedule SMS sent");
+    } catch (e: any) {
+      toast.error(e.message || "Could not send SMS");
+    } finally {
+      setSmsBusyId(null);
+    }
+  };
+
   const { data: approvals, isLoading: approvalsLoading } = usePendingApprovals();
   const approveAccount = useApproveAccount();
   const { data: msgFlags, isLoading: flagsLoading } = usePendingMessageFlags();
@@ -203,15 +242,20 @@ export default function DashboardActionsPanel() {
           ))}
           {items.map((req) => {
             const apt = req.appointment;
-            const dateStr = apt
-              ? `${new Date(apt.scheduled_start).getFullYear()}-${String(new Date(apt.scheduled_start).getMonth() + 1).padStart(2, "0")}-${String(new Date(apt.scheduled_start).getDate()).padStart(2, "0")}`
-              : null;
+            const isAwaitingSms = req.status === "rescheduled_pending_sms";
+            const rowClass = isAwaitingSms
+              ? "flex items-center gap-3 p-3 flex-wrap bg-amber-50 border-l-4 border-amber-400"
+              : "flex items-center gap-3 p-3 flex-wrap bg-red-50 border-l-4 border-red-400";
+            const badgeClass = isAwaitingSms
+              ? "bg-amber-200 text-amber-900"
+              : "bg-red-200 text-red-900";
+            const badgeLabel = isAwaitingSms ? "Rescheduled – SMS pending" : "Reschedule request";
             return (
-              <div key={req.id} className="flex items-center gap-3 p-3 flex-wrap bg-red-50 border-l-4 border-red-400">
+              <div key={req.id} className={rowClass}>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-red-200 text-red-900 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
-                      Reschedule request
+                    <span className={`inline-flex items-center gap-1 rounded-full ${badgeClass} px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide`}>
+                      {badgeLabel}
                     </span>
                     <span className="font-medium text-foreground truncate">
                       {req.patient?.first_name} {req.patient?.last_name}
@@ -223,28 +267,50 @@ export default function DashboardActionsPanel() {
                   <div className="mt-1 text-sm text-muted-foreground">
                     {apt && (
                       <span>
-                        Current: {format(new Date(apt.scheduled_start), "EEE dd MMM · HH:mm")}
+                        {isAwaitingSms ? "New slot: " : "Current: "}
+                        {format(new Date(apt.scheduled_start), "EEE dd MMM · HH:mm")}
                         {apt.appointment_type?.name ? ` · ${apt.appointment_type.name}` : ""}
                       </span>
                     )}
-                    {(req.preferred_date || req.preferred_time_window) && (
+                    {!isAwaitingSms && (req.preferred_date || req.preferred_time_window) && (
                       <span className="ml-2">
                         → Prefers {req.preferred_date ? format(new Date(req.preferred_date), "EEE dd MMM") : ""}
                         {req.preferred_time_window ? ` (${req.preferred_time_window})` : ""}
                       </span>
                     )}
                   </div>
-                  {req.reason && (
+                  {!isAwaitingSms && req.reason && (
                     <p className="mt-1 text-xs text-muted-foreground italic">"{req.reason}"</p>
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  {apt && dateStr && (
+                  {apt && !isAwaitingSms && (
                     <Button asChild size="sm">
-                      <Link to={`/admin/appointments?view=day&date=${dateStr}&apt=${apt.id}`}>
-                        Open <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                      <Link to={`/admin/appointments/${apt.id}?rescheduleRequestId=${req.id}`}>
+                        Reschedule <ArrowRight className="h-3.5 w-3.5 ml-1" />
                       </Link>
                     </Button>
+                  )}
+                  {apt && isAwaitingSms && (
+                    <>
+                      <Button
+                        size="sm"
+                        onClick={() => handleSendSmsFromList(req)}
+                        disabled={smsBusyId === req.id}
+                        className="gap-1"
+                      >
+                        {smsBusyId === req.id ? (
+                          <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Sending…</>
+                        ) : (
+                          <><MessageSquare className="h-3.5 w-3.5" /> Send SMS</>
+                        )}
+                      </Button>
+                      <Button asChild size="sm" variant="outline">
+                        <Link to={`/admin/appointments/${apt.id}`}>
+                          Open
+                        </Link>
+                      </Button>
+                    </>
                   )}
                   <Button size="sm" variant="outline" onClick={() => handleResolve(req.id)} disabled={resolve.isPending}>
                     <Check className="h-3.5 w-3.5 mr-1" /> Done
