@@ -1,50 +1,72 @@
 ## Goal
-Make the admin app feel live: when patients confirm via SMS, request reschedules, send messages, or new referrals/patients arrive, the UI updates without a manual refresh — and the admin gets a toast alert.
 
-## Root cause
-Only the `messages` table is in the Supabase realtime publication, and only a few hooks subscribe to it. Everything else (appointments, `appointment_change_requests`, referrals, patients, contact submissions) relies on 30s polling or refetch-on-focus, so admins see stale data between polls.
+Make the "Reschedule request" action item on the admin dashboard a fully dynamic workflow: clicking Open jumps straight into the reschedule flow for that appointment, and the action item auto-updates as each step is completed (reschedule saved → SMS confirmation sent). No admin has to manually click "Done".
+
+## Flow
+
+```text
+Dashboard action list
+  └─ [Open] on "Reschedule request" for James Hawkins
+         │  (carries change_request_id)
+         ▼
+  Appointment detail page opens
+  Reschedule dialog auto-opens, pre-filled with the patient's
+  preferred date / time window / reason
+         │
+         ├─ Admin saves reschedule
+         │     → change request marked "rescheduled, awaiting SMS"
+         │     → dashboard row updates: badge changes to
+         │       "Rescheduled – send SMS", Open button now says
+         │       "Send SMS confirmation"
+         │
+         └─ Admin sends SMS confirmation (from dialog or dashboard)
+               → change request marked "resolved"
+               → row disappears from action list
+```
 
 ## Changes
 
-### 1. Enable realtime on the tables that drive dashboard/action signals
-Migration adding to `supabase_realtime` publication and setting `REPLICA IDENTITY FULL` for update-diff support:
-- `appointments`
-- `appointment_change_requests`
-- `referrals`
-- `patients`
-- `contact_submissions`
-- `onboarding_checklists`
-- `form_submissions`
+### 1. Track two-stage progress on the request
 
-(messages is already enabled.)
+Add two columns to `appointment_change_requests`:
+- `new_appointment_id uuid` — the appointment created by the reschedule
+- `sms_sent_at timestamptz` — when the confirmation SMS was successfully sent
 
-### 2. Shared realtime helper
-Create `src/hooks/useRealtimeInvalidate.ts` — a small hook that subscribes to one or more Postgres change events and invalidates a list of react-query keys. Handles the `useEffect` + `removeChannel` cleanup so we don't leak subscriptions.
+Extend the status flow: `pending → rescheduled_pending_sms → resolved` (existing `dismissed` unchanged). We keep the request visible in the action list until it reaches `resolved`.
 
-### 3. Wire realtime into the data hooks (invalidate + optional toast)
-- `useAppointmentChangeRequests` → subscribe to `appointment_change_requests`; on INSERT show a toast "New reschedule request from {patient}" and invalidate the pending list.
-- `useAppointments` (list + detail queries) → subscribe to `appointments`; invalidate list, day/week views, and today/tomorrow dashboard queries. On UPDATE where `patient_confirmed_at` changed from null → set, toast "Patient confirmed {name} — {time}".
-- `useReferralsAttentionCount` already refetches; add realtime on `referrals` to invalidate immediately.
-- `usePatientPipelineCounts` → realtime on `patients` and `onboarding_checklists`.
-- `useUnreadPatientMessages` / `useUnreadMessageCount` already have message realtime — extend to also toast on new inbound message when the admin isn't on that patient's message tab.
-- Dashboard stats query key (`admin-dashboard-stats`) → invalidated by the appointment and change-request subscriptions.
+### 2. Dashboard action item
 
-### 4. Global notification listener
-Add `src/components/admin/RealtimeNotifications.tsx`, mounted once inside `AdminLayout`. It:
-- subscribes to `appointment_change_requests` INSERT, `appointments` UPDATE (confirmation), and `messages` INSERT (excluding own messages)
-- fires shadcn `toast()` notifications with a "View" action that routes to the relevant page (dashboard actions panel, appointment detail, or patient messages tab)
-- also plays a subtle browser tab title pulse (`document.title` prefix `(N) …`) while unread actions exist, so a backgrounded tab still signals activity
+`src/components/admin/DashboardActionsPanel.tsx`
+- "Open" for a `pending` request → `/admin/appointments/:id?rescheduleRequestId=<id>` (deep-links straight into the reschedule dialog).
+- For `rescheduled_pending_sms`, render the row with a different secondary label ("Rescheduled – SMS not sent") and a primary "Send SMS confirmation" button that calls the reschedule SMS hook against the new appointment, then marks the request resolved.
+- Manual Done/Dismiss remain as fallbacks.
 
-### 5. Small UX cleanup
-- Dashboard Actions panel: keep its existing 30s poll as a fallback, but rely primarily on realtime invalidation for instant updates.
-- Ensure all new `supabase.channel(...)` calls live inside `useEffect` with `removeChannel` cleanup (per project rule) to avoid subscription loops.
+### 3. Deep link + auto-open on Appointment Detail
 
-## Out of scope
-- Push notifications outside the browser (OS/mobile push).
-- Sound alerts (can add later if Gayle wants an audible cue).
-- Nurse/patient/doctor layouts — this pass focuses on the admin surface where the complaint lives. Same pattern can be extended later.
+`src/pages/admin/AppointmentDetail.tsx`
+- Read `rescheduleRequestId` from the query string.
+- If present, auto-open `RescheduleDialog` and pass the request through so its `preferred_date`, `preferred_time_window`, and `reason` pre-fill the dialog fields.
 
-## Technical notes
-- Realtime + RLS: subscribers only receive rows they can already SELECT, so admin policies already cover this; no policy changes needed.
-- `REPLICA IDENTITY FULL` is required for UPDATE payloads to include old values (needed to detect confirmation transition).
-- Query keys touched: `appointment-change-requests`, `unread-patient-messages`, `unread-message-count`, `admin-dashboard-stats`, `appointments`, `referrals-attention-count`, `patient-pipeline-counts`.
+### 4. RescheduleDialog – split reschedule from SMS
+
+`src/components/admin/RescheduleDialog.tsx`
+- Accept optional `changeRequest` prop.
+- Pre-fill date/time/reason from the request when provided.
+- Stop auto-sending the SMS on save. Instead:
+  1. Save reschedule.
+  2. If a `changeRequest` was provided, update it to `rescheduled_pending_sms` with `new_appointment_id` set.
+  3. Show a follow-up step in the same dialog: "Send SMS confirmation to patient" button (primary), plus "I'll send it later" (closes dialog, leaves action item in `rescheduled_pending_sms`).
+  4. On successful SMS send, stamp `sms_sent_at` and mark the request `resolved` (which removes it from the dashboard automatically via the existing realtime invalidation).
+
+This makes the SMS an explicit, tracked action so a second admin can always see whether it was sent.
+
+### 5. Hook updates
+
+`src/hooks/useAppointmentChangeRequests.ts`
+- Extend `usePendingChangeRequests` to return both `pending` and `rescheduled_pending_sms` rows (single query, `status in (...)`).
+- Add `useMarkRequestRescheduled({ id, new_appointment_id })` and `useMarkRequestSmsSent({ id })` mutations. Keep `useResolveChangeRequest` for manual Done/Dismiss.
+
+## Assumptions
+
+- The SMS should become an explicit admin click (today `RescheduleDialog` auto-sends it). This is what enables reliable tracking; if you'd rather keep auto-send, the two-stage tracking collapses into one and the "Send SMS" follow-up step is skipped.
+- No schema changes to `appointments` — reschedule already creates a new appointment via `useRescheduleAppointment`; we simply record its id on the change request.
