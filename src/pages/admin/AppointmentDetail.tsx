@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -51,6 +51,7 @@ import { useTreatmentChairs } from "@/hooks/useTreatmentChairs";
 import { useNurseStaff } from "@/hooks/useNurseStaff";
 import { useOnboardingReadiness } from "@/hooks/useOnboardingChecklist";
 import { AppointmentStatus } from "@/types/appointment";
+import { usePendingChangeRequests } from "@/hooks/useAppointmentChangeRequests";
 
 const statusColors: Record<AppointmentStatus, string> = {
   scheduled: "bg-blue-100 text-blue-800 border-blue-200",
@@ -79,6 +80,7 @@ const statusLabels: Record<AppointmentStatus, string> = {
 export default function AppointmentDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [cancellationReason, setCancellationReason] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<any>({});
@@ -91,6 +93,30 @@ export default function AppointmentDetail() {
   const updateAppointment = useUpdateAppointment();
   const deleteAppointment = useDeleteAppointment();
   const readiness = useOnboardingReadiness(appointment?.patient_id, appointment?.appointment_type_id);
+  const { data: changeRequests } = usePendingChangeRequests();
+
+  const rescheduleRequestId = searchParams.get("rescheduleRequestId");
+  const activeChangeRequest =
+    (changeRequests ?? []).find((r) => r.id === rescheduleRequestId) ||
+    (id ? (changeRequests ?? []).find((r) => r.appointment_id === id) : undefined) ||
+    null;
+
+  // Auto-open reschedule dialog when deep-linked from action list
+  useEffect(() => {
+    if (rescheduleRequestId && appointment && !rescheduleOpen) {
+      setRescheduleOpen(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rescheduleRequestId, appointment?.id]);
+
+  const handleRescheduleOpenChange = (open: boolean) => {
+    setRescheduleOpen(open);
+    if (!open && rescheduleRequestId) {
+      const next = new URLSearchParams(searchParams);
+      next.delete("rescheduleRequestId");
+      setSearchParams(next, { replace: true });
+    }
+  };
 
   const startEditing = () => {
     if (!appointment) return;
@@ -503,8 +529,9 @@ export default function AppointmentDetail() {
       {appointment && (
         <RescheduleDialog
           open={rescheduleOpen}
-          onOpenChange={setRescheduleOpen}
+          onOpenChange={handleRescheduleOpenChange}
           appointment={appointment}
+          changeRequest={activeChangeRequest}
         />
       )}
     </div>
