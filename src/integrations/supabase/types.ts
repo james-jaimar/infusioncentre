@@ -19,6 +19,7 @@ export type Database = {
           appointment_id: string
           created_at: string
           id: string
+          new_appointment_id: string | null
           patient_id: string
           preferred_date: string | null
           preferred_time_window: string | null
@@ -28,6 +29,7 @@ export type Database = {
           resolution_notes: string | null
           resolved_at: string | null
           resolved_by: string | null
+          sms_sent_at: string | null
           status: string
           tenant_id: string
           updated_at: string
@@ -36,6 +38,7 @@ export type Database = {
           appointment_id: string
           created_at?: string
           id?: string
+          new_appointment_id?: string | null
           patient_id: string
           preferred_date?: string | null
           preferred_time_window?: string | null
@@ -45,6 +48,7 @@ export type Database = {
           resolution_notes?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
+          sms_sent_at?: string | null
           status?: string
           tenant_id: string
           updated_at?: string
@@ -53,6 +57,7 @@ export type Database = {
           appointment_id?: string
           created_at?: string
           id?: string
+          new_appointment_id?: string | null
           patient_id?: string
           preferred_date?: string | null
           preferred_time_window?: string | null
@@ -62,6 +67,7 @@ export type Database = {
           resolution_notes?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
+          sms_sent_at?: string | null
           status?: string
           tenant_id?: string
           updated_at?: string
@@ -70,6 +76,13 @@ export type Database = {
           {
             foreignKeyName: "appointment_change_requests_appointment_id_fkey"
             columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_change_requests_new_appointment_id_fkey"
+            columns: ["new_appointment_id"]
             isOneToOne: false
             referencedRelation: "appointments"
             referencedColumns: ["id"]
