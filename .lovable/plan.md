@@ -1,52 +1,34 @@
-## Problem
+I checked the live data and the code path instead of guessing.
 
-The two-stage reschedule workflow only wires up when admins enter the appointment via the RescheduleDialog on `AppointmentDetail`. In practice Gail is opening the appointment from the calendar/dashboard, which opens `AppointmentQuickEditDialog`. That dialog's generic "Send SMS confirmation" button knows nothing about the pending `appointment_change_requests` row, so:
+What is actually happening:
+- The SMS is being sent successfully and logged in `communication_log`.
+- The two latest sends for this appointment are recorded as generic `related_entity_type = appointment`, not `appointment_reschedule`.
+- The current open change request is still `status = pending`, with no `sms_sent_at` or `resolved_at`.
+- The Quick Edit modal only marks the request resolved when the request is already `rescheduled_pending_sms`, so the button shown in your screenshot sends the SMS but does not update the request.
+- The UI also does not show SMS send history beside the appointment notes, even though the backend has the log rows.
 
-- Sending the SMS from Quick Edit does not flip the request from `rescheduled_pending_sms` → `resolved`.
-- No `sms_sent_at` / `resolved_by` stamp is written, so another admin cannot see it was handled.
-- The dashboard action item stays in the amber "SMS pending" state indefinitely.
-- The Today's Appointments "Rescheduled" chip title claims "SMS resent" even when it hasn't been.
+Plan:
 
-## Fix
+1. Make the Quick Edit SMS button request-aware
+- If an appointment has any open reschedule request (`pending` or `rescheduled_pending_sms`), the button should send the reschedule SMS template, not the generic reminder SMS.
+- After a successful send, mark the change request resolved with `sms_sent_at`, `resolved_at`, and `resolved_by`.
+- This covers the exact flow in the screenshot, where the request is still `pending`.
 
-Make the change-request awareness travel with the appointment, no matter which entry point is used, and record who handled it.
+2. Fix the reschedule dialog handoff
+- When a reschedule is saved, ensure the request is updated against the same appointment id.
+- If the admin sends SMS from the reschedule dialog, mark the same request resolved immediately.
+- Avoid relying on `new_appointment_id`, because this app now moves the same appointment row rather than creating a duplicate appointment.
 
-### 1. `AppointmentQuickEditDialog` — become change-request aware
+3. Add visible SMS tracing in the appointment modal
+- Query recent SMS log entries for the appointment from `communication_log`.
+- Show a compact “SMS history” row in the Quick Edit dialog, for example: “SMS sent today 19:14 · reschedule confirmation”.
+- Show failed sends too, with the error where available.
+- This gives Gail/admins visible proof without opening backend logs.
 
-- Look up any open `appointment_change_requests` row for this `appointment_id` where `status IN ('pending','rescheduled_pending_sms')` (small hook `usePendingChangeRequestForAppointment(appointmentId)`, reuses realtime invalidation).
-- When one exists, render a prominent banner at the top of the dialog:
-  - `pending` → amber "Patient requested reschedule" with patient's preferred date/window and a "Reschedule…" CTA (opens existing reschedule flow).
-  - `rescheduled_pending_sms` → red "Awaiting reschedule confirmation SMS" showing the new slot and who did the reschedule + when.
-- Promote the SMS button to primary styling when a request is in `rescheduled_pending_sms`, relabel to "Send reschedule confirmation SMS".
-- On successful send in that state, also call `useMarkRequestSmsSent` so the request transitions to `resolved` and `sms_sent_at` / `resolved_by` are stamped. Generic SMS sends (no pending request) behave exactly as today.
-- After send, show inline confirmation text in the banner: "SMS sent by {name} · {time}" pulled from the resolved request, so any admin re-opening the appointment sees the trail.
+4. Clean up dashboard/action item state
+- Ensure dashboard and calendar badges use `appointment_id` for open requests.
+- Once `sms_sent_at` is written, the action item should disappear for all admins after query invalidation/realtime refresh.
 
-### 2. Deep-link from Today's Appointments
-
-- In `AdminDashboard.AppointmentsPanel`, join the today/tomorrow queries to `appointment_change_requests` (open statuses only) so each row knows if a request is pending and its state.
-- Replace the misleading "Rescheduled · SMS resent" tooltip with accurate states:
-  - `pending` → amber "Reschedule requested" chip.
-  - `rescheduled_pending_sms` → red "SMS pending" chip.
-  - Otherwise, no chip (the existing "Rescheduled" claim is removed).
-- When a chip is shown, the row links to `/admin/appointments?view=day&date=…&apt=…&rescheduleRequestId=…` so the day view can auto-open the Quick Edit dialog with the banner already highlighting the outstanding step.
-
-### 3. Day view auto-open
-
-- In the appointments day view (`AdminAppointments` / `AppointmentsListView` — whichever handles `?apt=`), read `rescheduleRequestId` and pass it through when opening `AppointmentQuickEditDialog` so the banner + primary SMS state appear immediately without a second click.
-
-### 4. Audit stamp visibility
-
-- The Quick Edit banner and the dashboard action-items list already share `resolved_by` / `sms_sent_at` from the request row — surface `resolved_by`'s name (join `profiles`) in both places so a second admin can see "Handled by Gail · 09:42" at a glance.
-
-## Out of scope
-
-- No schema changes; the columns added in the previous migration (`new_appointment_id`, `sms_sent_at`, `resolved_by`) are sufficient.
-- No changes to the RescheduleDialog itself; it already stamps `rescheduled_pending_sms` correctly.
-- Nurse Command Centre / patient-side surfaces unchanged in this pass.
-
-## Files to touch
-
-- `src/components/admin/AppointmentQuickEditDialog.tsx` — banner, promoted SMS button, mark-resolved on send.
-- `src/hooks/useAppointmentChangeRequests.ts` — add `usePendingChangeRequestForAppointment(appointmentId)`.
-- `src/pages/admin/AdminDashboard.tsx` — join change requests, correct chips, deep-link query param.
-- `src/pages/admin/AdminAppointments.tsx` (day view) — honour `rescheduleRequestId` when opening Quick Edit.
+5. Verify against real data
+- Re-check `appointment_change_requests` and `communication_log` after the code path is changed.
+- Confirm the modal changes from “needs SMS” to a visible sent/audit state after the send succeeds.
