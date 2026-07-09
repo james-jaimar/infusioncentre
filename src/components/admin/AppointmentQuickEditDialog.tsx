@@ -346,6 +346,57 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment, au
             </div>
           </DialogHeader>
 
+          {changeRequest && (
+            <div
+              className={cn(
+                "rounded-md border p-3 text-sm",
+                changeRequest.status === "rescheduled_pending_sms"
+                  ? "border-red-300 bg-red-50 text-red-900"
+                  : "border-amber-300 bg-amber-50 text-amber-900"
+              )}
+            >
+              <div className="flex items-start gap-2">
+                {changeRequest.status === "rescheduled_pending_sms" ? (
+                  <MessageSquare className="h-4 w-4 mt-0.5 shrink-0" />
+                ) : (
+                  <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                )}
+                <div className="min-w-0 flex-1">
+                  {changeRequest.status === "rescheduled_pending_sms" ? (
+                    <>
+                      <p className="font-semibold">Awaiting reschedule confirmation SMS</p>
+                      <p className="mt-0.5">
+                        Appointment moved — patient hasn't been sent the confirmation SMS yet.
+                        Use "Send reschedule confirmation SMS" below to complete this and clear it from the action list.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-semibold">Patient requested a reschedule</p>
+                      <p className="mt-0.5">
+                        {changeRequest.preferred_date
+                          ? `Prefers ${format(parseISO(changeRequest.preferred_date), "EEE, MMM d")}`
+                          : "No preferred date"}
+                        {changeRequest.preferred_time_window ? ` · ${changeRequest.preferred_time_window}` : ""}
+                      </p>
+                      {changeRequest.reason && (
+                        <p className="italic mt-1">"{changeRequest.reason}"</p>
+                      )}
+                      <Button
+                        size="sm"
+                        className="mt-2"
+                        onClick={() => setShowReschedule(true)}
+                      >
+                        <RefreshCw className="mr-1 h-3.5 w-3.5" />
+                        Reschedule now
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2 min-w-0">
               <Label>Date</Label>
