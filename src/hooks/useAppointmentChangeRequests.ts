@@ -50,6 +50,14 @@ export function usePendingChangeRequests() {
   return query;
 }
 
+export function usePendingChangeRequestForAppointment(appointmentId: string | null | undefined) {
+  const { data } = usePendingChangeRequests();
+  const match = (data ?? []).find(
+    (r) => r.appointment_id === appointmentId || r.new_appointment_id === appointmentId
+  );
+  return match ?? null;
+}
+
 export function useCreateChangeRequest() {
   const qc = useQueryClient();
   return useMutation({
