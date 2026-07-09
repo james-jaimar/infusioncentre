@@ -47,6 +47,11 @@ import { AppointmentWithRelations, AppointmentStatus } from "@/types/appointment
 import { RescheduleDialog } from "./RescheduleDialog";
 import SendInviteDialog from "./SendInviteDialog";
 import { usePatientInvites } from "@/hooks/usePatientInvites";
+import {
+  usePendingChangeRequestForAppointment,
+  useMarkRequestSmsSent,
+} from "@/hooks/useAppointmentChangeRequests";
+import { AlertCircle, RefreshCw } from "lucide-react";
 
 const TIME_SLOTS = Array.from({ length: 22 }, (_, i) => {
   const hour = Math.floor(i / 2) + 7;
@@ -69,9 +74,11 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   appointment: AppointmentWithRelations | null;
+  /** If provided, auto-opens the reschedule dialog for this pending request on mount. */
+  autoOpenRescheduleRequestId?: string | null;
 }
 
-export function AppointmentQuickEditDialog({ open, onOpenChange, appointment }: Props) {
+export function AppointmentQuickEditDialog({ open, onOpenChange, appointment, autoOpenRescheduleRequestId }: Props) {
   const { data: chairs = [] } = useTreatmentChairs();
   const { data: nurses = [] } = useNurseStaff();
   const { data: doctors = [] } = useAllDoctors();
@@ -79,6 +86,8 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment }: 
   const del = useDeleteAppointment();
   const markArrived = useMarkArrived();
   const sendSms = useSendAppointmentConfirmationSms();
+  const markSmsSent = useMarkRequestSmsSent();
+  const changeRequest = usePendingChangeRequestForAppointment(appointment?.id);
 
   const [date, setDate] = useState<Date | undefined>();
   const [time, setTime] = useState("09:00");
@@ -92,6 +101,15 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment }: 
   const [showInvite, setShowInvite] = useState(false);
   const { data: invites } = usePatientInvites(appointment?.patient_id);
   const hasAcceptedInvite = !!invites?.some((i) => i.status === "accepted");
+
+  // Auto-open reschedule dialog when the caller has deep-linked with a request id
+  // and there's still work to do (either the reschedule itself, or the SMS follow-up).
+  useEffect(() => {
+    if (!open || !autoOpenRescheduleRequestId) return;
+    if (changeRequest && changeRequest.id === autoOpenRescheduleRequestId) {
+      setShowReschedule(true);
+    }
+  }, [open, autoOpenRescheduleRequestId, changeRequest?.id]);
 
   useEffect(() => {
     if (!appointment) return;
@@ -230,7 +248,19 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment }: 
         treatmentType: appointment.appointment_type.name,
         confirmationToken: (appointment as any).confirmation_token ?? null,
       });
-      toast.success("SMS confirmation sent");
+      // If this appointment is tied to a pending reschedule request,
+      // resolve the request so no other admin re-sends the SMS.
+      if (changeRequest?.status === "rescheduled_pending_sms") {
+        try {
+          await markSmsSent.mutateAsync({ id: changeRequest.id });
+          toast.success("Reschedule confirmation SMS sent · marked handled");
+        } catch (e) {
+          console.error("Could not mark change request resolved", e);
+          toast.success("SMS confirmation sent");
+        }
+      } else {
+        toast.success("SMS confirmation sent");
+      }
     } catch (e: any) {
       toast.error(e?.message || "Failed to send SMS");
     }
