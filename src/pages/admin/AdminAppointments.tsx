@@ -446,7 +446,7 @@ export default function AdminAppointments() {
       new Set(
         (pendingChangeRequests || [])
           .filter((r) => r.request_type === "reschedule")
-          .map((r) => r.appointment_id)
+          .flatMap((r) => [r.appointment_id, r.new_appointment_id].filter(Boolean) as string[])
       ),
     [pendingChangeRequests]
   );

@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 export function useSendTestSms() {
@@ -62,6 +62,7 @@ export interface SendAppointmentSmsInput {
 }
 
 export function useSendAppointmentConfirmationSms() {
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: SendAppointmentSmsInput) => {
       // Load SMS settings + clinic name
@@ -118,10 +119,15 @@ export function useSendAppointmentConfirmationSms() {
       if (data?.error) throw new Error(data.error);
       return { ...data, message };
     },
+    onSuccess: (_data, input) => {
+      qc.invalidateQueries({ queryKey: ["communication_log"] });
+      qc.invalidateQueries({ queryKey: ["communication_log", "appointment-sms", input.appointmentId] });
+    },
   });
 }
 
 export function useSendAppointmentRescheduleSms() {
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: SendAppointmentSmsInput) => {
       const { data: rows, error: sErr } = await supabase
@@ -173,6 +179,10 @@ export function useSendAppointmentRescheduleSms() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       return { ...data, message };
+    },
+    onSuccess: (_data, input) => {
+      qc.invalidateQueries({ queryKey: ["communication_log"] });
+      qc.invalidateQueries({ queryKey: ["communication_log", "appointment-sms", input.appointmentId] });
     },
   });
 }

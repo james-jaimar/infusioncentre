@@ -48,6 +48,27 @@ export function useCommunicationLog(filters?: {
   });
 }
 
+export function useAppointmentSmsLog(appointmentId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["communication_log", "appointment-sms", appointmentId],
+    enabled: !!appointmentId,
+    queryFn: async () => {
+      if (!appointmentId) return [];
+      const { data, error } = await supabase
+        .from("communication_log")
+        .select("*")
+        .eq("type", "sms")
+        .eq("related_entity_id", appointmentId)
+        .in("related_entity_type", ["appointment", "appointment_reschedule"])
+        .order("created_at", { ascending: false })
+        .limit(8);
+
+      if (error) throw error;
+      return data as CommunicationLogEntry[];
+    },
+  });
+}
+
 export function useResendEmail() {
   const qc = useQueryClient();
   return useMutation({

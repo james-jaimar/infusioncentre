@@ -66,12 +66,11 @@ export default function AdminDashboard() {
   const attention = useReferralsAttentionCount();
   const { data: pipeline } = usePatientPipelineCounts();
   const { data: pendingRequests } = usePendingChangeRequests();
-  const requestByApptId = new Map(
-    (pendingRequests ?? []).map((r) => [
-      r.new_appointment_id ?? r.appointment_id,
-      r,
-    ]),
-  );
+  const requestByApptId = new Map<string, any>();
+  (pendingRequests ?? []).forEach((r) => {
+    requestByApptId.set(r.appointment_id, r);
+    if (r.new_appointment_id) requestByApptId.set(r.new_appointment_id, r);
+  });
 
   const greeting = profile?.first_name ? `Welcome back, ${profile.first_name}` : "Welcome back";
 

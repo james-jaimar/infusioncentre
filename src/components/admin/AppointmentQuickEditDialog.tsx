@@ -42,11 +42,12 @@ import { useNurseStaff } from "@/hooks/useNurseStaff";
 import { useAllDoctors } from "@/hooks/useDoctors";
 import { supabase } from "@/integrations/supabase/client";
 import { useUpdateAppointment, useDeleteAppointment, useMarkArrived } from "@/hooks/useAppointments";
-import { useSendAppointmentConfirmationSms } from "@/hooks/useSendSms";
+import { useSendAppointmentConfirmationSms, useSendAppointmentRescheduleSms } from "@/hooks/useSendSms";
 import { AppointmentWithRelations, AppointmentStatus } from "@/types/appointment";
 import { RescheduleDialog } from "./RescheduleDialog";
 import SendInviteDialog from "./SendInviteDialog";
 import { usePatientInvites } from "@/hooks/usePatientInvites";
+import { useAppointmentSmsLog } from "@/hooks/useCommunicationLog";
 import {
   usePendingChangeRequestForAppointment,
   useMarkRequestSmsSent,
@@ -86,8 +87,10 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment, au
   const del = useDeleteAppointment();
   const markArrived = useMarkArrived();
   const sendSms = useSendAppointmentConfirmationSms();
+  const sendRescheduleSms = useSendAppointmentRescheduleSms();
   const markSmsSent = useMarkRequestSmsSent();
   const changeRequest = usePendingChangeRequestForAppointment(appointment?.id);
+  const { data: smsHistory = [] } = useAppointmentSmsLog(appointment?.id);
 
   const [date, setDate] = useState<Date | undefined>();
   const [time, setTime] = useState("09:00");
@@ -234,23 +237,32 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment, au
   };
 
   const patientPhone = (appointment.patient as any).phone as string | null;
+  const hasOpenRescheduleRequest =
+    changeRequest?.request_type === "reschedule" &&
+    ["pending", "rescheduled_pending_sms"].includes(changeRequest.status);
+  const smsBusy = sendSms.isPending || sendRescheduleSms.isPending || markSmsSent.isPending;
   const handleSendSms = async () => {
     if (!patientPhone) {
       toast.error("Patient has no phone number on file");
       return;
     }
+    const [h, m] = time.split(":").map(Number);
+    const scheduledStartForSms = date
+      ? setMinutes(setHours(date, h), m).toISOString()
+      : appointment.scheduled_start;
     try {
-      await sendSms.mutateAsync({
+      const sender = hasOpenRescheduleRequest ? sendRescheduleSms : sendSms;
+      await sender.mutateAsync({
         appointmentId: appointment.id,
         phone: patientPhone,
         firstName: appointment.patient.first_name,
-        scheduledStart: appointment.scheduled_start,
+        scheduledStart: scheduledStartForSms,
         treatmentType: appointment.appointment_type.name,
         confirmationToken: (appointment as any).confirmation_token ?? null,
       });
-      // If this appointment is tied to a pending reschedule request,
-      // resolve the request so no other admin re-sends the SMS.
-      if (changeRequest?.status === "rescheduled_pending_sms") {
+      // If this appointment is tied to an open reschedule request, resolve it
+      // so no other admin sees the SMS follow-up as still outstanding.
+      if (hasOpenRescheduleRequest && changeRequest?.id) {
         try {
           await markSmsSent.mutateAsync({ id: changeRequest.id });
           toast.success("Reschedule confirmation SMS sent · marked handled");
@@ -382,6 +394,9 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment, au
                       {changeRequest.reason && (
                         <p className="italic mt-1">"{changeRequest.reason}"</p>
                       )}
+                      <p className="mt-1 text-xs">
+                        If this slot has already been moved, send the reschedule confirmation SMS below to clear the action item.
+                      </p>
                       <Button
                         size="sm"
                         className="mt-2"
@@ -393,6 +408,38 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment, au
                     </>
                   )}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {smsHistory.length > 0 && (
+            <div className="rounded-md border bg-muted/30 p-3 text-sm">
+              <div className="mb-2 flex items-center gap-2 font-medium text-foreground">
+                <MessageSquare className="h-4 w-4" /> SMS history
+              </div>
+              <div className="space-y-2">
+                {smsHistory.slice(0, 4).map((entry) => {
+                  const when = entry.sent_at ?? entry.created_at;
+                  const isReschedule =
+                    entry.related_entity_type === "appointment_reschedule" ||
+                    entry.template === "appointment_reschedule";
+                  return (
+                    <div key={entry.id} className="flex flex-wrap items-center gap-2 text-xs">
+                      <Badge variant={entry.status === "sent" ? "secondary" : "destructive"}>
+                        {entry.status === "sent" ? "Sent" : entry.status}
+                      </Badge>
+                      <span className="font-medium">
+                        {isReschedule ? "Reschedule confirmation" : "Appointment confirmation"}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {format(parseISO(when), "MMM d, h:mm a")}
+                      </span>
+                      {entry.error_message && (
+                        <span className="text-destructive">{entry.error_message}</span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -554,21 +601,21 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment, au
                 variant={changeRequest?.status === "rescheduled_pending_sms" ? "default" : "outline"}
                 size="sm"
                 onClick={handleSendSms}
-                disabled={sendSms.isPending || !patientPhone}
+                disabled={smsBusy || !patientPhone}
                 title={
                   !patientPhone
                     ? "No phone number on file"
-                    : changeRequest?.status === "rescheduled_pending_sms"
+                    : hasOpenRescheduleRequest
                       ? "Send reschedule confirmation SMS and mark this action item as handled"
                       : "Send confirmation SMS now"
                 }
               >
-                {sendSms.isPending ? (
+                {smsBusy ? (
                   <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
                 ) : (
                   <MessageSquare className="mr-1 h-3.5 w-3.5" />
                 )}
-                {changeRequest?.status === "rescheduled_pending_sms"
+                {hasOpenRescheduleRequest
                   ? "Send reschedule confirmation SMS"
                   : "Send SMS confirmation"}
               </Button>
