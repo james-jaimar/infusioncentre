@@ -369,6 +369,7 @@ export default function AdminAppointments() {
 
   // Modal state
   const [editingApt, setEditingApt] = useState<AppointmentWithRelations | null>(null);
+  const [autoOpenReqId, setAutoOpenReqId] = useState<string | null>(null);
   const [activeDragApt, setActiveDragApt] = useState<AppointmentWithRelations | null>(null);
   const [createSlot, setCreateSlot] = useState<{
     date: Date;
@@ -418,15 +419,19 @@ export default function AdminAppointments() {
     const match = rawAppointments.find((a) => a.id === aptId);
     if (match) {
       setEditingApt(match);
+      const reqId = searchParams.get("rescheduleRequestId");
+      setAutoOpenReqId(reqId);
       const next = new URLSearchParams(searchParams);
       next.delete("apt");
       next.delete("date");
+      next.delete("rescheduleRequestId");
       setSearchParams(next, { replace: true });
     } else if (rawAppointments.length > 0) {
       // Range loaded but ID not found — clear params so we stop trying.
       const next = new URLSearchParams(searchParams);
       next.delete("apt");
       next.delete("date");
+      next.delete("rescheduleRequestId");
       setSearchParams(next, { replace: true });
       toast.error("Appointment not found on this day");
     }
@@ -886,8 +891,14 @@ export default function AdminAppointments() {
       {/* Modals */}
       <AppointmentQuickEditDialog
         open={!!editingApt}
-        onOpenChange={(o) => !o && setEditingApt(null)}
+        onOpenChange={(o) => {
+          if (!o) {
+            setEditingApt(null);
+            setAutoOpenReqId(null);
+          }
+        }}
         appointment={editingApt}
+        autoOpenRescheduleRequestId={autoOpenReqId}
       />
 
       {createSlot && (
