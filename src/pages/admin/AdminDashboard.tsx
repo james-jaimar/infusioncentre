@@ -225,7 +225,7 @@ export default function AdminDashboard() {
   );
 }
 
-function AppointmentsPanel({ title, emptyText, items }: { title: string; emptyText: string; items: any[] }) {
+function AppointmentsPanel({ title, emptyText, items, requestByApptId }: { title: string; emptyText: string; items: any[]; requestByApptId: Map<string, any> }) {
   return (
     <div>
       <h2 className="text-lg font-semibold mb-4">{title}</h2>
@@ -236,10 +236,12 @@ function AppointmentsPanel({ title, emptyText, items }: { title: string; emptyTe
               {items.map((apt: any) => {
                 const d = new Date(apt.scheduled_start);
                 const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+                const req = requestByApptId.get(apt.id);
+                const reqQs = req ? `&rescheduleRequestId=${req.id}` : "";
                 return (
                 <Link
                   key={apt.id}
-                  to={`/admin/appointments?view=day&date=${dateStr}&apt=${apt.id}`}
+                  to={`/admin/appointments?view=day&date=${dateStr}&apt=${apt.id}${reqQs}`}
                   className="flex items-center gap-3 px-3 py-2 hover:bg-muted/40 transition-colors"
                 >
                   <span className="text-base font-bold text-foreground font-mono tabular-nums shrink-0 w-14">
@@ -267,10 +269,28 @@ function AppointmentsPanel({ title, emptyText, items }: { title: string; emptyTe
                     )}
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
-                    {apt.reschedule_reason && (
+                    {req?.status === "pending" && (
+                      <span
+                        className="inline-flex items-center gap-1 rounded-full bg-amber-500 text-white px-1.5 py-0.5 text-[10px] font-semibold shadow-sm"
+                        title="Patient requested a reschedule"
+                      >
+                        <RefreshCw className="h-3 w-3" />
+                        Reschedule requested
+                      </span>
+                    )}
+                    {req?.status === "rescheduled_pending_sms" && (
+                      <span
+                        className="inline-flex items-center gap-1 rounded-full bg-red-600 text-white px-1.5 py-0.5 text-[10px] font-semibold shadow-sm"
+                        title="Rescheduled — confirmation SMS still pending"
+                      >
+                        <RefreshCw className="h-3 w-3" />
+                        SMS pending
+                      </span>
+                    )}
+                    {!req && apt.reschedule_reason && (
                       <span
                         className="inline-flex items-center gap-1 rounded-full bg-indigo-600 text-white px-1.5 py-0.5 text-[10px] font-semibold shadow-sm"
-                        title={`Rescheduled · SMS resent${apt.reschedule_reason ? `\nReason: ${apt.reschedule_reason}` : ""}`}
+                        title={`Rescheduled${apt.reschedule_reason ? `\nReason: ${apt.reschedule_reason}` : ""}`}
                       >
                         <RefreshCw className="h-3 w-3" />
                         Rescheduled
