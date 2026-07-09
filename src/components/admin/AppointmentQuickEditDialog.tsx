@@ -551,18 +551,26 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment, au
                 </Button>
               )}
               <Button
-                variant="outline"
+                variant={changeRequest?.status === "rescheduled_pending_sms" ? "default" : "outline"}
                 size="sm"
                 onClick={handleSendSms}
                 disabled={sendSms.isPending || !patientPhone}
-                title={!patientPhone ? "No phone number on file" : "Send confirmation SMS now"}
+                title={
+                  !patientPhone
+                    ? "No phone number on file"
+                    : changeRequest?.status === "rescheduled_pending_sms"
+                      ? "Send reschedule confirmation SMS and mark this action item as handled"
+                      : "Send confirmation SMS now"
+                }
               >
                 {sendSms.isPending ? (
                   <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
                 ) : (
                   <MessageSquare className="mr-1 h-3.5 w-3.5" />
                 )}
-                Send SMS confirmation
+                {changeRequest?.status === "rescheduled_pending_sms"
+                  ? "Send reschedule confirmation SMS"
+                  : "Send SMS confirmation"}
               </Button>
               <Button
                 variant="outline"
@@ -627,6 +635,7 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment, au
           open={showReschedule}
           onOpenChange={setShowReschedule}
           appointment={appointment}
+          changeRequest={changeRequest ?? undefined}
         />
       )}
 
