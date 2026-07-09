@@ -12,6 +12,7 @@ import { usePatientPipelineCounts } from "@/hooks/usePatientPipelineCounts";
 import { STAGE_LABEL, ACTIVE_COURSE_STATUSES } from "@/lib/patientPipeline";
 import { getChairColor } from "@/lib/chairColors";
 import DashboardActionsPanel from "@/components/admin/DashboardActionsPanel";
+import { usePendingChangeRequests } from "@/hooks/useAppointmentChangeRequests";
 
 function useDashboardStats() {
   return useQuery({
@@ -64,6 +65,13 @@ export default function AdminDashboard() {
   const { data: activePatients } = useActivePatientsWithCourses(8);
   const attention = useReferralsAttentionCount();
   const { data: pipeline } = usePatientPipelineCounts();
+  const { data: pendingRequests } = usePendingChangeRequests();
+  const requestByApptId = new Map(
+    (pendingRequests ?? []).map((r) => [
+      r.new_appointment_id ?? r.appointment_id,
+      r,
+    ]),
+  );
 
   const greeting = profile?.first_name ? `Welcome back, ${profile.first_name}` : "Welcome back";
 
@@ -187,8 +195,8 @@ export default function AdminDashboard() {
 
       {/* Today's & Tomorrow's Appointments */}
       <div className="mb-8 grid gap-4 lg:grid-cols-2">
-        <AppointmentsPanel title="Today's Appointments" emptyText="No appointments scheduled for today." items={stats?.todayAppointments || []} />
-        <AppointmentsPanel title="Tomorrow's Appointments" emptyText="No appointments scheduled for tomorrow." items={stats?.tomorrowAppointments || []} />
+        <AppointmentsPanel title="Today's Appointments" emptyText="No appointments scheduled for today." items={stats?.todayAppointments || []} requestByApptId={requestByApptId} />
+        <AppointmentsPanel title="Tomorrow's Appointments" emptyText="No appointments scheduled for tomorrow." items={stats?.tomorrowAppointments || []} requestByApptId={requestByApptId} />
       </div>
 
       {/* Stats grid */}
