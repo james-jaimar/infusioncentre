@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Appointment, AppointmentWithRelations, AppointmentFormData } from "@/types/appointment";
@@ -17,6 +18,7 @@ interface BulkAppointmentData {
 }
 
 export function useAppointments(startDate?: Date, endDate?: Date) {
+  const queryClient = useQueryClient();
   const query = useQuery({
     queryKey: ["appointments", startDate?.toISOString(), endDate?.toISOString()],
     queryFn: async () => {
@@ -56,6 +58,37 @@ export function useAppointments(startDate?: Date, endDate?: Date) {
       ],
     },
   ]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("appointments-list-direct-updates")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "appointments" },
+        (payload) => {
+          const updated = payload.new as Partial<AppointmentWithRelations> & { id?: string };
+          if (!updated.id) return;
+          queryClient.setQueriesData<AppointmentWithRelations[]>(
+            { queryKey: ["appointments"] },
+            (old) =>
+              old?.map((appointment) =>
+                appointment.id === updated.id
+                  ? ({ ...appointment, ...updated } as AppointmentWithRelations)
+                  : appointment
+              )
+          );
+          queryClient.setQueryData<AppointmentWithRelations | null>(
+            ["appointment", updated.id],
+            (old) => (old ? ({ ...old, ...updated } as AppointmentWithRelations) : old)
+          );
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   return query;
 }

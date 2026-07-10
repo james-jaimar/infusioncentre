@@ -1,34 +1,34 @@
-I checked the live data and the code path instead of guessing.
-
-What is actually happening:
-- The SMS is being sent successfully and logged in `communication_log`.
-- The two latest sends for this appointment are recorded as generic `related_entity_type = appointment`, not `appointment_reschedule`.
-- The current open change request is still `status = pending`, with no `sms_sent_at` or `resolved_at`.
-- The Quick Edit modal only marks the request resolved when the request is already `rescheduled_pending_sms`, so the button shown in your screenshot sends the SMS but does not update the request.
-- The UI also does not show SMS send history beside the appointment notes, even though the backend has the log rows.
+What I found:
+- The latest SMS for the screenshot appointment was sent successfully, but its appointment row is now `status = confirmed` while `patient_confirmed_at` is still empty.
+- That means the app is showing “confirmed” because the status was changed somewhere, not because the patient tapped Confirm.
+- The patient confirmation page currently only shows accept/deny/reschedule actions when the appointment is not already confirmed; if `status = confirmed`, it hides the action buttons.
+- Realtime is enabled for `appointments`, but the calendar can still show stale appointment objects because the open modal/page state is not being updated optimistically when an external confirmation happens.
 
 Plan:
 
-1. Make the Quick Edit SMS button request-aware
-- If an appointment has any open reschedule request (`pending` or `rescheduled_pending_sms`), the button should send the reschedule SMS template, not the generic reminder SMS.
-- After a successful send, mark the change request resolved with `sms_sent_at`, `resolved_at`, and `resolved_by`.
-- This covers the exact flow in the screenshot, where the request is still `pending`.
+1. Make patient confirmation links action-based, not status-blocked
+- Update the confirmation page so a patient can still see the appointment action choices unless the appointment is cancelled or already has `patient_confirmed_at`.
+- Treat `patient_confirmed_at` as the real “patient tapped confirm” signal.
+- Do not hide “Request new date” or “Cancel” just because an admin/manual status says `confirmed`.
 
-2. Fix the reschedule dialog handoff
-- When a reschedule is saved, ensure the request is updated against the same appointment id.
-- If the admin sends SMS from the reschedule dialog, mark the same request resolved immediately.
-- Avoid relying on `new_appointment_id`, because this app now moves the same appointment row rather than creating a duplicate appointment.
+2. Correct the confirm endpoint response
+- Update `confirm-appointment` so after a patient confirms, the response returns the updated `status` and `patient_confirmed_at` state, not the stale pre-update appointment values.
+- Ensure “already confirmed” only means `patient_confirmed_at` exists, not merely `status = confirmed`.
 
-3. Add visible SMS tracing in the appointment modal
-- Query recent SMS log entries for the appointment from `communication_log`.
-- Show a compact “SMS history” row in the Quick Edit dialog, for example: “SMS sent today 19:14 · reschedule confirmation”.
-- Show failed sends too, with the error where available.
-- This gives Gail/admins visible proof without opening backend logs.
+3. Prevent manual SMS send from marking patient-confirmed
+- Audit the Quick Edit SMS send path so sending an SMS only logs/traces the SMS and clears reschedule follow-up where appropriate.
+- It must not set the appointment into a patient-confirmed UX state or remove patient action choices from the SMS link.
 
-4. Clean up dashboard/action item state
-- Ensure dashboard and calendar badges use `appointment_id` for open requests.
-- Once `sms_sent_at` is written, the action item should disappear for all admins after query invalidation/realtime refresh.
+4. Push calendar updates immediately
+- Strengthen realtime invalidation for appointment updates and the selected/open appointment.
+- Add a direct realtime update handler on the calendar appointments query so when `status` or `patient_confirmed_at` changes, the visible card updates without a manual refresh.
+- Keep the existing query invalidation as a fallback.
 
-5. Verify against real data
-- Re-check `appointment_change_requests` and `communication_log` after the code path is changed.
-- Confirm the modal changes from “needs SMS” to a visible sent/audit state after the send succeeds.
+5. Surface clearer calendar state
+- Calendar badge should show “Confirmed” only when `patient_confirmed_at` is present.
+- If status is manually `confirmed` but no patient tap exists, show a different admin-status badge or leave it as normal scheduled/confirmed status without implying patient confirmed.
+
+6. Verify with live data
+- Re-check the affected appointment row and recent SMS logs.
+- Confirm the SMS link still offers Confirm / Request new date / Cancel when `patient_confirmed_at` is empty.
+- Confirm that after the patient taps Confirm, the calendar updates without refresh and the card shows patient-confirmed state.

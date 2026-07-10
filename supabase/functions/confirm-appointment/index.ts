@@ -49,16 +49,22 @@ Deno.serve(async (req) => {
     }
 
     let actionResult: string | null = null;
+    let updatedStatus = appt.status;
+    let updatedPatientConfirmedAt = appt.patient_confirmed_at as string | null;
 
     if (action === "confirm") {
       if (!appt.patient_confirmed_at) {
+        updatedPatientConfirmedAt = new Date().toISOString();
+        updatedStatus = appt.status === "scheduled" ? "confirmed" : appt.status;
         await admin
           .from("appointments")
           .update({
-            patient_confirmed_at: new Date().toISOString(),
-            status: appt.status === "scheduled" ? "confirmed" : appt.status,
+            patient_confirmed_at: updatedPatientConfirmedAt,
+            status: updatedStatus,
           })
           .eq("id", appt.id);
+      } else {
+        updatedPatientConfirmedAt = appt.patient_confirmed_at;
       }
       actionResult = "confirmed";
     } else if (action === "cancel") {
@@ -69,6 +75,7 @@ Deno.serve(async (req) => {
           cancellation_reason: message?.trim() || "Cancelled by patient via SMS link",
         })
         .eq("id", appt.id);
+      updatedStatus = "cancelled";
       actionResult = "cancelled";
     } else if (action === "request_change") {
       const patientId = (appt as any).patients?.id ?? null;
@@ -95,6 +102,8 @@ Deno.serve(async (req) => {
           status: appt.status === "confirmed" ? "scheduled" : appt.status,
         })
         .eq("id", appt.id);
+      updatedPatientConfirmedAt = null;
+      updatedStatus = appt.status === "confirmed" ? "scheduled" : appt.status;
 
       if (patientId) {
         await admin.from("appointment_change_requests").insert({
@@ -113,8 +122,9 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: true,
         action: actionResult,
-        already: !!appt.patient_confirmed_at,
-        status: actionResult === "cancelled" ? "cancelled" : appt.status,
+        already: !!updatedPatientConfirmedAt,
+        status: updatedStatus,
+        patient_confirmed_at: updatedPatientConfirmedAt,
         scheduled_start: appt.scheduled_start,
         patient_name: `${(appt as any).patients?.first_name ?? ""} ${(appt as any).patients?.last_name ?? ""}`.trim(),
         treatment_type: (appt as any).appointment_types?.name ?? null,

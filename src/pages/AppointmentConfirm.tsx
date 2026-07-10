@@ -23,6 +23,7 @@ type ApptInfo = {
   patient_name?: string;
   treatment_type?: string | null;
   status?: string;
+  patient_confirmed_at?: string | null;
   already?: boolean;
   action?: string | null;
   brand?: Brand;
@@ -135,7 +136,8 @@ export default function AppointmentConfirm() {
   }, [info.scheduled_start]);
 
   const status = info.status ?? "scheduled";
-  const confirmed = status === "confirmed" || info.action === "confirmed" || info.already;
+  const hasPatientConfirmed = !!info.patient_confirmed_at;
+  const confirmed = hasPatientConfirmed || info.action === "confirmed" || info.already;
   const cancelled = status === "cancelled" || info.action === "cancelled";
   const changeRequested = info.action === "change_requested";
   const locked = cancelled;
