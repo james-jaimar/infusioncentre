@@ -138,6 +138,7 @@ function CalendarEventCard({
   const rescheduleSet = useContext(RescheduleRequestContext);
   const hasRescheduleRequest = rescheduleSet.has(apt.id);
   const wasRescheduled = !!(apt as any).reschedule_reason;
+  const patientConfirmed = !!apt.patient_confirmed_at;
   const nurseName = apt.assigned_nurse_id
     ? nurseLookup.get(apt.assigned_nurse_id) ?? null
     : null;
@@ -178,12 +179,21 @@ function CalendarEventCard({
               ⟳ Reschedule
             </Badge>
           ) : null}
-          {apt.patient_confirmed_at && !hasRescheduleRequest ? (
+          {patientConfirmed && !hasRescheduleRequest ? (
             <Badge
               className="h-4 px-1 text-[9px] bg-emerald-600 text-white hover:bg-emerald-600"
               title={`Patient confirmed via SMS link on ${format(parseISO(apt.patient_confirmed_at), "MMM d, h:mm a")}`}
             >
               ✓ Confirmed
+            </Badge>
+          ) : null}
+          {apt.status === "confirmed" && !patientConfirmed && !hasRescheduleRequest ? (
+            <Badge
+              variant="outline"
+              className="h-4 px-1 text-[9px]"
+              title="Appointment status is confirmed, but the patient has not tapped the SMS confirmation link"
+            >
+              Admin confirmed
             </Badge>
           ) : null}
           {wasRescheduled && !hasRescheduleRequest ? (
@@ -437,6 +447,14 @@ export default function AdminAppointments() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rawAppointments, isLoading]);
+
+  useEffect(() => {
+    if (!editingApt) return;
+    const updated = rawAppointments.find((a) => a.id === editingApt.id);
+    if (updated && updated !== editingApt) {
+      setEditingApt(updated);
+    }
+  }, [rawAppointments, editingApt]);
   const { data: chairs = [] } = useTreatmentChairs();
   const { data: types = [] } = useAppointmentTypes();
   const { data: nurses = [] } = useNurseStaff();
