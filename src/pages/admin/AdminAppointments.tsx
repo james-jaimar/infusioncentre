@@ -565,13 +565,23 @@ export default function AdminAppointments() {
     }
 
     try {
+      const timeChanged = newStart.getTime() !== start.getTime();
+      const wasConfirmed =
+        !!apt.patient_confirmed_at || apt.status === "confirmed";
       await move.mutateAsync({
         id: apt.id,
         newStart,
         durationMinutes: durationMin,
         newChairId: overData.chairId,
+        clearPatientConfirmation: timeChanged,
+        downgradeConfirmedStatus: timeChanged,
+        rescheduleReason: timeChanged ? "Moved via calendar" : undefined,
       });
-      toast.success("Moved");
+      if (timeChanged && wasConfirmed) {
+        toast.warning("Moved — patient must re-confirm. Open the appointment to send an SMS.");
+      } else {
+        toast.success("Moved");
+      }
     } catch {
       toast.error("Couldn't move appointment");
     }
