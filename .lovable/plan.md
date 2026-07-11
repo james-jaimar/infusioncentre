@@ -1,34 +1,56 @@
-What I found:
-- The latest SMS for the screenshot appointment was sent successfully, but its appointment row is now `status = confirmed` while `patient_confirmed_at` is still empty.
-- That means the app is showing “confirmed” because the status was changed somewhere, not because the patient tapped Confirm.
-- The patient confirmation page currently only shows accept/deny/reschedule actions when the appointment is not already confirmed; if `status = confirmed`, it hides the action buttons.
-- Realtime is enabled for `appointments`, but the calendar can still show stale appointment objects because the open modal/page state is not being updated optimistically when an external confirmation happens.
 
-Plan:
+## Problem
 
-1. Make patient confirmation links action-based, not status-blocked
-- Update the confirmation page so a patient can still see the appointment action choices unless the appointment is cancelled or already has `patient_confirmed_at`.
-- Treat `patient_confirmed_at` as the real “patient tapped confirm” signal.
-- Do not hide “Request new date” or “Cancel” just because an admin/manual status says `confirmed`.
+When admin moves/reschedules an appointment, the row keeps its old `patient_confirmed_at` and `status = confirmed`. The calendar still shows "Confirmed" even though the patient never confirmed the new date. Nothing prompts admin to send a fresh SMS.
 
-2. Correct the confirm endpoint response
-- Update `confirm-appointment` so after a patient confirms, the response returns the updated `status` and `patient_confirmed_at` state, not the stale pre-update appointment values.
-- Ensure “already confirmed” only means `patient_confirmed_at` exists, not merely `status = confirmed`.
+## Fix
 
-3. Prevent manual SMS send from marking patient-confirmed
-- Audit the Quick Edit SMS send path so sending an SMS only logs/traces the SMS and clears reschedule follow-up where appropriate.
-- It must not set the appointment into a patient-confirmed UX state or remove patient action choices from the SMS link.
+### 1. Clear patient confirmation on any admin-driven time change
 
-4. Push calendar updates immediately
-- Strengthen realtime invalidation for appointment updates and the selected/open appointment.
-- Add a direct realtime update handler on the calendar appointments query so when `status` or `patient_confirmed_at` changes, the visible card updates without a manual refresh.
-- Keep the existing query invalidation as a fallback.
+Update the two write paths in `src/hooks/useAppointments.ts`:
 
-5. Surface clearer calendar state
-- Calendar badge should show “Confirmed” only when `patient_confirmed_at` is present.
-- If status is manually `confirmed` but no patient tap exists, show a different admin-status badge or leave it as normal scheduled/confirmed status without implying patient confirmed.
+- `useRescheduleAppointment` — when updating the row, also set:
+  - `patient_confirmed_at: null`
+  - `status: "scheduled"` (only if current status is `confirmed`; leave `cancelled`, `checked_in`, etc. alone — pass through via a small pre-check or just always downgrade `confirmed` → `scheduled`)
+- `useMoveAppointment` (drag-drop) — same clearing when `newStart` differs from the existing `scheduled_start`. Include the fields in both the DB update and the optimistic cache patch so the badge flips immediately.
 
-6. Verify with live data
-- Re-check the affected appointment row and recent SMS logs.
-- Confirm the SMS link still offers Confirm / Request new date / Cancel when `patient_confirmed_at` is empty.
-- Confirm that after the patient taps Confirm, the calendar updates without refresh and the card shows patient-confirmed state.
+Rationale: any admin time change invalidates the patient's prior consent to the slot.
+
+### 2. Prompt admin to re-confirm after reschedule
+
+`RescheduleDialog` already has a two-stage flow (edit → SMS) — good. Extend it so the SMS stage always shows after a successful reschedule (already does) and add a secondary **"Mark manually confirmed"** button next to *"I'll send it later"* / *"Send SMS confirmation"*. That button calls `useUpdateAppointment` to set `status: "confirmed"` and `patient_confirmed_at: now()` — same as the existing manual-confirm affordance elsewhere.
+
+For drag-drop moves (no dialog), surface the state via the calendar badge (see step 3) plus a toast "Patient must re-confirm — send SMS from the appointment card."
+
+### 3. Calendar badge accuracy
+
+`AdminAppointments.tsx` already distinguishes:
+- ✓ Confirmed → `patient_confirmed_at && !hasRescheduleRequest`
+- Admin confirmed → `status === "confirmed" && !patient_confirmed_at`
+
+After step 1, a rescheduled appointment drops to `status = scheduled`, so it will render as neither badge (correct — needs action). Add a subtle "Needs re-confirmation" pill when the appointment has a non-null `reschedule_reason` (or was recently updated) and `patient_confirmed_at is null` and `status in ('scheduled')`. Simplest signal: `reschedule_reason IS NOT NULL AND patient_confirmed_at IS NULL AND status = 'scheduled'`.
+
+### 4. Broader workflow review — findings & follow-ups
+
+Areas that already look correct after prior fixes:
+- Realtime UPDATE patching in `useAppointments` (direct cache patch on postgres_changes UPDATE)
+- SMS confirmation link now uses `patient_confirmed_at` not `status`
+- `confirm-appointment` edge function returns fresh state
+
+Gaps worth flagging (not implementing yet — confirm before doing):
+- `AppointmentQuickEditDialog` time/chair edits should also clear `patient_confirmed_at` when start time changes. This is the "silent" path most likely to reintroduce the bug.
+- `useCreateBulkAppointments` and drag-drop should never carry over a stale confirmation from a template.
+- Cancellations by admin: patient should get a cancellation SMS, not just a status change (out of scope for this plan).
+
+## Files to change
+
+- `src/hooks/useAppointments.ts` — clear confirmation in `useRescheduleAppointment` and `useMoveAppointment`
+- `src/components/admin/AppointmentQuickEditDialog.tsx` — same clearing when `scheduled_start` changes
+- `src/components/admin/RescheduleDialog.tsx` — add "Mark manually confirmed" button on SMS stage
+- `src/pages/admin/AdminAppointments.tsx` — add "Needs re-confirmation" badge; toast on drag-drop move
+
+## Verification
+
+- Move James Hawkins III's appointment via drag-drop → badge flips to "Needs re-confirmation", `patient_confirmed_at` is null in DB.
+- Reschedule via dialog → SMS stage shows, with option to send SMS or mark manually confirmed.
+- Send SMS from the confirmation link and tap Confirm → badge flips back to "✓ Confirmed" without page refresh (realtime cache patch).

@@ -196,12 +196,20 @@ function CalendarEventCard({
               Admin confirmed
             </Badge>
           ) : null}
-          {wasRescheduled && !hasRescheduleRequest ? (
+          {wasRescheduled && !hasRescheduleRequest && !patientConfirmed && apt.status === "scheduled" ? (
+            <Badge
+              className="h-4 px-1 text-[9px] bg-amber-500 text-white hover:bg-amber-500"
+              title={`Rescheduled — patient must re-confirm. Reason: ${(apt as any).reschedule_reason}`}
+            >
+              ⟳ Needs re-confirm
+            </Badge>
+          ) : null}
+          {wasRescheduled && !hasRescheduleRequest && (patientConfirmed || apt.status !== "scheduled") ? (
             <Badge
               className="h-4 px-1 text-[9px] bg-indigo-600 text-white hover:bg-indigo-600"
-              title={`Rescheduled — confirmation SMS resent to patient.\nReason: ${(apt as any).reschedule_reason}`}
+              title={`Rescheduled. Reason: ${(apt as any).reschedule_reason}`}
             >
-              ⟳ Rescheduled · SMS
+              ⟳ Rescheduled
             </Badge>
           ) : null}
           {sessionNo ? (
@@ -565,13 +573,23 @@ export default function AdminAppointments() {
     }
 
     try {
+      const timeChanged = newStart.getTime() !== start.getTime();
+      const wasConfirmed =
+        !!apt.patient_confirmed_at || apt.status === "confirmed";
       await move.mutateAsync({
         id: apt.id,
         newStart,
         durationMinutes: durationMin,
         newChairId: overData.chairId,
+        clearPatientConfirmation: timeChanged,
+        downgradeConfirmedStatus: timeChanged,
+        rescheduleReason: timeChanged ? "Moved via calendar" : undefined,
       });
-      toast.success("Moved");
+      if (timeChanged && wasConfirmed) {
+        toast.warning("Moved — patient must re-confirm. Open the appointment to send an SMS.");
+      } else {
+        toast.success("Moved");
+      }
     } catch {
       toast.error("Couldn't move appointment");
     }

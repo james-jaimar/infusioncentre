@@ -301,15 +301,26 @@ export function useRescheduleAppointment() {
       reason: string;
     }) => {
       // Move the SAME appointment to the new slot — no duplicate row.
+      // Any admin-driven time change invalidates the patient's prior confirmation:
+      // clear patient_confirmed_at and downgrade a `confirmed` status back to `scheduled`
+      // so the calendar surfaces "needs re-confirmation" and admin is prompted to re-send SMS.
+      const { data: existing } = await supabase
+        .from("appointments")
+        .select("status")
+        .eq("id", originalAppointmentId)
+        .maybeSingle();
+      const updates: Record<string, unknown> = {
+        scheduled_start: newData.scheduled_start.toISOString(),
+        scheduled_end: newData.scheduled_end.toISOString(),
+        chair_id: newData.chair_id,
+        assigned_nurse_id: newData.assigned_nurse_id,
+        reschedule_reason: reason,
+        patient_confirmed_at: null,
+      };
+      if (existing?.status === "confirmed") updates.status = "scheduled";
       const { data, error } = await supabase
         .from("appointments")
-        .update({
-          scheduled_start: newData.scheduled_start.toISOString(),
-          scheduled_end: newData.scheduled_end.toISOString(),
-          chair_id: newData.chair_id,
-          assigned_nurse_id: newData.assigned_nurse_id,
-          reschedule_reason: reason,
-        })
+        .update(updates)
         .eq("id", originalAppointmentId)
         .select()
         .single();
@@ -366,11 +377,20 @@ export function useMoveAppointment() {
       newStart,
       durationMinutes,
       newChairId,
+      clearPatientConfirmation,
+      downgradeConfirmedStatus,
+      rescheduleReason,
     }: {
       id: string;
       newStart: Date;
       durationMinutes: number;
       newChairId?: string | null;
+      /** When the start time changed, clear patient_confirmed_at so calendar shows "needs re-confirmation". */
+      clearPatientConfirmation?: boolean;
+      /** When the appointment was `confirmed`, downgrade to `scheduled` on time change. */
+      downgradeConfirmedStatus?: boolean;
+      /** Optional reason to stamp on the row so the "Rescheduled" badge appears. */
+      rescheduleReason?: string;
     }) => {
       const newEnd = addMinutes(newStart, durationMinutes);
       const updates: Record<string, unknown> = {
@@ -378,6 +398,9 @@ export function useMoveAppointment() {
         scheduled_end: newEnd.toISOString(),
       };
       if (newChairId !== undefined) updates.chair_id = newChairId;
+      if (clearPatientConfirmation) updates.patient_confirmed_at = null;
+      if (downgradeConfirmedStatus) updates.status = "scheduled";
+      if (rescheduleReason) updates.reschedule_reason = rescheduleReason;
 
       const { data, error } = await supabase
         .from("appointments")
@@ -388,7 +411,7 @@ export function useMoveAppointment() {
       if (error) throw error;
       return data;
     },
-    onMutate: async ({ id, newStart, durationMinutes, newChairId }) => {
+    onMutate: async ({ id, newStart, durationMinutes, newChairId, clearPatientConfirmation, downgradeConfirmedStatus, rescheduleReason }) => {
       // Cancel outgoing refetches so they don't overwrite our optimistic update
       await queryClient.cancelQueries({ queryKey: ["appointments"] });
       const previous = queryClient.getQueriesData({ queryKey: ["appointments"] });
@@ -405,6 +428,9 @@ export function useMoveAppointment() {
                   scheduled_start: newStart.toISOString(),
                   scheduled_end: newEnd.toISOString(),
                   chair_id: newChairId !== undefined ? newChairId : a.chair_id,
+                  patient_confirmed_at: clearPatientConfirmation ? null : a.patient_confirmed_at,
+                  status: downgradeConfirmedStatus && a.status === "confirmed" ? "scheduled" : a.status,
+                  reschedule_reason: rescheduleReason ?? (a as any).reschedule_reason,
                 }
               : a
           );
