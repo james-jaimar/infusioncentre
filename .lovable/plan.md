@@ -1,56 +1,34 @@
+## Simplify appointment badges on dashboard & calendar
 
-## Problem
+Gail's dashboard should surface **attention**, not history. Once a rescheduled appointment has been re-confirmed by the patient, the "Rescheduled" badge is noise — collapse to a single "Confirmed" badge.
 
-When admin moves/reschedules an appointment, the row keeps its old `patient_confirmed_at` and `status = confirmed`. The calendar still shows "Confirmed" even though the patient never confirmed the new date. Nothing prompts admin to send a fresh SMS.
+### Badge rules (single source of truth)
 
-## Fix
+For any appointment row, show **one** status badge based on this priority:
 
-### 1. Clear patient confirmation on any admin-driven time change
+| Condition | Badge | Color |
+|---|---|---|
+| `status = cancelled` | Cancelled | red |
+| `status = no_show` | No-show | red |
+| `patient_confirmed_at IS NOT NULL` (regardless of reschedule history) | Confirmed | green |
+| `reschedule_reason IS NOT NULL AND patient_confirmed_at IS NULL AND status = 'scheduled'` | Needs re-confirm | amber |
+| `status = 'confirmed' AND patient_confirmed_at IS NULL` | Admin confirmed | slate |
+| else | Awaiting | amber/neutral |
 
-Update the two write paths in `src/hooks/useAppointments.ts`:
+Key change: **drop the "Rescheduled" badge entirely from list/dashboard views**. The reschedule fact is only relevant while it still needs action ("Needs re-confirm"). Once the patient re-confirms, it's just "Confirmed".
 
-- `useRescheduleAppointment` — when updating the row, also set:
-  - `patient_confirmed_at: null`
-  - `status: "scheduled"` (only if current status is `confirmed`; leave `cancelled`, `checked_in`, etc. alone — pass through via a small pre-check or just always downgrade `confirmed` → `scheduled`)
-- `useMoveAppointment` (drag-drop) — same clearing when `newStart` differs from the existing `scheduled_start`. Include the fields in both the DB update and the optimistic cache patch so the badge flips immediately.
+Reschedule history remains visible in the appointment detail dialog / drawer (where an admin *is* looking for context), just not on scan-and-triage surfaces.
 
-Rationale: any admin time change invalidates the patient's prior consent to the slot.
+### Files to change
 
-### 2. Prompt admin to re-confirm after reschedule
+- `src/pages/admin/AdminDashboard.tsx` — Today's Appointments list: remove the standalone "Rescheduled" pill; render only the single status badge per the table above.
+- `src/pages/admin/AdminAppointments.tsx` — Calendar event cells & list view: same collapse. Keep "Needs re-confirm" (amber) as the attention signal for the case Gail actually cares about.
+- `src/components/admin/appointments/AppointmentsListView.tsx` — Same collapse if it currently shows a separate reschedule badge.
+- Appointment detail / edit dialogs — leave the "Rescheduled" indicator + reason visible here; this is the deep-dive surface.
 
-`RescheduleDialog` already has a two-stage flow (edit → SMS) — good. Extend it so the SMS stage always shows after a successful reschedule (already does) and add a secondary **"Mark manually confirmed"** button next to *"I'll send it later"* / *"Send SMS confirmation"*. That button calls `useUpdateAppointment` to set `status: "confirmed"` and `patient_confirmed_at: now()` — same as the existing manual-confirm affordance elsewhere.
+### Verification
 
-For drag-drop moves (no dialog), surface the state via the calendar badge (see step 3) plus a toast "Patient must re-confirm — send SMS from the appointment card."
-
-### 3. Calendar badge accuracy
-
-`AdminAppointments.tsx` already distinguishes:
-- ✓ Confirmed → `patient_confirmed_at && !hasRescheduleRequest`
-- Admin confirmed → `status === "confirmed" && !patient_confirmed_at`
-
-After step 1, a rescheduled appointment drops to `status = scheduled`, so it will render as neither badge (correct — needs action). Add a subtle "Needs re-confirmation" pill when the appointment has a non-null `reschedule_reason` (or was recently updated) and `patient_confirmed_at is null` and `status in ('scheduled')`. Simplest signal: `reschedule_reason IS NOT NULL AND patient_confirmed_at IS NULL AND status = 'scheduled'`.
-
-### 4. Broader workflow review — findings & follow-ups
-
-Areas that already look correct after prior fixes:
-- Realtime UPDATE patching in `useAppointments` (direct cache patch on postgres_changes UPDATE)
-- SMS confirmation link now uses `patient_confirmed_at` not `status`
-- `confirm-appointment` edge function returns fresh state
-
-Gaps worth flagging (not implementing yet — confirm before doing):
-- `AppointmentQuickEditDialog` time/chair edits should also clear `patient_confirmed_at` when start time changes. This is the "silent" path most likely to reintroduce the bug.
-- `useCreateBulkAppointments` and drag-drop should never carry over a stale confirmation from a template.
-- Cancellations by admin: patient should get a cancellation SMS, not just a status change (out of scope for this plan).
-
-## Files to change
-
-- `src/hooks/useAppointments.ts` — clear confirmation in `useRescheduleAppointment` and `useMoveAppointment`
-- `src/components/admin/AppointmentQuickEditDialog.tsx` — same clearing when `scheduled_start` changes
-- `src/components/admin/RescheduleDialog.tsx` — add "Mark manually confirmed" button on SMS stage
-- `src/pages/admin/AdminAppointments.tsx` — add "Needs re-confirmation" badge; toast on drag-drop move
-
-## Verification
-
-- Move James Hawkins III's appointment via drag-drop → badge flips to "Needs re-confirmation", `patient_confirmed_at` is null in DB.
-- Reschedule via dialog → SMS stage shows, with option to send SMS or mark manually confirmed.
-- Send SMS from the confirmation link and tap Confirm → badge flips back to "✓ Confirmed" without page refresh (realtime cache patch).
+- James Hawkins III 11:00 (rescheduled + re-confirmed) → shows only green **Confirmed**.
+- Mark Hawkins 14:30 (rescheduled, not yet confirmed) → shows amber **Needs re-confirm** (no duplicate "Awaiting").
+- Moto Moto 12:00 (never rescheduled, not confirmed) → **Awaiting**.
+- Opening any of the above in the detail dialog still shows the reschedule reason & history.
