@@ -169,7 +169,7 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment, au
           status: effectiveStatus,
           notes: notes.trim() || null,
           ...(clearConfirmation ? { patient_confirmed_at: null, reschedule_reason: "Edited via appointment dialog" } : {}),
-        },
+        } as any,
       });
       if (timeChanged && wasConfirmed) {
         toast.warning("Updated — patient must re-confirm. Send an SMS from this dialog.");
