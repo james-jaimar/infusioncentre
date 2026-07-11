@@ -147,6 +147,17 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment, au
     const newStart = setMinutes(setHours(date, h), m);
     const newEnd = new Date(newStart.getTime() + duration * 60_000);
 
+    const originalStart = parseISO(appointment.scheduled_start);
+    const timeChanged = newStart.getTime() !== originalStart.getTime();
+    const wasConfirmed =
+      !!appointment.patient_confirmed_at || appointment.status === "confirmed";
+    // If admin changed the time, invalidate patient confirmation so they must re-confirm.
+    const effectiveStatus =
+      timeChanged && status === "confirmed" && appointment.status === "confirmed"
+        ? ("scheduled" as AppointmentStatus)
+        : status;
+    const clearConfirmation = timeChanged;
+
     try {
       await update.mutateAsync({
         id: appointment.id,
@@ -155,11 +166,16 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment, au
           scheduled_end: newEnd.toISOString(),
           chair_id: chairId === "none" ? null : chairId,
           assigned_nurse_id: nurseId === "none" ? null : nurseId,
-          status,
+          status: effectiveStatus,
           notes: notes.trim() || null,
+          ...(clearConfirmation ? { patient_confirmed_at: null, reschedule_reason: "Edited via appointment dialog" } : {}),
         },
       });
-      toast.success("Appointment updated");
+      if (timeChanged && wasConfirmed) {
+        toast.warning("Updated — patient must re-confirm. Send an SMS from this dialog.");
+      } else {
+        toast.success("Appointment updated");
+      }
       // Write referring doctor back to the patient record so it stays in sync
       try {
         if (doctorId === "none") {
