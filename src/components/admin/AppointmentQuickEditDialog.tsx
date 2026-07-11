@@ -42,6 +42,8 @@ import { useNurseStaff } from "@/hooks/useNurseStaff";
 import { useAllDoctors } from "@/hooks/useDoctors";
 import { supabase } from "@/integrations/supabase/client";
 import { useUpdateAppointment, useDeleteAppointment, useMarkArrived } from "@/hooks/useAppointments";
+import { ensureDoctorReferral } from "@/lib/ensureDoctorReferral";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSendAppointmentConfirmationSms, useSendAppointmentRescheduleSms } from "@/hooks/useSendSms";
 import { AppointmentWithRelations, AppointmentStatus } from "@/types/appointment";
 import { RescheduleDialog } from "./RescheduleDialog";
@@ -84,6 +86,7 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment, au
   const { data: nurses = [] } = useNurseStaff();
   const { data: doctors = [] } = useAllDoctors();
   const update = useUpdateAppointment();
+  const queryClient = useQueryClient();
   const del = useDeleteAppointment();
   const markArrived = useMarkArrived();
   const sendSms = useSendAppointmentConfirmationSms();
@@ -199,6 +202,12 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment, au
                 referring_doctor_phone: doc.phone ?? null,
               })
               .eq("id", appointment.patient_id);
+            // Structured link: ensure a referral row exists so the patient
+            // appears under this doctor's Patients/Referrals.
+            await ensureDoctorReferral(appointment.patient_id, doctorId);
+            queryClient.invalidateQueries({ queryKey: ["referrals"] });
+            queryClient.invalidateQueries({ queryKey: ["doctor-linked-patients", doctorId] });
+            queryClient.invalidateQueries({ queryKey: ["doctor-detail", doctorId] });
           }
         }
       } catch (e) {
