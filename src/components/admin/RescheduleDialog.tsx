@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon, Loader2, MessageSquare, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTreatmentChairs } from "@/hooks/useTreatmentChairs";
-import { useRescheduleAppointment } from "@/hooks/useAppointments";
+import { useRescheduleAppointment, useUpdateAppointment } from "@/hooks/useAppointments";
 import { useSendAppointmentRescheduleSms } from "@/hooks/useSendSms";
 import { AppointmentWithRelations } from "@/types/appointment";
 import {
@@ -67,6 +67,7 @@ export function RescheduleDialog({ open, onOpenChange, appointment, changeReques
 
   const { data: chairs = [] } = useTreatmentChairs();
   const reschedule = useRescheduleAppointment();
+  const update = useUpdateAppointment();
   const sendRescheduleSms = useSendAppointmentRescheduleSms();
   const markRescheduled = useMarkRequestRescheduled();
   const markSmsSent = useMarkRequestSmsSent();
@@ -165,6 +166,33 @@ export function RescheduleDialog({ open, onOpenChange, appointment, changeReques
       toast.info("Reschedule saved. SMS still pending — this stays on your action list.");
     }
     onOpenChange(false);
+  };
+
+  const handleMarkManuallyConfirmed = async () => {
+    try {
+      setSmsPending(true);
+      await update.mutateAsync({
+        id: appointment.id,
+        data: {
+          status: "confirmed",
+          patient_confirmed_at: new Date().toISOString(),
+        },
+      });
+      if (changeRequest?.id) {
+        try {
+          await markSmsSent.mutateAsync({ id: changeRequest.id });
+        } catch (e) {
+          console.error("Could not mark request resolved", e);
+        }
+      }
+      toast.success("Marked as manually confirmed");
+      onOpenChange(false);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to mark confirmed";
+      toast.error(msg);
+    } finally {
+      setSmsPending(false);
+    }
   };
 
   return (
@@ -290,6 +318,9 @@ export function RescheduleDialog({ open, onOpenChange, appointment, changeReques
           <>
             <Button variant="outline" onClick={handleSkipSms} disabled={smsPending}>
               I'll send it later
+            </Button>
+            <Button variant="secondary" onClick={handleMarkManuallyConfirmed} disabled={smsPending} className="gap-2">
+              <CheckCircle2 className="h-4 w-4" /> Mark manually confirmed
             </Button>
             <Button onClick={handleSendSms} disabled={smsPending || !appointment.patient.phone} className="gap-2">
               {smsPending ? (
