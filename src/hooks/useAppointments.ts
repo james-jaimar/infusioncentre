@@ -301,15 +301,26 @@ export function useRescheduleAppointment() {
       reason: string;
     }) => {
       // Move the SAME appointment to the new slot — no duplicate row.
+      // Any admin-driven time change invalidates the patient's prior confirmation:
+      // clear patient_confirmed_at and downgrade a `confirmed` status back to `scheduled`
+      // so the calendar surfaces "needs re-confirmation" and admin is prompted to re-send SMS.
+      const { data: existing } = await supabase
+        .from("appointments")
+        .select("status")
+        .eq("id", originalAppointmentId)
+        .maybeSingle();
+      const updates: Record<string, unknown> = {
+        scheduled_start: newData.scheduled_start.toISOString(),
+        scheduled_end: newData.scheduled_end.toISOString(),
+        chair_id: newData.chair_id,
+        assigned_nurse_id: newData.assigned_nurse_id,
+        reschedule_reason: reason,
+        patient_confirmed_at: null,
+      };
+      if (existing?.status === "confirmed") updates.status = "scheduled";
       const { data, error } = await supabase
         .from("appointments")
-        .update({
-          scheduled_start: newData.scheduled_start.toISOString(),
-          scheduled_end: newData.scheduled_end.toISOString(),
-          chair_id: newData.chair_id,
-          assigned_nurse_id: newData.assigned_nurse_id,
-          reschedule_reason: reason,
-        })
+        .update(updates)
         .eq("id", originalAppointmentId)
         .select()
         .single();
