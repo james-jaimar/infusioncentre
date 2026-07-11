@@ -1,34 +1,48 @@
-## Simplify appointment badges on dashboard & calendar
+# Auto-link referring doctor when creating/editing an appointment
 
-Gail's dashboard should surface **attention**, not history. Once a rescheduled appointment has been re-confirmed by the patient, the "Rescheduled" badge is noise — collapse to a single "Confirmed" badge.
+## Problem
+When Gail picks a referring doctor on an appointment (quick create or quick edit), the system today only writes free-text fields (`referring_doctor_name/practice/phone`) onto the patient row. It never links the patient to the doctor in a structured way, so:
 
-### Badge rules (single source of truth)
+- The doctor's **Patients** tab (`DoctorDetail`) stays empty — it's driven by `referrals.doctor_id → patient_id`.
+- The doctor's **Referrals** tab stays empty — same source.
+- The patient doesn't appear in the doctor portal (`DoctorMyPatients`, `DoctorReferrals`) either.
 
-For any appointment row, show **one** status badge based on this priority:
+Expected: picking a doctor on the appointment should behave "as if that doctor referred the patient" — the patient shows up under the doctor everywhere.
 
-| Condition | Badge | Color |
-|---|---|---|
-| `status = cancelled` | Cancelled | red |
-| `status = no_show` | No-show | red |
-| `patient_confirmed_at IS NOT NULL` (regardless of reschedule history) | Confirmed | green |
-| `reschedule_reason IS NOT NULL AND patient_confirmed_at IS NULL AND status = 'scheduled'` | Needs re-confirm | amber |
-| `status = 'confirmed' AND patient_confirmed_at IS NULL` | Admin confirmed | slate |
-| else | Awaiting | amber/neutral |
+## Fix
 
-Key change: **drop the "Rescheduled" badge entirely from list/dashboard views**. The reschedule fact is only relevant while it still needs action ("Needs re-confirm"). Once the patient re-confirms, it's just "Confirmed".
+When the appointment dialog saves with a doctor selected, in addition to writing the referring-doctor text fields on `patients`, ensure a `referrals` row exists linking `patient_id ↔ doctor_id`:
 
-Reschedule history remains visible in the appointment detail dialog / drawer (where an admin *is* looking for context), just not on scan-and-triage surfaces.
+1. Query `referrals` for `patient_id = <patient>` AND `doctor_id = <selected doctor>`.
+2. If none exists, insert a minimal referral:
+   - `doctor_id`, `patient_id`
+   - `patient_first_name`, `patient_last_name` (copied from the patient record)
+   - `patient_phone`, `patient_email` (copied from patient if available)
+   - `status = 'accepted'` (admin-created, already actioned — matches screenshot 114 where existing referral is "accepted")
+   - `urgency = 'routine'`
+   - `reason_for_referral = 'Admin-created via appointment scheduling'` so it's clear where it came from
+   - `reviewed_at = now()`, `reviewed_by = current user id` if convenient
+3. If a referral already exists for that pair, do nothing (idempotent — avoids duplicate rows when Gail edits the appointment later).
+4. If the doctor selection is **cleared** (`"none"`), leave existing referrals untouched. We don't want to delete referral history just because someone unset the field on an appointment.
 
-### Files to change
+Invalidate the relevant React Query caches after the write so the doctor detail page refreshes without a manual reload:
+- `["referrals"]`, `["doctor-linked-patients", doctorId]`, `["doctor-detail", doctorId]`.
 
-- `src/pages/admin/AdminDashboard.tsx` — Today's Appointments list: remove the standalone "Rescheduled" pill; render only the single status badge per the table above.
-- `src/pages/admin/AdminAppointments.tsx` — Calendar event cells & list view: same collapse. Keep "Needs re-confirm" (amber) as the attention signal for the case Gail actually cares about.
-- `src/components/admin/appointments/AppointmentsListView.tsx` — Same collapse if it currently shows a separate reschedule badge.
-- Appointment detail / edit dialogs — leave the "Rescheduled" indicator + reason visible here; this is the deep-dive surface.
+## Files to change
 
-### Verification
+- `src/components/admin/AppointmentQuickCreateDialog.tsx` — after the patient/appointment insert, run the ensure-referral logic when `doctorId !== "none"`.
+- `src/components/admin/AppointmentQuickEditDialog.tsx` — same logic in `handleSave` alongside the existing patient text-field sync.
+- Optionally centralise as a small helper `src/lib/ensureDoctorReferral.ts` so both dialogs share one implementation.
 
-- James Hawkins III 11:00 (rescheduled + re-confirmed) → shows only green **Confirmed**.
-- Mark Hawkins 14:30 (rescheduled, not yet confirmed) → shows amber **Needs re-confirm** (no duplicate "Awaiting").
-- Moto Moto 12:00 (never rescheduled, not confirmed) → **Awaiting**.
-- Opening any of the above in the detail dialog still shows the reschedule reason & history.
+## Non-goals
+
+- No schema migration needed — `referrals` already supports this shape.
+- No changes to the doctor portal queries — they already read from `referrals` correctly.
+- No change to the "Rescheduled/Confirmed" badge work from the previous turn.
+
+## Verification
+
+1. Create/edit an appointment for James Hawkins test 4, pick "doctor test 2", save.
+2. Open **Doctors → doctor test 2**: James Hawkins test 4 appears under **Patients** and a new row appears under **Referrals** with status `accepted`.
+3. Edit the same appointment again (no doctor change) → no duplicate referral is created.
+4. Change the doctor to another doctor → new referral appears under the new doctor; old one stays under the previous doctor (history preserved).
