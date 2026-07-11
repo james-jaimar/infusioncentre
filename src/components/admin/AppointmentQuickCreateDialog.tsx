@@ -42,6 +42,7 @@ import { startOfDay, endOfDay } from "date-fns";
 import SendInviteDialog from "./SendInviteDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { ensureDoctorReferral } from "@/lib/ensureDoctorReferral";
 
 const TIME_SLOTS = Array.from({ length: 22 }, (_, i) => {
   const hour = Math.floor(i / 2) + 7;
@@ -323,6 +324,12 @@ export function AppointmentQuickCreateDialog({
           } catch (e) {
             console.error("Failed to set referring doctor on patient", e);
           }
+          // Structured link: ensure a referral row so the patient shows under
+          // this doctor's Patients/Referrals as if they had referred them.
+          await ensureDoctorReferral(patientId, doctorId);
+          queryClient.invalidateQueries({ queryKey: ["referrals"] });
+          queryClient.invalidateQueries({ queryKey: ["doctor-linked-patients", doctorId] });
+          queryClient.invalidateQueries({ queryKey: ["doctor-detail", doctorId] });
         }
       }
 
