@@ -86,6 +86,7 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment, au
   const { data: nurses = [] } = useNurseStaff();
   const { data: doctors = [] } = useAllDoctors();
   const update = useUpdateAppointment();
+  const queryClient = useQueryClient();
   const del = useDeleteAppointment();
   const markArrived = useMarkArrived();
   const sendSms = useSendAppointmentConfirmationSms();
