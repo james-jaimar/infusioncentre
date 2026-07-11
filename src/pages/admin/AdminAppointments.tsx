@@ -204,14 +204,8 @@ function CalendarEventCard({
               ⟳ Needs re-confirm
             </Badge>
           ) : null}
-          {wasRescheduled && !hasRescheduleRequest && (patientConfirmed || apt.status !== "scheduled") ? (
-            <Badge
-              className="h-4 px-1 text-[9px] bg-indigo-600 text-white hover:bg-indigo-600"
-              title={`Rescheduled. Reason: ${(apt as any).reschedule_reason}`}
-            >
-              ⟳ Rescheduled
-            </Badge>
-          ) : null}
+          {/* Once patient re-confirms (or status leaves `scheduled`), reschedule history
+              is informational only — surfaced in the appointment detail dialog, not here. */}
           {sessionNo ? (
             <Badge variant="outline" className="h-4 px-1 text-[9px]">
               #{sessionNo}

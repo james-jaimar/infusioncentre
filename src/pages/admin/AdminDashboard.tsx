@@ -286,25 +286,40 @@ function AppointmentsPanel({ title, emptyText, items, requestByApptId }: { title
                         SMS pending
                       </span>
                     )}
-                    {!req && apt.reschedule_reason && (
-                      <span
-                        className="inline-flex items-center gap-1 rounded-full bg-indigo-600 text-white px-1.5 py-0.5 text-[10px] font-semibold shadow-sm"
-                        title={`Rescheduled${apt.reschedule_reason ? `\nReason: ${apt.reschedule_reason}` : ""}`}
-                      >
-                        <RefreshCw className="h-3 w-3" />
-                        Rescheduled
-                      </span>
-                    )}
-                    {apt.patient_confirmed_at || apt.status === "confirmed" ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-green-600 text-white px-1.5 py-0.5 text-[10px] font-semibold shadow-sm" title={apt.patient_confirmed_at ? "Patient confirmed via SMS" : "Appointment confirmed"}>
-                        <CheckCircle2 className="h-3 w-3" />
-                        Confirmed
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-800 border border-amber-300 px-1.5 py-0.5 text-[10px] font-semibold" title="Awaiting confirmation">
-                        Awaiting
-                      </span>
-                    )}
+                    {!req && (() => {
+                      if (apt.patient_confirmed_at) {
+                        return (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-green-600 text-white px-1.5 py-0.5 text-[10px] font-semibold shadow-sm" title="Patient confirmed via SMS">
+                            <CheckCircle2 className="h-3 w-3" />
+                            Confirmed
+                          </span>
+                        );
+                      }
+                      if (apt.reschedule_reason && apt.status === "scheduled") {
+                        return (
+                          <span
+                            className="inline-flex items-center gap-1 rounded-full bg-amber-500 text-white px-1.5 py-0.5 text-[10px] font-semibold shadow-sm"
+                            title={`Rescheduled — patient must re-confirm. Reason: ${apt.reschedule_reason}`}
+                          >
+                            <RefreshCw className="h-3 w-3" />
+                            Needs re-confirm
+                          </span>
+                        );
+                      }
+                      if (apt.status === "confirmed") {
+                        return (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-600 text-white px-1.5 py-0.5 text-[10px] font-semibold shadow-sm" title="Admin marked as confirmed">
+                            <CheckCircle2 className="h-3 w-3" />
+                            Confirmed
+                          </span>
+                        );
+                      }
+                      return (
+                        <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-800 border border-amber-300 px-1.5 py-0.5 text-[10px] font-semibold" title="Awaiting confirmation">
+                          Awaiting
+                        </span>
+                      );
+                    })()}
                   </div>
                 </Link>
                 );
