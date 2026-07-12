@@ -1,52 +1,43 @@
+## Root cause
 
-## Goal
+For "James Hawkins test 4", the referral has **two treatment courses** under it:
+- Iron Infusion — 1 planned, 1 booked
+- Ketamine Therapy — 6 planned, 1 booked
 
-Make it obvious across the admin UI how many sessions of a multi-session course are already booked vs. still outstanding — so Gail always sees "session 1 of 6, sessions 2–6 still to schedule" rather than just "session #1" or "needs scheduling".
+`useReferrals` and `useReferralsAttentionCount` collapse all courses on a referral into a single sum: `total_sessions_planned = 1 + 6 = 7`, `appointment_count = 1 + 1 = 2`. That's where the "Session 2 of 7 · 5 outstanding" comes from — it's not wrong arithmetic, it's the wrong unit. The dashboard and referral queue treat "referral" as the schedulable unit, but the actual schedulable unit is the **course**. The `RecurringSessionDialog` opens against a single course (Ketamine, 6 sessions), which is why it correctly says "sessions 2–6".
 
-Scope is UI/labelling only — no schema changes, no changes to how referrals get created. (The referral-queue entry exists because every course is anchored to a referral; we're going to make it read like an action item instead of hiding it.)
+The treatment label ("Iron Infusion") is also misleading — it comes from `first_course` regardless of which course actually needs scheduling.
 
-## Changes
+## Fix — surface progress per course, not per referral
 
-### 1. Appointment Quick Edit dialog — "Session 1 of 6"
-File: `src/components/admin/AppointmentQuickEditDialog.tsx`
+Small, presentation-only changes. No schema or data changes.
 
-- Where it currently renders `Session #{session_number}`, load the appointment's `treatment_course_id` (already on the row) and read `total_sessions_planned` from the course.
-- Render as `Session {session_number} of {total_sessions_planned}` when the course has a planned total, otherwise fall back to the current `Session #N`.
-- Add a small helper line beneath: `X of N booked · Y still to schedule` with a "Book remaining sessions" button that opens `RecurringSessionDialog` prefilled the same way Quick Create does (frequency/day/time from the course template if present).
+### 1. `src/hooks/useReferrals.ts`
+Keep existing fields for backward compatibility, but also expose a per-course breakdown:
+- Add `scheduling_courses: Array<{ course_id, treatment_name, planned, scheduled, outstanding }>` — one entry per course under the referral that still needs scheduling (`planned > scheduled`, or `planned === 0 && scheduled === 0`).
+- Add `needs_scheduling_course_count = scheduling_courses.length`.
 
-### 2. Dashboard "Referrals needing attention" tile — richer heads-up
-File: `src/components/admin/DashboardActionsPanel.tsx` (and the small count hook `src/hooks/useReferralsAttentionCount.ts` if we need per-referral detail).
+### 2. `src/pages/admin/AdminDashboard.tsx`
+"Referrals needing attention" list:
+- Instead of one row per referral, render one row per entry in `scheduling_courses` for every referral where `getReferralAttention === "needs_scheduling"`.
+- Each row shows: `{patient name} · {course treatment_name}` on the left, `Session {scheduled} of {planned} booked · {outstanding} outstanding` on the right.
+- Cap at 5 rows total; overflow line uses the course count, not the referral count.
 
-- Keep the existing "1 need session scheduling" chip, but under it list each referral in that bucket with:
-  - Patient name + treatment (appointment type name from the course).
-  - "Session 1 of 6 booked · sessions 2–6 outstanding".
-  - A primary "Schedule remaining" button that jumps straight to `RecurringSessionDialog` for that course.
-- Data already available: `useReferralsAttentionCount` pulls courses + non-cancelled appointments per referral; we just need the same query to expose the referral rows to the panel (or add a sibling hook `useReferralsNeedingScheduling`) so we can render the detail rather than only a count.
+### 3. `src/components/admin/referrals/ReferralTable.tsx`
+For rows where attention is `needs_scheduling`:
+- Treatment column: if there is exactly one scheduling course, show that course's name; if multiple, show `"{first course name} +{n-1} more"`.
+- Subline under the patient name: if one course, keep `Session X of N booked · Y outstanding` using that course's numbers; if multiple, show `{count} courses need scheduling` and drop the misleading aggregate math.
 
-### 3. Referral queue row — show treatment + progress
-File: `src/components/admin/referrals/ReferralTable.tsx`
+### 4. `src/hooks/useReferralsAttentionCount.ts`
+No behavioural change to the top-level `needs_scheduling` chip count (still counts referrals, matching the existing `getReferralAttention` contract). This keeps the "1 need session scheduling" chip consistent with the queue tab filter. Only the per-row detail switches to per-course.
 
-Right now the "James Hawkins test 4" row shows Treatment: "—" and just a "Needs session scheduling" chip. Update the row (only when attention === `needs_scheduling`) to:
+### Out of scope
+- `getReferralAttention` logic (still per-referral — a referral needs scheduling if *any* course does).
+- `RecurringSessionDialog` — already correct.
+- `AppointmentQuickEditDialog` — already course-scoped and correct.
+- Any DB / RLS / edge function changes.
 
-- Fill the Treatment column from the linked course's appointment type name (fallback to `treatment_requested` on the referral).
-- Under the patient name, add a subline: `Session 1 of 6 booked · 5 outstanding`.
-- Keep the existing green "Schedule sessions" CTA — it already opens the recurring dialog.
-
-Referral data fetch (`useReferrals`) already joins `treatment_courses`; we'll extend the select to include `appointment_type:appointment_types(name)` and the non-cancelled appointment count so the table can compute the subline without extra round-trips.
-
-### 4. Recurring dialog copy tidy (tiny)
-File: `src/components/admin/RecurringSessionDialog.tsx`
-
-- The blue banner already says "1 session already scheduled of 6 planned." Add a second short line: "You're scheduling sessions 2–6." — purely a labelling change so Gail can see at a glance which numbers she's about to create. No logic change.
-
-## Explicitly out of scope
-
-- No change to whether these items live under Referrals vs. a separate "Actions" area. That's a bigger IA question; happy to open it as a follow-up if you want, but for now we lean into making the referral row read like an action item.
-- No DB migrations, no changes to appointment/course creation logic, no nurse/patient-portal changes.
-
-## Verification
-
-1. Open the existing James Hawkins ketamine appointment → header reads "Session 1 of 6" with a "Book remaining 5 sessions" button.
-2. Dashboard tile lists that referral with "Ketamine Therapy · Session 1 of 6 booked · 5 outstanding" and a Schedule remaining button.
-3. Referrals queue → row shows Treatment "Ketamine Therapy" and the same progress subline.
-4. Clicking through opens `RecurringSessionDialog` prefilled for sessions 2–6.
+### Verification
+After the change, for James Hawkins test 4 the dashboard should show a single row:
+`James Hawkins test 4 · Ketamine Therapy — Session 1 of 6 booked · 5 outstanding`
+(Iron Infusion is fully scheduled at 1/1 so it drops out.)
