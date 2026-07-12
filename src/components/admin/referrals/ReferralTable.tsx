@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
