@@ -162,39 +162,66 @@ export default function AdminDashboard() {
                 )}
               </div>
             </div>
-            {needsSchedulingRefs.length > 0 && (
-              <div className="mt-3 space-y-1.5">
-                {needsSchedulingRefs.slice(0, 5).map((r: any) => {
-                  const planned = r.total_sessions_planned || 0;
-                  const scheduled = r.appointment_count || 0;
-                  const outstanding = Math.max(0, planned - scheduled);
-                  const treatment = r.course_treatment_name || r.treatment_requested || "Treatment";
-                  return (
+            {needsSchedulingRefs.length > 0 && (() => {
+              const rows: Array<{
+                key: string;
+                patient: string;
+                treatment: string;
+                planned: number;
+                scheduled: number;
+                outstanding: number;
+              }> = [];
+              for (const r of needsSchedulingRefs as any[]) {
+                const patient = `${r.patient_first_name || ""} ${r.patient_last_name || ""}`.trim();
+                const courses = Array.isArray(r.scheduling_courses) ? r.scheduling_courses : [];
+                if (courses.length === 0) {
+                  rows.push({
+                    key: r.id,
+                    patient,
+                    treatment: r.course_treatment_name || r.treatment_requested || "Treatment",
+                    planned: 0,
+                    scheduled: 0,
+                    outstanding: 0,
+                  });
+                } else {
+                  for (const c of courses) {
+                    rows.push({
+                      key: `${r.id}:${c.course_id}`,
+                      patient,
+                      treatment: c.treatment_name || r.treatment_requested || "Treatment",
+                      planned: c.planned,
+                      scheduled: c.scheduled,
+                      outstanding: c.outstanding,
+                    });
+                  }
+                }
+              }
+              return (
+                <div className="mt-3 space-y-1.5">
+                  {rows.slice(0, 5).map((row) => (
                     <Link
-                      key={r.id}
+                      key={row.key}
                       to="/admin/referrals?attention=needs_scheduling"
                       className="flex items-center gap-3 rounded-md border border-clinical-warning/30 bg-card px-3 py-2 text-sm hover:bg-muted/40 transition-colors"
                     >
-                      <span className="font-medium text-foreground truncate">
-                        {r.patient_first_name} {r.patient_last_name}
-                      </span>
-                      <span className="text-xs text-muted-foreground truncate">· {treatment}</span>
+                      <span className="font-medium text-foreground truncate">{row.patient}</span>
+                      <span className="text-xs text-muted-foreground truncate">· {row.treatment}</span>
                       <span className="ml-auto text-xs text-muted-foreground tabular-nums shrink-0">
-                        {planned > 0
-                          ? <>Session {scheduled} of {planned} booked · <span className="text-clinical-warning font-medium">{outstanding} outstanding</span></>
+                        {row.planned > 0
+                          ? <>Session {row.scheduled} of {row.planned} booked · <span className="text-clinical-warning font-medium">{row.outstanding} outstanding</span></>
                           : <span className="text-clinical-warning font-medium">No sessions booked yet</span>}
                       </span>
                       <ArrowRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                     </Link>
-                  );
-                })}
-                {needsSchedulingRefs.length > 5 && (
-                  <p className="text-xs text-muted-foreground pl-1">
-                    +{needsSchedulingRefs.length - 5} more — see referral queue
-                  </p>
-                )}
-              </div>
-            )}
+                  ))}
+                  {rows.length > 5 && (
+                    <p className="text-xs text-muted-foreground pl-1">
+                      +{rows.length - 5} more — see referral queue
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
       )}
