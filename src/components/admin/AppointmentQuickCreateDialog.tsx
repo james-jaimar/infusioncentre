@@ -562,23 +562,43 @@ export function AppointmentQuickCreateDialog({
             </DialogHeader>
 
             {booked.courseId && booked.courseTypeName && (
-              <div className="flex items-center justify-between rounded-md border bg-background px-3 py-2 text-xs">
-                <span className="text-muted-foreground">
-                  Linked to:{" "}
-                  <span className="font-medium text-foreground">
-                    {booked.courseTypeName} course
-                  </span>{" "}
-                  {booked.courseWasCreated ? "(new draft)" : "(existing)"}
-                </span>
-                <a
-                  href={`/admin/treatment-courses/${booked.courseId}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-primary hover:underline inline-flex items-center gap-1"
-                >
-                  <ExternalLink className="h-3 w-3" />
-                  Open course
-                </a>
+              <div className="rounded-md border bg-background px-3 py-2 text-xs space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">
+                    Linked to:{" "}
+                    <span className="font-medium text-foreground">
+                      {booked.courseTypeName} course
+                    </span>{" "}
+                    {booked.courseWasCreated ? "(new draft)" : "(existing)"}
+                  </span>
+                  <a
+                    href={`/admin/treatment-courses/${booked.courseId}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary hover:underline inline-flex items-center gap-1"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    Open course
+                  </a>
+                </div>
+                <div className="text-muted-foreground">
+                  Session{" "}
+                  <span className="font-medium text-foreground">{booked.sessionNumber}</span>
+                  {booked.totalSessions > 1 ? ` of ${booked.totalSessions}` : ""} booked.
+                  {booked.totalSessions - booked.sessionNumber > 0 && (
+                    <>
+                      {" "}
+                      <button
+                        type="button"
+                        onClick={() => setBulkOpen(true)}
+                        className="text-primary hover:underline"
+                      >
+                        Book remaining {booked.totalSessions - booked.sessionNumber} session
+                        {booked.totalSessions - booked.sessionNumber === 1 ? "" : "s"}
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             )}
 
@@ -633,6 +653,38 @@ export function AppointmentQuickCreateDialog({
               setShowInvite(false);
               onOpenChange(false);
             }}
+          />
+        )}
+
+        {booked.courseId && bulkOpen && (
+          <RecurringSessionDialog
+            open={bulkOpen}
+            onOpenChange={setBulkOpen}
+            treatmentCourse={{
+              id: booked.courseId,
+              patient_id: booked.patientId,
+              treatment_type_id: typeId,
+              total_sessions_planned: booked.totalSessions,
+              sessions_completed: 0,
+              appointment_type: selectedType
+                ? {
+                    name: selectedType.name,
+                    color: (selectedType as any).color ?? "#888",
+                    default_duration_minutes: booked.duration,
+                  }
+                : null,
+              patient: {
+                first_name: booked.patientName.split(" ")[0] ?? "",
+                last_name: booked.patientName.split(" ").slice(1).join(" ") ?? "",
+              },
+            }}
+            initialStartDate={booked.firstStart}
+            initialFrequency={
+              (["weekly", "twice_weekly", "biweekly", "monthly"].includes(booked.frequency)
+                ? booked.frequency
+                : "weekly") as any
+            }
+            onCreated={() => setBulkOpen(false)}
           />
         )}
       </>
