@@ -92,7 +92,7 @@ export function ReferralTable({ referrals, isLoading, onReview, onSetupCourse, o
                     ? firstName
                     : `${firstName} +${schedulingCourses.length - 1} more`;
               }
-              let progressLine: React.ReactNode = null;
+              let progressLine: ReactNode = null;
               if (attention === "needs_scheduling") {
                 if (singleCourse) {
                   progressLine = (
