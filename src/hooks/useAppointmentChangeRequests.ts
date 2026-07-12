@@ -30,7 +30,7 @@ export function usePendingChangeRequests() {
       const { data, error } = await supabase
         .from("appointment_change_requests" as any)
         .select(
-          "id, appointment_id, patient_id, request_type, preferred_date, preferred_time_window, reason, status, created_at, new_appointment_id, sms_sent_at, appointment:appointments(id, scheduled_start, scheduled_end, appointment_type:appointment_types(name)), patient:patients(id, first_name, last_name, phone)"
+          "id, appointment_id, patient_id, request_type, preferred_date, preferred_time_window, reason, status, created_at, new_appointment_id, sms_sent_at, appointment:appointments!appointment_change_requests_appointment_id_fkey(id, scheduled_start, scheduled_end, appointment_type:appointment_types(name)), patient:patients(id, first_name, last_name, phone)"
         )
         .in("status", ["pending", "rescheduled_pending_sms"])
         .order("created_at", { ascending: false });
