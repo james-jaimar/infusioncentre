@@ -987,6 +987,143 @@ export function AppointmentQuickCreateDialog({
             </div>
           </div>
 
+          {showCourseUI && (
+            <div className="rounded-md border bg-muted/20 p-3 space-y-3">
+              <div className="flex items-center gap-2 text-xs font-medium text-foreground">
+                <CalendarClock className="h-3.5 w-3.5" />
+                Course scheduling
+              </div>
+
+              {existingCourse ? (
+                <div className="text-xs text-muted-foreground">
+                  Existing {selectedType?.name} course · this booking is{" "}
+                  <span className="font-medium text-foreground">
+                    session {thisSessionNumber}
+                    {existingCourse.total_sessions_planned
+                      ? ` of ${existingCourse.total_sessions_planned}`
+                      : ""}
+                  </span>
+                  .
+                </div>
+              ) : courseTemplates.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label className="text-xs">Course variant</Label>
+                    <Select value={templateId} onValueChange={setTemplateId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Single session (default)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Single session · one-off</SelectItem>
+                        {courseTemplates.map((t) => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.name}
+                            {t.default_sessions ? ` · ${t.default_sessions} sessions` : ""}
+                            {t.default_frequency && t.default_frequency !== "single"
+                              ? ` · ${t.default_frequency.replace("_", " ")}`
+                              : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Sessions in course</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={52}
+                      value={totalSessions}
+                      onChange={(e) =>
+                        setTotalSessions(Math.max(1, Number(e.target.value) || 1))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Cadence</Label>
+                    <Select value={frequency} onValueChange={(v) => setFrequency(v as CourseFrequency)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="single">Single</SelectItem>
+                        <SelectItem value="weekly">Weekly</SelectItem>
+                        <SelectItem value="twice_weekly">Twice weekly</SelectItem>
+                        <SelectItem value="biweekly">Every 2 weeks</SelectItem>
+                        <SelectItem value="monthly">Monthly</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Scheduling mode — only when there will be more than one session */}
+              {!existingCourse && totalSessions > 1 && (
+                <div className="space-y-2">
+                  <Label className="text-xs">What to book now</Label>
+                  <RadioGroup
+                    value={schedulingMode}
+                    onValueChange={(v) => setSchedulingMode(v as any)}
+                    className="space-y-1.5"
+                  >
+                    <label className="flex items-start gap-2 text-xs cursor-pointer">
+                      <RadioGroupItem value="single" className="mt-0.5" />
+                      <span>
+                        <span className="font-medium text-foreground">Just this appointment</span>
+                        <span className="text-muted-foreground"> — leave sessions 2–{totalSessions} as a task.</span>
+                      </span>
+                    </label>
+                    <label className="flex items-start gap-2 text-xs cursor-pointer">
+                      <RadioGroupItem value="all" className="mt-0.5" />
+                      <span>
+                        <span className="font-medium text-foreground">
+                          Book all {totalSessions} sessions now
+                        </span>
+                        <span className="text-muted-foreground">
+                          {" "}— we'll open the recurring scheduler with sessions 2–{totalSessions} pre-filled ({frequency.replace("_", " ")}).
+                        </span>
+                      </span>
+                    </label>
+                    <label className="flex items-start gap-2 text-xs cursor-pointer">
+                      <RadioGroupItem value="custom" className="mt-0.5" />
+                      <span className="flex flex-wrap items-center gap-1.5">
+                        <span className="font-medium text-foreground">Book</span>
+                        <Input
+                          type="number"
+                          min={2}
+                          max={totalSessions}
+                          value={customCount}
+                          onClick={() => setSchedulingMode("custom")}
+                          onChange={(e) =>
+                            setCustomCount(
+                              Math.min(totalSessions, Math.max(2, Number(e.target.value) || 2))
+                            )
+                          }
+                          className="h-7 w-16 inline-block"
+                        />
+                        <span className="font-medium text-foreground">sessions now,</span>
+                        <span className="text-muted-foreground">defer the rest.</span>
+                      </span>
+                    </label>
+                  </RadioGroup>
+                </div>
+              )}
+
+              {existingCourse &&
+                selectedTemplate &&
+                existingCourse.total_sessions_planned &&
+                selectedTemplate.default_sessions &&
+                existingCourse.total_sessions_planned !== selectedTemplate.default_sessions && (
+                  <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-2 text-xs">
+                    <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                    <span>
+                      This patient already has an active course with{" "}
+                      {existingCourse.total_sessions_planned} sessions planned — this
+                      appointment will be added as session {thisSessionNumber}.
+                    </span>
+                  </div>
+                )}
+            </div>
+          )}
+
           {conflict && (
             <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
               <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
