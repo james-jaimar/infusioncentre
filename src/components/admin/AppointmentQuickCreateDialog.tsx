@@ -43,6 +43,10 @@ import SendInviteDialog from "./SendInviteDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { ensureDoctorReferral } from "@/lib/ensureDoctorReferral";
+import { useActiveCourseTemplatesByType, type CourseFrequency } from "@/hooks/useCourseTemplates";
+import { RecurringSessionDialog } from "./RecurringSessionDialog";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { CalendarClock } from "lucide-react";
 
 const TIME_SLOTS = Array.from({ length: 22 }, (_, i) => {
   const hour = Math.floor(i / 2) + 7;
@@ -90,6 +94,22 @@ export function AppointmentQuickCreateDialog({
   const [notes, setNotes] = useState("");
   const [patientSearch, setPatientSearch] = useState("");
 
+  // Course template / multi-session state
+  const [templateId, setTemplateId] = useState<string>("none");
+  const [totalSessions, setTotalSessions] = useState<number>(1);
+  const [frequency, setFrequency] = useState<CourseFrequency>("weekly");
+  const [schedulingMode, setSchedulingMode] = useState<"single" | "all" | "custom">("single");
+  const [customCount, setCustomCount] = useState<number>(2);
+  const { data: courseTemplates = [] } = useActiveCourseTemplatesByType(typeId || undefined);
+
+  // If an active course already exists for this patient+type, reflect its structure
+  const [existingCourse, setExistingCourse] = useState<{
+    id: string;
+    total_sessions_planned: number | null;
+    sessions_completed: number;
+    scheduled_count: number;
+  } | null>(null);
+
   // Inline "+ new patient" mini-form
   const [showNewPatient, setShowNewPatient] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -117,6 +137,13 @@ export function AppointmentQuickCreateDialog({
     courseId: string | null;
     courseTypeName: string | null;
     courseWasCreated: boolean;
+    sessionNumber: number;
+    totalSessions: number;
+    firstStart: Date;
+    frequency: CourseFrequency;
+    chairId: string | null;
+    nurseId: string | null;
+    duration: number;
   }>(null);
   const [showInvite, setShowInvite] = useState(false);
 
@@ -141,6 +168,12 @@ export function AppointmentQuickCreateDialog({
     setPatientSearch("");
     setBooked(null);
     setShowInvite(false);
+    setTemplateId("none");
+    setTotalSessions(1);
+    setFrequency("weekly");
+    setSchedulingMode("single");
+    setCustomCount(2);
+    setExistingCourse(null);
   }, [open, defaultDate, defaultChairId]);
 
   const selectedType = useMemo(
@@ -151,6 +184,73 @@ export function AppointmentQuickCreateDialog({
   useEffect(() => {
     if (selectedType) setDuration(selectedType.default_duration_minutes);
   }, [selectedType]);
+
+  // Reset template when the treatment type changes
+  useEffect(() => {
+    setTemplateId("none");
+  }, [typeId]);
+
+  // Apply defaults when a template is picked
+  const selectedTemplate = useMemo(
+    () => courseTemplates.find((t) => t.id === templateId),
+    [courseTemplates, templateId]
+  );
+  useEffect(() => {
+    if (!selectedTemplate) return;
+    if (selectedTemplate.default_sessions) setTotalSessions(selectedTemplate.default_sessions);
+    if (selectedTemplate.default_session_duration_mins) {
+      setDuration(selectedTemplate.default_session_duration_mins);
+    }
+    if (selectedTemplate.default_frequency) {
+      setFrequency(selectedTemplate.default_frequency as CourseFrequency);
+    }
+  }, [selectedTemplate]);
+
+  // Look up an active course for this patient+type so we can display "session X of N"
+  useEffect(() => {
+    let cancelled = false;
+    if (!patientId || !typeId) {
+      setExistingCourse(null);
+      return;
+    }
+    (async () => {
+      const { data: course } = await (supabase as any)
+        .from("treatment_courses")
+        .select("id, total_sessions_planned, sessions_completed")
+        .eq("patient_id", patientId)
+        .eq("treatment_type_id", typeId)
+        .in("status", ["draft", "onboarding", "ready", "active"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (cancelled) return;
+      if (!course) {
+        setExistingCourse(null);
+        return;
+      }
+      const { count } = await (supabase as any)
+        .from("appointments")
+        .select("id", { count: "exact", head: true })
+        .eq("treatment_course_id", course.id)
+        .in("status", ["scheduled", "confirmed", "checked_in", "in_progress"]);
+      if (cancelled) return;
+      setExistingCourse({
+        id: course.id,
+        total_sessions_planned: course.total_sessions_planned,
+        sessions_completed: course.sessions_completed ?? 0,
+        scheduled_count: count ?? 0,
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [patientId, typeId]);
+
+  // Derived: N (planned), and the session_number this booking will occupy
+  const plannedTotal = existingCourse?.total_sessions_planned ?? totalSessions;
+  const thisSessionNumber = existingCourse
+    ? existingCourse.sessions_completed + existingCourse.scheduled_count + 1
+    : 1;
+  const remainingAfterThis = Math.max(0, plannedTotal - thisSessionNumber);
+  const showCourseUI = !!typeId && (courseTemplates.length > 0 || !!existingCourse);
 
   const selectedPatient = patients.find((p) => p.id === patientId);
 
@@ -339,10 +439,11 @@ export function AppointmentQuickCreateDialog({
       // checklist and portal invite all have something to anchor to.
       let courseId: string | null = null;
       let courseWasCreated = false;
+      let coursePlannedTotal: number = plannedTotal;
       try {
         const { data: existing } = await (supabase as any)
           .from("treatment_courses" as any)
-          .select("id, status")
+          .select("id, status, total_sessions_planned")
           .eq("patient_id", patientId)
           .eq("treatment_type_id", typeId)
           .in("status", ["draft", "onboarding", "ready", "active"])
@@ -352,6 +453,7 @@ export function AppointmentQuickCreateDialog({
 
         if (existing?.id) {
           courseId = existing.id as string;
+          coursePlannedTotal = existing.total_sessions_planned ?? plannedTotal;
           if (referralId) {
             try {
               await (supabase as any)
@@ -369,7 +471,8 @@ export function AppointmentQuickCreateDialog({
             .insert({
               patient_id: patientId,
               treatment_type_id: typeId,
-              total_sessions_planned: 1,
+              total_sessions_planned: Math.max(1, totalSessions),
+              ...(templateId !== "none" ? { course_template_id: templateId } : {}),
               notes: "Auto-created from front-desk booking",
               status: "draft",
               ...(referralId ? { referral_id: referralId } : {}),
@@ -379,12 +482,16 @@ export function AppointmentQuickCreateDialog({
           if (courseErr) throw courseErr;
           courseId = (newCourse as any).id;
           courseWasCreated = true;
+          coursePlannedTotal = Math.max(1, totalSessions);
         }
 
         if (courseId && appt?.id) {
           await updateAppointment.mutateAsync({
             id: appt.id,
-            data: { treatment_course_id: courseId } as any,
+            data: {
+              treatment_course_id: courseId,
+              session_number: thisSessionNumber,
+            } as any,
           });
         }
       } catch (linkErr) {
@@ -412,13 +519,32 @@ export function AppointmentQuickCreateDialog({
         courseId,
         courseTypeName,
         courseWasCreated,
+        sessionNumber: thisSessionNumber,
+        totalSessions: coursePlannedTotal,
+        firstStart: start,
+        frequency,
+        chairId: chairId === "none" ? null : chairId,
+        nurseId: nurseId === "none" ? null : nurseId,
+        duration,
       });
       toast.success("Appointment booked");
+
+      // If the operator asked to schedule more sessions in this transaction,
+      // open the recurring dialog immediately.
+      const wantMore =
+        schedulingMode !== "single" &&
+        courseId &&
+        (schedulingMode === "all" ? coursePlannedTotal - 1 : customCount) > 0;
+      if (wantMore) {
+        setBulkOpen(true);
+      }
     } catch (e) {
       toast.error("Failed to create");
       console.error(e);
     }
   };
+
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   if (booked) {
     return (
@@ -436,23 +562,43 @@ export function AppointmentQuickCreateDialog({
             </DialogHeader>
 
             {booked.courseId && booked.courseTypeName && (
-              <div className="flex items-center justify-between rounded-md border bg-background px-3 py-2 text-xs">
-                <span className="text-muted-foreground">
-                  Linked to:{" "}
-                  <span className="font-medium text-foreground">
-                    {booked.courseTypeName} course
-                  </span>{" "}
-                  {booked.courseWasCreated ? "(new draft)" : "(existing)"}
-                </span>
-                <a
-                  href={`/admin/treatment-courses/${booked.courseId}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-primary hover:underline inline-flex items-center gap-1"
-                >
-                  <ExternalLink className="h-3 w-3" />
-                  Open course
-                </a>
+              <div className="rounded-md border bg-background px-3 py-2 text-xs space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">
+                    Linked to:{" "}
+                    <span className="font-medium text-foreground">
+                      {booked.courseTypeName} course
+                    </span>{" "}
+                    {booked.courseWasCreated ? "(new draft)" : "(existing)"}
+                  </span>
+                  <a
+                    href={`/admin/treatment-courses/${booked.courseId}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary hover:underline inline-flex items-center gap-1"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    Open course
+                  </a>
+                </div>
+                <div className="text-muted-foreground">
+                  Session{" "}
+                  <span className="font-medium text-foreground">{booked.sessionNumber}</span>
+                  {booked.totalSessions > 1 ? ` of ${booked.totalSessions}` : ""} booked.
+                  {booked.totalSessions - booked.sessionNumber > 0 && (
+                    <>
+                      {" "}
+                      <button
+                        type="button"
+                        onClick={() => setBulkOpen(true)}
+                        className="text-primary hover:underline"
+                      >
+                        Book remaining {booked.totalSessions - booked.sessionNumber} session
+                        {booked.totalSessions - booked.sessionNumber === 1 ? "" : "s"}
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             )}
 
@@ -507,6 +653,38 @@ export function AppointmentQuickCreateDialog({
               setShowInvite(false);
               onOpenChange(false);
             }}
+          />
+        )}
+
+        {booked.courseId && bulkOpen && (
+          <RecurringSessionDialog
+            open={bulkOpen}
+            onOpenChange={setBulkOpen}
+            treatmentCourse={{
+              id: booked.courseId,
+              patient_id: booked.patientId,
+              treatment_type_id: typeId,
+              total_sessions_planned: booked.totalSessions,
+              sessions_completed: 0,
+              appointment_type: selectedType
+                ? {
+                    name: selectedType.name,
+                    color: (selectedType as any).color ?? "#888",
+                    default_duration_minutes: booked.duration,
+                  }
+                : null,
+              patient: {
+                first_name: booked.patientName.split(" ")[0] ?? "",
+                last_name: booked.patientName.split(" ").slice(1).join(" ") ?? "",
+              },
+            }}
+            initialStartDate={booked.firstStart}
+            initialFrequency={
+              (["weekly", "twice_weekly", "biweekly", "monthly"].includes(booked.frequency)
+                ? booked.frequency
+                : "weekly") as any
+            }
+            onCreated={() => setBulkOpen(false)}
           />
         )}
       </>
@@ -860,6 +1038,143 @@ export function AppointmentQuickCreateDialog({
               </Select>
             </div>
           </div>
+
+          {showCourseUI && (
+            <div className="rounded-md border bg-muted/20 p-3 space-y-3">
+              <div className="flex items-center gap-2 text-xs font-medium text-foreground">
+                <CalendarClock className="h-3.5 w-3.5" />
+                Course scheduling
+              </div>
+
+              {existingCourse ? (
+                <div className="text-xs text-muted-foreground">
+                  Existing {selectedType?.name} course · this booking is{" "}
+                  <span className="font-medium text-foreground">
+                    session {thisSessionNumber}
+                    {existingCourse.total_sessions_planned
+                      ? ` of ${existingCourse.total_sessions_planned}`
+                      : ""}
+                  </span>
+                  .
+                </div>
+              ) : courseTemplates.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label className="text-xs">Course variant</Label>
+                    <Select value={templateId} onValueChange={setTemplateId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Single session (default)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Single session · one-off</SelectItem>
+                        {courseTemplates.map((t) => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.name}
+                            {t.default_sessions ? ` · ${t.default_sessions} sessions` : ""}
+                            {t.default_frequency && t.default_frequency !== "single"
+                              ? ` · ${t.default_frequency.replace("_", " ")}`
+                              : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Sessions in course</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={52}
+                      value={totalSessions}
+                      onChange={(e) =>
+                        setTotalSessions(Math.max(1, Number(e.target.value) || 1))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Cadence</Label>
+                    <Select value={frequency} onValueChange={(v) => setFrequency(v as CourseFrequency)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="single">Single</SelectItem>
+                        <SelectItem value="weekly">Weekly</SelectItem>
+                        <SelectItem value="twice_weekly">Twice weekly</SelectItem>
+                        <SelectItem value="biweekly">Every 2 weeks</SelectItem>
+                        <SelectItem value="monthly">Monthly</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Scheduling mode — only when there will be more than one session */}
+              {!existingCourse && totalSessions > 1 && (
+                <div className="space-y-2">
+                  <Label className="text-xs">What to book now</Label>
+                  <RadioGroup
+                    value={schedulingMode}
+                    onValueChange={(v) => setSchedulingMode(v as any)}
+                    className="space-y-1.5"
+                  >
+                    <label className="flex items-start gap-2 text-xs cursor-pointer">
+                      <RadioGroupItem value="single" className="mt-0.5" />
+                      <span>
+                        <span className="font-medium text-foreground">Just this appointment</span>
+                        <span className="text-muted-foreground"> — leave sessions 2–{totalSessions} as a task.</span>
+                      </span>
+                    </label>
+                    <label className="flex items-start gap-2 text-xs cursor-pointer">
+                      <RadioGroupItem value="all" className="mt-0.5" />
+                      <span>
+                        <span className="font-medium text-foreground">
+                          Book all {totalSessions} sessions now
+                        </span>
+                        <span className="text-muted-foreground">
+                          {" "}— we'll open the recurring scheduler with sessions 2–{totalSessions} pre-filled ({frequency.replace("_", " ")}).
+                        </span>
+                      </span>
+                    </label>
+                    <label className="flex items-start gap-2 text-xs cursor-pointer">
+                      <RadioGroupItem value="custom" className="mt-0.5" />
+                      <span className="flex flex-wrap items-center gap-1.5">
+                        <span className="font-medium text-foreground">Book</span>
+                        <Input
+                          type="number"
+                          min={2}
+                          max={totalSessions}
+                          value={customCount}
+                          onClick={() => setSchedulingMode("custom")}
+                          onChange={(e) =>
+                            setCustomCount(
+                              Math.min(totalSessions, Math.max(2, Number(e.target.value) || 2))
+                            )
+                          }
+                          className="h-7 w-16 inline-block"
+                        />
+                        <span className="font-medium text-foreground">sessions now,</span>
+                        <span className="text-muted-foreground">defer the rest.</span>
+                      </span>
+                    </label>
+                  </RadioGroup>
+                </div>
+              )}
+
+              {existingCourse &&
+                selectedTemplate &&
+                existingCourse.total_sessions_planned &&
+                selectedTemplate.default_sessions &&
+                existingCourse.total_sessions_planned !== selectedTemplate.default_sessions && (
+                  <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-2 text-xs">
+                    <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                    <span>
+                      This patient already has an active course with{" "}
+                      {existingCourse.total_sessions_planned} sessions planned — this
+                      appointment will be added as session {thisSessionNumber}.
+                    </span>
+                  </div>
+                )}
+            </div>
+          )}
 
           {conflict && (
             <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
