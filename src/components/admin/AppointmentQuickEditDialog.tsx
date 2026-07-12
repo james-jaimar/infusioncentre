@@ -368,9 +368,33 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment, au
                 <DialogDescription>
                   Originally {format(start, "EEE, MMM d 'at' h:mm a")}
                   {(appointment as any).session_number
-                    ? ` · Session #${(appointment as any).session_number}`
+                    ? totalPlanned
+                      ? ` · Session ${(appointment as any).session_number} of ${totalPlanned}`
+                      : ` · Session #${(appointment as any).session_number}`
                     : ""}
                 </DialogDescription>
+                {totalPlanned && totalPlanned > 0 && (
+                  <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                    <span>
+                      {scheduledCount} of {totalPlanned} booked
+                      {remainingToBook > 0
+                        ? ` · ${remainingToBook} still to schedule`
+                        : " · fully scheduled"}
+                    </span>
+                    {remainingToBook > 0 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-6 px-2 text-xs gap-1"
+                        onClick={() => setShowRecurring(true)}
+                      >
+                        <CalendarPlus className="h-3 w-3" />
+                        Book remaining {remainingToBook} session{remainingToBook === 1 ? "" : "s"}
+                      </Button>
+                    )}
+                  </div>
+                )}
                 {appointment.patient_confirmed_at && (
                   <div className="mt-1 text-xs text-emerald-700 dark:text-emerald-400">
                     Patient tapped the SMS confirmation link on{" "}
