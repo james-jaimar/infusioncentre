@@ -71,6 +71,14 @@ export function ReferralTable({ referrals, isLoading, onReview, onSetupCourse, o
                   : needsAttention && attention !== "awaiting_triage"
                     ? "bg-clinical-warning-soft/30"
                     : "";
+              const planned = ref.total_sessions_planned || 0;
+              const scheduled = ref.appointment_count || 0;
+              const outstanding = Math.max(0, planned - scheduled);
+              const showProgress =
+                (attention === "needs_scheduling" || (planned > 0 && scheduled > 0)) &&
+                planned > 0;
+              const treatmentDisplay =
+                ref.course_treatment_name || ref.treatment_requested || "—";
               return (
                 <TableRow key={ref.id} className={rowTint}>
                   <TableCell className="font-medium">
@@ -93,6 +101,12 @@ export function ReferralTable({ referrals, isLoading, onReview, onSetupCourse, o
                     {ref.patient_email && (
                       <span className="block text-xs text-muted-foreground">{ref.patient_email}</span>
                     )}
+                    {showProgress && (
+                      <span className="block text-xs text-muted-foreground mt-0.5">
+                        Session {scheduled} of {planned} booked
+                        {outstanding > 0 ? ` · ${outstanding} outstanding` : " · complete"}
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell className="text-sm">
                     {ref.doctor_display_name || "—"}
@@ -107,7 +121,7 @@ export function ReferralTable({ referrals, isLoading, onReview, onSetupCourse, o
                       </span>
                     )}
                   </TableCell>
-                  <TableCell>{ref.treatment_requested || "—"}</TableCell>
+                  <TableCell>{treatmentDisplay}</TableCell>
                   <TableCell>
                     <Badge variant={ref.urgency === "urgent" ? "destructive" : "secondary"}>
                       {ref.urgency}
