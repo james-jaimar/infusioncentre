@@ -308,6 +308,7 @@ export function AppointmentQuickCreateDialog({
 
       // If a referring doctor was picked, write the friendly fields back to
       // the patient so the dashboard / appointment list pick them up.
+      let referralId: string | null = null;
       if (doctorId !== "none") {
         const doc = (doctors as any[]).find((d) => d.id === doctorId);
         if (doc) {
@@ -326,7 +327,8 @@ export function AppointmentQuickCreateDialog({
           }
           // Structured link: ensure a referral row so the patient shows under
           // this doctor's Patients/Referrals as if they had referred them.
-          await ensureDoctorReferral(patientId, doctorId);
+          const ref = await ensureDoctorReferral(patientId, doctorId);
+          referralId = ref?.referralId ?? null;
           queryClient.invalidateQueries({ queryKey: ["referrals"] });
           queryClient.invalidateQueries({ queryKey: ["doctor-linked-patients", doctorId] });
           queryClient.invalidateQueries({ queryKey: ["doctor-detail", doctorId] });
@@ -350,6 +352,17 @@ export function AppointmentQuickCreateDialog({
 
         if (existing?.id) {
           courseId = existing.id as string;
+          if (referralId) {
+            try {
+              await (supabase as any)
+                .from("treatment_courses" as any)
+                .update({ referral_id: referralId } as any)
+                .eq("id", courseId)
+                .is("referral_id", null);
+            } catch (e) {
+              console.error("Failed to link existing course to referral", e);
+            }
+          }
         } else {
           const { data: newCourse, error: courseErr } = await (supabase as any)
             .from("treatment_courses" as any)
@@ -359,6 +372,7 @@ export function AppointmentQuickCreateDialog({
               total_sessions_planned: 1,
               notes: "Auto-created from front-desk booking",
               status: "draft",
+              ...(referralId ? { referral_id: referralId } : {}),
             } as any)
             .select("id")
             .single();
