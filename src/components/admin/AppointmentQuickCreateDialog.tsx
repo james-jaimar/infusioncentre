@@ -137,6 +137,13 @@ export function AppointmentQuickCreateDialog({
     courseId: string | null;
     courseTypeName: string | null;
     courseWasCreated: boolean;
+    sessionNumber: number;
+    totalSessions: number;
+    firstStart: Date;
+    frequency: CourseFrequency;
+    chairId: string | null;
+    nurseId: string | null;
+    duration: number;
   }>(null);
   const [showInvite, setShowInvite] = useState(false);
 
