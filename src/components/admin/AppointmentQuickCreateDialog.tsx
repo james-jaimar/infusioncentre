@@ -43,6 +43,10 @@ import SendInviteDialog from "./SendInviteDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { ensureDoctorReferral } from "@/lib/ensureDoctorReferral";
+import { useActiveCourseTemplatesByType, type CourseFrequency } from "@/hooks/useCourseTemplates";
+import { RecurringSessionDialog } from "./RecurringSessionDialog";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { CalendarClock } from "lucide-react";
 
 const TIME_SLOTS = Array.from({ length: 22 }, (_, i) => {
   const hour = Math.floor(i / 2) + 7;
@@ -89,6 +93,22 @@ export function AppointmentQuickCreateDialog({
   const [doctorId, setDoctorId] = useState<string>("none");
   const [notes, setNotes] = useState("");
   const [patientSearch, setPatientSearch] = useState("");
+
+  // Course template / multi-session state
+  const [templateId, setTemplateId] = useState<string>("none");
+  const [totalSessions, setTotalSessions] = useState<number>(1);
+  const [frequency, setFrequency] = useState<CourseFrequency>("weekly");
+  const [schedulingMode, setSchedulingMode] = useState<"single" | "all" | "custom">("single");
+  const [customCount, setCustomCount] = useState<number>(2);
+  const { data: courseTemplates = [] } = useActiveCourseTemplatesByType(typeId || undefined);
+
+  // If an active course already exists for this patient+type, reflect its structure
+  const [existingCourse, setExistingCourse] = useState<{
+    id: string;
+    total_sessions_planned: number | null;
+    sessions_completed: number;
+    scheduled_count: number;
+  } | null>(null);
 
   // Inline "+ new patient" mini-form
   const [showNewPatient, setShowNewPatient] = useState(false);
@@ -141,6 +161,12 @@ export function AppointmentQuickCreateDialog({
     setPatientSearch("");
     setBooked(null);
     setShowInvite(false);
+    setTemplateId("none");
+    setTotalSessions(1);
+    setFrequency("weekly");
+    setSchedulingMode("single");
+    setCustomCount(2);
+    setExistingCourse(null);
   }, [open, defaultDate, defaultChairId]);
 
   const selectedType = useMemo(
@@ -151,6 +177,73 @@ export function AppointmentQuickCreateDialog({
   useEffect(() => {
     if (selectedType) setDuration(selectedType.default_duration_minutes);
   }, [selectedType]);
+
+  // Reset template when the treatment type changes
+  useEffect(() => {
+    setTemplateId("none");
+  }, [typeId]);
+
+  // Apply defaults when a template is picked
+  const selectedTemplate = useMemo(
+    () => courseTemplates.find((t) => t.id === templateId),
+    [courseTemplates, templateId]
+  );
+  useEffect(() => {
+    if (!selectedTemplate) return;
+    if (selectedTemplate.default_sessions) setTotalSessions(selectedTemplate.default_sessions);
+    if (selectedTemplate.default_session_duration_mins) {
+      setDuration(selectedTemplate.default_session_duration_mins);
+    }
+    if (selectedTemplate.default_frequency) {
+      setFrequency(selectedTemplate.default_frequency as CourseFrequency);
+    }
+  }, [selectedTemplate]);
+
+  // Look up an active course for this patient+type so we can display "session X of N"
+  useEffect(() => {
+    let cancelled = false;
+    if (!patientId || !typeId) {
+      setExistingCourse(null);
+      return;
+    }
+    (async () => {
+      const { data: course } = await (supabase as any)
+        .from("treatment_courses")
+        .select("id, total_sessions_planned, sessions_completed")
+        .eq("patient_id", patientId)
+        .eq("treatment_type_id", typeId)
+        .in("status", ["draft", "onboarding", "ready", "active"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (cancelled) return;
+      if (!course) {
+        setExistingCourse(null);
+        return;
+      }
+      const { count } = await (supabase as any)
+        .from("appointments")
+        .select("id", { count: "exact", head: true })
+        .eq("treatment_course_id", course.id)
+        .in("status", ["scheduled", "confirmed", "checked_in", "in_progress"]);
+      if (cancelled) return;
+      setExistingCourse({
+        id: course.id,
+        total_sessions_planned: course.total_sessions_planned,
+        sessions_completed: course.sessions_completed ?? 0,
+        scheduled_count: count ?? 0,
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [patientId, typeId]);
+
+  // Derived: N (planned), and the session_number this booking will occupy
+  const plannedTotal = existingCourse?.total_sessions_planned ?? totalSessions;
+  const thisSessionNumber = existingCourse
+    ? existingCourse.sessions_completed + existingCourse.scheduled_count + 1
+    : 1;
+  const remainingAfterThis = Math.max(0, plannedTotal - thisSessionNumber);
+  const showCourseUI = !!typeId && (courseTemplates.length > 0 || !!existingCourse);
 
   const selectedPatient = patients.find((p) => p.id === patientId);
 
@@ -339,10 +432,11 @@ export function AppointmentQuickCreateDialog({
       // checklist and portal invite all have something to anchor to.
       let courseId: string | null = null;
       let courseWasCreated = false;
+      let coursePlannedTotal: number = plannedTotal;
       try {
         const { data: existing } = await (supabase as any)
           .from("treatment_courses" as any)
-          .select("id, status")
+          .select("id, status, total_sessions_planned")
           .eq("patient_id", patientId)
           .eq("treatment_type_id", typeId)
           .in("status", ["draft", "onboarding", "ready", "active"])
@@ -352,6 +446,7 @@ export function AppointmentQuickCreateDialog({
 
         if (existing?.id) {
           courseId = existing.id as string;
+          coursePlannedTotal = existing.total_sessions_planned ?? plannedTotal;
           if (referralId) {
             try {
               await (supabase as any)
@@ -369,7 +464,8 @@ export function AppointmentQuickCreateDialog({
             .insert({
               patient_id: patientId,
               treatment_type_id: typeId,
-              total_sessions_planned: 1,
+              total_sessions_planned: Math.max(1, totalSessions),
+              ...(templateId !== "none" ? { course_template_id: templateId } : {}),
               notes: "Auto-created from front-desk booking",
               status: "draft",
               ...(referralId ? { referral_id: referralId } : {}),
@@ -379,12 +475,16 @@ export function AppointmentQuickCreateDialog({
           if (courseErr) throw courseErr;
           courseId = (newCourse as any).id;
           courseWasCreated = true;
+          coursePlannedTotal = Math.max(1, totalSessions);
         }
 
         if (courseId && appt?.id) {
           await updateAppointment.mutateAsync({
             id: appt.id,
-            data: { treatment_course_id: courseId } as any,
+            data: {
+              treatment_course_id: courseId,
+              session_number: thisSessionNumber,
+            } as any,
           });
         }
       } catch (linkErr) {
@@ -412,13 +512,32 @@ export function AppointmentQuickCreateDialog({
         courseId,
         courseTypeName,
         courseWasCreated,
+        sessionNumber: thisSessionNumber,
+        totalSessions: coursePlannedTotal,
+        firstStart: start,
+        frequency,
+        chairId: chairId === "none" ? null : chairId,
+        nurseId: nurseId === "none" ? null : nurseId,
+        duration,
       });
       toast.success("Appointment booked");
+
+      // If the operator asked to schedule more sessions in this transaction,
+      // open the recurring dialog immediately.
+      const wantMore =
+        schedulingMode !== "single" &&
+        courseId &&
+        (schedulingMode === "all" ? coursePlannedTotal - 1 : customCount) > 0;
+      if (wantMore) {
+        setBulkOpen(true);
+      }
     } catch (e) {
       toast.error("Failed to create");
       console.error(e);
     }
   };
+
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   if (booked) {
     return (
