@@ -271,6 +271,15 @@ export function RecurringSessionDialog({
                 ? ` of ${treatmentCourse.total_sessions_planned} planned`
                 : ""}.
             </p>
+            {!isOngoing && treatmentCourse.total_sessions_planned && remainingSessions > 0 && (
+              <p className="text-foreground mt-0.5">
+                You're scheduling session{remainingSessions === 1 ? "" : "s"}{" "}
+                <span className="font-medium">
+                  {alreadyScheduled + 1}
+                  {remainingSessions > 1 ? `–${treatmentCourse.total_sessions_planned}` : ""}
+                </span>.
+              </p>
+            )}
             <p className="text-muted-foreground mt-0.5">
               {nextUpcoming
                 ? <>Next is <span className="font-medium text-foreground">{format(new Date(nextUpcoming.scheduled_start), "EEE d MMM, HH:mm")}</span>. </>

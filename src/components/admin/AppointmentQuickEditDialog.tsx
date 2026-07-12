@@ -48,8 +48,11 @@ import { useSendAppointmentConfirmationSms, useSendAppointmentRescheduleSms } fr
 import { AppointmentWithRelations, AppointmentStatus } from "@/types/appointment";
 import { RescheduleDialog } from "./RescheduleDialog";
 import SendInviteDialog from "./SendInviteDialog";
+import { RecurringSessionDialog } from "./RecurringSessionDialog";
 import { usePatientInvites } from "@/hooks/usePatientInvites";
 import { useAppointmentSmsLog } from "@/hooks/useCommunicationLog";
+import { useQuery } from "@tanstack/react-query";
+import { CalendarPlus } from "lucide-react";
 import {
   usePendingChangeRequestForAppointment,
   useMarkRequestSmsSent,
@@ -105,8 +108,34 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment, au
   const [notes, setNotes] = useState("");
   const [showReschedule, setShowReschedule] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
+  const [showRecurring, setShowRecurring] = useState(false);
   const { data: invites } = usePatientInvites(appointment?.patient_id);
   const hasAcceptedInvite = !!invites?.some((i) => i.status === "accepted");
+
+  // Load the treatment course so we can render "Session X of N" and offer
+  // a shortcut to book the remaining sessions.
+  const courseId = (appointment as any)?.treatment_course_id as string | null | undefined;
+  const { data: course } = useQuery({
+    queryKey: ["appointment-course", courseId],
+    enabled: !!courseId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("treatment_courses" as any)
+        .select(
+          "id, patient_id, treatment_type_id, total_sessions_planned, sessions_completed, appointment_type:appointment_types!treatment_courses_treatment_type_id_fkey(name, color, default_duration_minutes), appointments:appointments!appointments_treatment_course_id_fkey(id, status)"
+        )
+        .eq("id", courseId!)
+        .maybeSingle();
+      if (error) throw error;
+      return data as any;
+    },
+  });
+  const totalPlanned: number | null = course?.total_sessions_planned ?? null;
+  const scheduledCount = Array.isArray(course?.appointments)
+    ? course!.appointments.filter((a: any) => a.status !== "cancelled").length
+    : 0;
+  const remainingToBook =
+    totalPlanned != null ? Math.max(0, totalPlanned - scheduledCount) : 0;
 
   // Auto-open reschedule dialog when the caller has deep-linked with a request id
   // and there's still work to do (either the reschedule itself, or the SMS follow-up).
@@ -339,9 +368,33 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment, au
                 <DialogDescription>
                   Originally {format(start, "EEE, MMM d 'at' h:mm a")}
                   {(appointment as any).session_number
-                    ? ` · Session #${(appointment as any).session_number}`
+                    ? totalPlanned
+                      ? ` · Session ${(appointment as any).session_number} of ${totalPlanned}`
+                      : ` · Session #${(appointment as any).session_number}`
                     : ""}
                 </DialogDescription>
+                {totalPlanned && totalPlanned > 0 && (
+                  <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                    <span>
+                      {scheduledCount} of {totalPlanned} booked
+                      {remainingToBook > 0
+                        ? ` · ${remainingToBook} still to schedule`
+                        : " · fully scheduled"}
+                    </span>
+                    {remainingToBook > 0 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-6 px-2 text-xs gap-1"
+                        onClick={() => setShowRecurring(true)}
+                      >
+                        <CalendarPlus className="h-3 w-3" />
+                        Book remaining {remainingToBook} session{remainingToBook === 1 ? "" : "s"}
+                      </Button>
+                    )}
+                  </div>
+                )}
                 {appointment.patient_confirmed_at && (
                   <div className="mt-1 text-xs text-emerald-700 dark:text-emerald-400">
                     Patient tapped the SMS confirmation link on{" "}
@@ -720,6 +773,30 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment, au
           open={showInvite}
           onOpenChange={setShowInvite}
           hideTrigger
+        />
+      )}
+
+      {showRecurring && course && (
+        <RecurringSessionDialog
+          open={showRecurring}
+          onOpenChange={setShowRecurring}
+          treatmentCourse={{
+            id: course.id,
+            patient_id: course.patient_id,
+            treatment_type_id: course.treatment_type_id,
+            total_sessions_planned: course.total_sessions_planned,
+            sessions_completed: course.sessions_completed,
+            appointment_type: course.appointment_type,
+            patient: {
+              first_name: appointment.patient.first_name,
+              last_name: appointment.patient.last_name,
+            },
+          }}
+          onCreated={() => {
+            setShowRecurring(false);
+            queryClient.invalidateQueries({ queryKey: ["appointment-course", courseId] });
+            queryClient.invalidateQueries({ queryKey: ["appointments"] });
+          }}
         />
       )}
     </>

@@ -7,7 +7,7 @@ export function useReferrals(doctorId?: string) {
     queryFn: async () => {
       let query = supabase
         .from("referrals")
-        .select("*, doctors(id, user_id, practice_name, email, specialisation), treatment_courses:treatment_courses!treatment_courses_referral_id_fkey(id, total_sessions_planned, appointments:appointments!appointments_treatment_course_id_fkey(id, status))")
+        .select("*, doctors(id, user_id, practice_name, email, specialisation), treatment_courses:treatment_courses!treatment_courses_referral_id_fkey(id, total_sessions_planned, sessions_completed, treatment_type_id, appointment_type:appointment_types!treatment_courses_treatment_type_id_fkey(id, name, color, default_duration_minutes), appointments:appointments!appointments_treatment_course_id_fkey(id, status))")
         .order("created_at", { ascending: false });
 
       if (doctorId) {
@@ -60,6 +60,8 @@ export function useReferrals(doctorId?: string) {
               : 0),
           0
         );
+        const firstCourse = courses[0];
+        const courseTreatmentName = firstCourse?.appointment_type?.name || null;
         return {
           ...r,
           doctor_display_name: displayName,
@@ -67,6 +69,8 @@ export function useReferrals(doctorId?: string) {
           course_count: courses.length,
           appointment_count: appointmentCount,
           total_sessions_planned: totalSessionsPlanned,
+          course_treatment_name: courseTreatmentName,
+          first_course: firstCourse || null,
         };
       });
     },
