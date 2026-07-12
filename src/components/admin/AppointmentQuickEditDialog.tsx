@@ -775,6 +775,30 @@ export function AppointmentQuickEditDialog({ open, onOpenChange, appointment, au
           hideTrigger
         />
       )}
+
+      {showRecurring && course && (
+        <RecurringSessionDialog
+          open={showRecurring}
+          onOpenChange={setShowRecurring}
+          treatmentCourse={{
+            id: course.id,
+            patient_id: course.patient_id,
+            treatment_type_id: course.treatment_type_id,
+            total_sessions_planned: course.total_sessions_planned,
+            sessions_completed: course.sessions_completed,
+            appointment_type: course.appointment_type,
+            patient: {
+              first_name: appointment.patient.first_name,
+              last_name: appointment.patient.last_name,
+            },
+          }}
+          onCreated={() => {
+            setShowRecurring(false);
+            queryClient.invalidateQueries({ queryKey: ["appointment-course", courseId] });
+            queryClient.invalidateQueries({ queryKey: ["appointments"] });
+          }}
+        />
+      )}
     </>
   );
 }
