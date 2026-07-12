@@ -1,53 +1,48 @@
-## Backfill: create referral links for existing appointments with a referring doctor
+## Problem
 
-### Problem
-The new `ensureDoctorReferral` logic only runs on appointment save going forward. Any appointments Gail already created/edited before this fix — where a referring doctor was picked — still have no `referrals` row linking the patient to that doctor. Those patients won't appear under the doctor's Patients/Referrals tabs until we backfill.
+The dashboard's "Referrals needing attention" flags patients as **Needs course setup** even when a course is clearly attached to their appointments (e.g. Mark Hawkins has Iron Infusion / Wound Care / Ketamine courses on his sessions).
 
-### Approach
-Run a one-off SQL backfill (via migration) that inserts a `referrals` row for every distinct `(patient_id, doctor_id)` pair currently implied by appointments, where no matching referral already exists.
+Root cause: `useReferralsAttentionCount` counts courses via the `treatment_courses.referral_id` foreign key. But when a course is auto-created from the **Appointment Quick Create** dialog (`AppointmentQuickCreateDialog.tsx` lines 336–381), we only set `patient_id` and `treatment_type_id` — we never populate `referral_id`. So the referral sees zero linked courses and gets tagged `needs_course`.
 
-Two possible signals of "this appointment has a referring doctor":
-1. `appointments.doctor_id` (structured link) — preferred if populated.
-2. `patients.referring_doctor_name` free-text — harder to match reliably; skip for backfill (would need fuzzy matching against `doctors`). Gail can re-save those appointments if needed.
+The `ensureDoctorReferral` step and the course creation step run independently; they never wire up to each other.
 
-Backfill will use signal #1 only.
+## Fix
 
-### SQL (single migration, idempotent)
+### 1. Link new appointment-created courses to the referral
+
+In `src/components/admin/AppointmentQuickCreateDialog.tsx` (and the same pattern in `AppointmentQuickEditDialog.tsx` if it has the equivalent course-creation block):
+
+- After `ensureDoctorReferral(patientId, doctorId)` returns, look up the most recent non-terminal `referrals` row for `(patient_id = patientId, doctor_id = doctorId)`.
+- Pass that `referral_id` into both branches of the course logic:
+  - When **creating** a new `treatment_courses` row → include `referral_id` in the insert.
+  - When **reusing** an existing draft/onboarding/ready/active course that has no `referral_id` yet → `UPDATE` it to set `referral_id`.
+- Also bump `total_sessions_planned` to at least the number of appointments already booked in that course, so the "needs scheduling" logic doesn't misfire either.
+
+### 2. Backfill existing courses
+
+One-shot data migration (via the insert tool, not schema) to repair the existing data shown in the screenshots:
 
 ```sql
-INSERT INTO public.referrals (
-  doctor_id, patient_id, tenant_id,
-  patient_first_name, patient_last_name, patient_email, patient_phone,
-  status, urgency, reason_for_referral, reviewed_at
-)
-SELECT DISTINCT
-  a.doctor_id, a.patient_id, p.tenant_id,
-  p.first_name, p.last_name, p.email, p.phone,
-  'accepted', 'routine',
-  'Backfilled from existing appointment (admin-scheduled)',
-  now()
-FROM public.appointments a
-JOIN public.patients p ON p.id = a.patient_id
-WHERE a.doctor_id IS NOT NULL
-  AND a.patient_id IS NOT NULL
-  AND NOT EXISTS (
-    SELECT 1 FROM public.referrals r
-    WHERE r.patient_id = a.patient_id
-      AND r.doctor_id = a.doctor_id
-  );
+UPDATE treatment_courses tc
+SET referral_id = r.id
+FROM referrals r
+WHERE tc.referral_id IS NULL
+  AND tc.patient_id = r.patient_id
+  AND r.status IN ('accepted','under_review','info_requested','scheduled','converted_to_course')
+  AND r.doctor_id IS NOT NULL;
 ```
 
-Safe to re-run: the `NOT EXISTS` guard makes it idempotent.
+If a patient has multiple accepted referrals from different doctors, prefer the referral whose `doctor_id` matches the appointment's referring doctor. Practically, given the current data volume, picking the most recent accepted referral per patient is sufficient — we can refine with a `DISTINCT ON (tc.id)` + `ORDER BY r.created_at DESC` if needed.
 
-### Verification
-1. Before running: check James Hawkins test 4 → doctor test 2 currently has no referral (or confirm which pairs are missing) via a `SELECT` first.
-2. After running: open **Doctors → doctor test 2** → previously-scheduled patients now appear under Patients and Referrals tabs with status `accepted`.
-3. Re-running the migration inserts 0 rows.
+### 3. Verify
 
-### Non-goals
-- No code changes — the going-forward logic already works.
-- No backfill from free-text `referring_doctor_name` (unreliable without fuzzy matching; can be addressed separately if needed).
-- No touching existing referrals — only inserts the missing ones.
+After the code change and backfill:
+- Mark Hawkins' referral row should no longer show the "Needs course setup" badge.
+- Dashboard's "Referrals needing attention" count should drop to only genuinely-unlinked referrals.
+- New appointments booked via Quick Create should immediately produce a course that shows up under the referral, without any manual re-linking.
 
-### Question
-Before running, do you want me to first show a `SELECT` preview of the exact `(patient, doctor)` pairs that would be inserted, so you can eyeball it? Or just run the backfill directly?
+## Out of scope
+
+- No schema changes; `treatment_courses.referral_id` already exists.
+- No change to the attention heuristic itself (`src/lib/referralProgress.ts`) — it's correct; the data feeding it was wrong.
+- Nurse/patient portal logic untouched.
