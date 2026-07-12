@@ -62,6 +62,26 @@ export function useReferrals(doctorId?: string) {
         );
         const firstCourse = courses[0];
         const courseTreatmentName = firstCourse?.appointment_type?.name || null;
+        const schedulingCourses = courses
+          .map((c: any) => {
+            const planned = c.total_sessions_planned || 0;
+            const scheduled = Array.isArray(c.appointments)
+              ? c.appointments.filter((a: any) => a.status !== "cancelled").length
+              : 0;
+            const outstanding = Math.max(0, planned - scheduled);
+            const needs =
+              (planned > 0 && scheduled < planned) ||
+              (planned === 0 && scheduled === 0);
+            return {
+              course_id: c.id,
+              treatment_name: c.appointment_type?.name || null,
+              planned,
+              scheduled,
+              outstanding,
+              needs_scheduling: needs,
+            };
+          })
+          .filter((c: any) => c.needs_scheduling);
         return {
           ...r,
           doctor_display_name: displayName,
@@ -71,6 +91,8 @@ export function useReferrals(doctorId?: string) {
           total_sessions_planned: totalSessionsPlanned,
           course_treatment_name: courseTreatmentName,
           first_course: firstCourse || null,
+          scheduling_courses: schedulingCourses,
+          needs_scheduling_course_count: schedulingCourses.length,
         };
       });
     },

@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -71,14 +72,42 @@ export function ReferralTable({ referrals, isLoading, onReview, onSetupCourse, o
                   : needsAttention && attention !== "awaiting_triage"
                     ? "bg-clinical-warning-soft/30"
                     : "";
-              const planned = ref.total_sessions_planned || 0;
-              const scheduled = ref.appointment_count || 0;
-              const outstanding = Math.max(0, planned - scheduled);
-              const showProgress =
-                (attention === "needs_scheduling" || (planned > 0 && scheduled > 0)) &&
-                planned > 0;
-              const treatmentDisplay =
+              const schedulingCourses: any[] = Array.isArray(ref.scheduling_courses)
+                ? ref.scheduling_courses
+                : [];
+              const singleCourse =
+                schedulingCourses.length === 1 ? schedulingCourses[0] : null;
+              const aggregatePlanned = ref.total_sessions_planned || 0;
+              const aggregateScheduled = ref.appointment_count || 0;
+              const aggregateOutstanding = Math.max(0, aggregatePlanned - aggregateScheduled);
+              let treatmentDisplay: string =
                 ref.course_treatment_name || ref.treatment_requested || "—";
+              if (attention === "needs_scheduling" && schedulingCourses.length > 0) {
+                const firstName =
+                  schedulingCourses[0].treatment_name ||
+                  ref.treatment_requested ||
+                  "Treatment";
+                treatmentDisplay =
+                  schedulingCourses.length === 1
+                    ? firstName
+                    : `${firstName} +${schedulingCourses.length - 1} more`;
+              }
+              let progressLine: ReactNode = null;
+              if (attention === "needs_scheduling") {
+                if (singleCourse) {
+                  progressLine = (
+                    <>Session {singleCourse.scheduled} of {singleCourse.planned} booked
+                    {singleCourse.outstanding > 0 ? ` · ${singleCourse.outstanding} outstanding` : ""}</>
+                  );
+                } else if (schedulingCourses.length > 1) {
+                  progressLine = <>{schedulingCourses.length} courses need scheduling</>;
+                }
+              } else if (aggregatePlanned > 0 && aggregateScheduled > 0) {
+                progressLine = (
+                  <>Session {aggregateScheduled} of {aggregatePlanned} booked
+                  {aggregateOutstanding > 0 ? ` · ${aggregateOutstanding} outstanding` : " · complete"}</>
+                );
+              }
               return (
                 <TableRow key={ref.id} className={rowTint}>
                   <TableCell className="font-medium">
@@ -101,10 +130,9 @@ export function ReferralTable({ referrals, isLoading, onReview, onSetupCourse, o
                     {ref.patient_email && (
                       <span className="block text-xs text-muted-foreground">{ref.patient_email}</span>
                     )}
-                    {showProgress && (
+                    {progressLine && (
                       <span className="block text-xs text-muted-foreground mt-0.5">
-                        Session {scheduled} of {planned} booked
-                        {outstanding > 0 ? ` · ${outstanding} outstanding` : " · complete"}
+                        {progressLine}
                       </span>
                     )}
                   </TableCell>
