@@ -8,6 +8,8 @@ import { startOfDay, endOfDay, startOfWeek, endOfWeek, formatDistanceToNow, addD
 import { useActivePatientsWithCourses } from "@/hooks/useTreatmentCourses";
 import { TreatmentCourseChip } from "@/components/shared/TreatmentCourseChip";
 import { useReferralsAttentionCount } from "@/hooks/useReferralsAttentionCount";
+import { useReferrals } from "@/hooks/useReferrals";
+import { getReferralAttention } from "@/lib/referralProgress";
 import { usePatientPipelineCounts } from "@/hooks/usePatientPipelineCounts";
 import { STAGE_LABEL, ACTIVE_COURSE_STATUSES } from "@/lib/patientPipeline";
 import { getChairColor } from "@/lib/chairColors";
@@ -64,6 +66,14 @@ export default function AdminDashboard() {
   const { data: stats } = useDashboardStats();
   const { data: activePatients } = useActivePatientsWithCourses(8);
   const attention = useReferralsAttentionCount();
+  const { data: allReferrals = [] } = useReferrals();
+  const needsSchedulingRefs = (allReferrals as any[]).filter((r) => {
+    const a = getReferralAttention(r, r.course_count || 0, {
+      appointmentCount: r.appointment_count || 0,
+      totalSessionsPlanned: r.total_sessions_planned || 0,
+    });
+    return a === "needs_scheduling";
+  });
   const { data: pipeline } = usePatientPipelineCounts();
   const { data: pendingRequests } = usePendingChangeRequests();
   const requestByApptId = new Map<string, any>();
@@ -152,6 +162,39 @@ export default function AdminDashboard() {
                 )}
               </div>
             </div>
+            {needsSchedulingRefs.length > 0 && (
+              <div className="mt-3 space-y-1.5">
+                {needsSchedulingRefs.slice(0, 5).map((r: any) => {
+                  const planned = r.total_sessions_planned || 0;
+                  const scheduled = r.appointment_count || 0;
+                  const outstanding = Math.max(0, planned - scheduled);
+                  const treatment = r.course_treatment_name || r.treatment_requested || "Treatment";
+                  return (
+                    <Link
+                      key={r.id}
+                      to="/admin/referrals?attention=needs_scheduling"
+                      className="flex items-center gap-3 rounded-md border border-clinical-warning/30 bg-card px-3 py-2 text-sm hover:bg-muted/40 transition-colors"
+                    >
+                      <span className="font-medium text-foreground truncate">
+                        {r.patient_first_name} {r.patient_last_name}
+                      </span>
+                      <span className="text-xs text-muted-foreground truncate">· {treatment}</span>
+                      <span className="ml-auto text-xs text-muted-foreground tabular-nums shrink-0">
+                        {planned > 0
+                          ? <>Session {scheduled} of {planned} booked · <span className="text-clinical-warning font-medium">{outstanding} outstanding</span></>
+                          : <span className="text-clinical-warning font-medium">No sessions booked yet</span>}
+                      </span>
+                      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    </Link>
+                  );
+                })}
+                {needsSchedulingRefs.length > 5 && (
+                  <p className="text-xs text-muted-foreground pl-1">
+                    +{needsSchedulingRefs.length - 5} more — see referral queue
+                  </p>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
