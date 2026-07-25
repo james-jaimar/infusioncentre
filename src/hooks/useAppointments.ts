@@ -141,9 +141,11 @@ export function useCreateAppointment() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (_data, vars) => {
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
       queryClient.invalidateQueries({ queryKey: ["appointment"] });
+      queryClient.invalidateQueries({ queryKey: ["onboarding_checklists", vars.patient_id] });
+      queryClient.invalidateQueries({ queryKey: ["form_submissions_readiness", vars.patient_id] });
     },
   });
 }
@@ -200,12 +202,23 @@ export function useDeleteAppointment() {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      // Fetch patient_id first so we can invalidate their onboarding cache.
+      const { data: existing } = await supabase
+        .from("appointments")
+        .select("patient_id")
+        .eq("id", id)
+        .maybeSingle();
       const { error } = await supabase.from("appointments").delete().eq("id", id);
       if (error) throw error;
+      return { patientId: existing?.patient_id as string | undefined };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
       queryClient.invalidateQueries({ queryKey: ["appointment"] });
+      if (result?.patientId) {
+        queryClient.invalidateQueries({ queryKey: ["onboarding_checklists", result.patientId] });
+        queryClient.invalidateQueries({ queryKey: ["form_submissions_readiness", result.patientId] });
+      }
     },
   });
 }
