@@ -1,41 +1,49 @@
-## Root cause (verified against the DB)
 
-The reschedule request that you submitted via the SMS link is in the database:
+## Goal
 
-- Row `d2a616c1-…` on `appointment_change_requests` for James Hawkins test 4, appointment `93895a4e-…`, `status = 'pending'`, reason "Can we move to Tuesday please".
+Keep a patient's Onboarding tab in sync with the appointments booked for them, based on each appointment type's required forms — without ever duplicating a form or wiping one the patient has already completed.
 
-So `confirm-appointment` did its job — the note was appended to the appointment AND the change request was inserted. What's broken is the **client read**, not the write.
+## Current behaviour
 
-`appointment_change_requests` now has **two** foreign keys pointing at `appointments`:
+- New patients get onboarding items only from the `create_onboarding_from_course` trigger (fires when a treatment course is created), plus a few "universal" templates.
+- Booking or deleting an appointment does **not** touch `onboarding_checklists` at all.
+- `form_templates.required_for_treatment_types` already stores the appointment-type IDs each form is required for — so the mapping we need is already there.
 
-- `appointment_id → appointments(id)`
-- `new_appointment_id → appointments(id)` (added when we introduced the "rescheduled_pending_sms" flow)
+## What to build
 
-`usePendingChangeRequests` embeds the appointment with `appointment:appointments(…)`. With two FKs to the same target, PostgREST can't decide which relationship to use and the whole query errors out — so on the client the list looks empty. Older rows appeared before because they were already cached / queried before the second FK existed. New rows never surface.
+Two database triggers on `public.appointments` that keep `onboarding_checklists` aligned with the patient's *pending* appointments. Doing this in the database (not the client) guarantees it fires no matter where the appointment is created or deleted from — Quick Create dialog, Recurring dialog, calendar drag-clone, admin backfill, etc.
 
-That's why:
-- The Action Items panel on the dashboard doesn't list the reschedule request.
-- The appointment modal doesn't show the "Patient requested a reschedule" banner.
-- Tomorrow's appointment on the dashboard doesn't get the reschedule marker (same hook feeds it).
+### 1. After INSERT on appointments — add missing forms
 
-## Fix
+For the appointment's `appointment_type_id`, find every active `form_templates` row where that ID is in `required_for_treatment_types`, and insert a `pending` row into `onboarding_checklists` for `(patient_id, form_template_id)` **only if** no row already exists for that pair (any status). This is the "don't add if already there" rule and also protects completed forms from being reset.
 
-Disambiguate the embed by naming the FK explicitly. One-line change in `src/hooks/useAppointmentChangeRequests.ts` inside `usePendingChangeRequests`:
+### 2. After DELETE on appointments — remove now-orphaned forms
 
-```ts
-.select(
-  "id, appointment_id, patient_id, request_type, preferred_date, preferred_time_window, reason, status, created_at, new_appointment_id, sms_sent_at, appointment:appointments!appointment_change_requests_appointment_id_fkey(id, scheduled_start, scheduled_end, appointment_type:appointment_types(name)), patient:patients(id, first_name, last_name, phone)"
-)
-```
+For the deleted appointment's `(patient_id, appointment_type_id)`:
 
-No other file needs to change — `DashboardActionsPanel`, `AdminDashboard`, and `AppointmentQuickEditDialog` all consume this hook.
+1. Find the set of form templates that were required *because of* this appointment type.
+2. For each of those templates, check whether the patient still has **another** appointment (any status other than the one just deleted) whose type also requires the same template. If yes → keep the checklist item.
+3. If no other appointment justifies it, delete the checklist row **only when** its `status` is still `pending` (never touch `completed`, `in_progress`, or anything with a `form_submission_id`). Universal templates (`required_for_treatment_types IS NULL`) are never removed — they belong to the patient regardless of appointments.
 
-## Verification
+The user's phrasing "if it has not been fulfilled and has been deleted" maps directly to: only prune checklist items that are still pending.
 
-1. Load `/admin` — the Action Items card should list `Reschedule request · James Hawkins test 4 · Current: Mon 13 Jul · 10:30 · Ketamine Therapy` with the "Can we move to Tuesday please" reason.
-2. Tomorrow's Appointments row for James Hawkins test 4 should show the amber reschedule marker.
-3. Opening the appointment modal should show the "Patient requested a reschedule" banner with the Reschedule / Send SMS actions.
+### 3. No change on UPDATE
 
-## Out of scope
+Changing an appointment's time/chair/nurse doesn't affect required forms. If an admin edits the *appointment type* of an existing appointment we can leave that as a follow-up — it's rare and can be handled by delete+recreate; flag if you want it in scope.
 
-No DB migration, no changes to `confirm-appointment`, no changes to the write mutations, no UI/design changes.
+## Client-side follow-ups
+
+- After `useCreateAppointment` / `useDeleteAppointment` succeed, invalidate `["onboarding_checklists", patientId]` and `["form_submissions_readiness", patientId]` so the Onboarding tab and the "Start Treatment" readiness gate refresh without a manual reload.
+- No UI changes needed — the existing Onboarding tab already renders whatever is in `onboarding_checklists`.
+
+## Out of scope (call out if you want them included)
+
+- Backfilling onboarding items for appointments that already exist today.
+- Handling appointment-type changes on an existing appointment.
+- Removing forms when an appointment is *cancelled* rather than deleted (currently only hard deletes prune).
+
+## Technical notes
+
+- Both triggers are `SECURITY DEFINER` with `SET search_path = public`, matching the existing `create_onboarding_from_course` / `auto_generate_onboarding_checklist` pattern.
+- Insert uses `ON CONFLICT DO NOTHING` against a partial unique index on `(patient_id, form_template_id)` (add the index if one doesn't already exist) to make the "no duplicates" guarantee race-safe.
+- Delete uses a `NOT EXISTS` subquery over sibling appointments joined to `form_templates.required_for_treatment_types` via `= ANY(...)`.
