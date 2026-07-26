@@ -12,6 +12,7 @@ import { usePatientDocuments, useUploadPatientDocument, useDeletePatientDocument
 import { useOnboardingChecklist, useGenerateChecklist, useUpdateChecklistItem } from "@/hooks/useOnboardingChecklist";
 import { useFormTemplate, useFormTemplates } from "@/hooks/useFormTemplates";
 import { useFormSubmissions, useCreateFormSubmission, useUpdateFormSubmission, useDeleteFormSubmission } from "@/hooks/useFormSubmissions";
+import { useAutosaveDraft } from "@/hooks/useFormDraft";
 import { usePatientNotes, useCreatePatientNote, useDeletePatientNote } from "@/hooks/usePatientNotes";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -125,6 +126,20 @@ export default function PatientDetail() {
   const createSubmission = useCreateFormSubmission();
   const updateSubmission = useUpdateFormSubmission();
   const deleteSubmission = useDeleteFormSubmission();
+
+  // Autosave draft wiring for the checklist-fill dialog at the bottom of the page.
+  const patientAutosave = useAutosaveDraft({
+    patientId: id,
+    formTemplateId: activeFormTemplateId,
+    values: formValues,
+    enabled: formDialogOpen && !!activeChecklistItemId && !!id && !!activeFormTemplateId,
+    submittedBy: user?.id,
+    onDraftLoaded: (draft) => {
+      if (draft?.data && typeof draft.data === "object") {
+        setFormValues(draft.data as Record<string, any>);
+      }
+    },
+  });
   const { data: patientNotes } = usePatientNotes(id);
   const createNote = useCreatePatientNote();
   const deleteNote = useDeletePatientNote();
