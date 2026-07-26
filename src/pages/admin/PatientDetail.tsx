@@ -1429,13 +1429,7 @@ export default function PatientDetail() {
         onSubmit={activeChecklistItemId ? async () => {
           if (!id || !activeFormTemplate || !activeChecklistItemId) return;
           try {
-            const submission = await createSubmission.mutateAsync({
-              form_template_id: activeFormTemplate.id,
-              patient_id: id,
-              data: formValues,
-              status: 'submitted',
-              submitted_by: user?.id,
-            });
+            const submission = await patientAutosave.promote.mutateAsync({ finalData: formValues });
             await updateChecklistItem.mutateAsync({
               id: activeChecklistItemId,
               status: 'completed',
@@ -1449,7 +1443,9 @@ export default function PatientDetail() {
             toast.error("Failed to submit form");
           }
         } : undefined}
-        isSubmitting={createSubmission.isPending}
+        isSubmitting={patientAutosave.promote.isPending}
+        autosaveStatus={activeChecklistItemId ? patientAutosave.status : undefined}
+        autosaveSavedAt={activeChecklistItemId ? patientAutosave.savedAt : undefined}
       />
     </div>
   );
