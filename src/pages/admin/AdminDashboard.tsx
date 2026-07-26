@@ -2,13 +2,16 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, FileText, ArrowRight, UserPlus, ClipboardList, CalendarPlus, CheckCircle2, Stethoscope, RefreshCw } from "lucide-react";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+import { Users, FileText, ArrowRight, UserPlus, ClipboardList, CalendarPlus, CheckCircle2, Stethoscope, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useState } from "react";
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, addDays } from "date-fns";
 import { useReferralsAttentionCount } from "@/hooks/useReferralsAttentionCount";
 import { useReferrals } from "@/hooks/useReferrals";
 import { getReferralAttention } from "@/lib/referralProgress";
 import { usePatientPipelineCounts } from "@/hooks/usePatientPipelineCounts";
+import { usePatientsInOnboarding } from "@/hooks/usePatientsInOnboarding";
 import { STAGE_LABEL, ACTIVE_COURSE_STATUSES } from "@/lib/patientPipeline";
 import { getChairColor } from "@/lib/chairColors";
 import DashboardActionsPanel from "@/components/admin/DashboardActionsPanel";
@@ -72,6 +75,7 @@ export default function AdminDashboard() {
     return a === "needs_scheduling";
   });
   const { data: pipeline } = usePatientPipelineCounts();
+  const { data: onboardingPatients = [] } = usePatientsInOnboarding();
   const { data: pendingRequests } = usePendingChangeRequests();
   const requestByApptId = new Map<string, any>();
   (pendingRequests ?? []).forEach((r) => {
@@ -80,6 +84,7 @@ export default function AdminDashboard() {
   });
 
   const greeting = profile?.first_name ? `Welcome back, ${profile.first_name}` : "Welcome back";
+  const [pipelineOpen, setPipelineOpen] = useState(false);
 
   return (
     <div>
@@ -217,37 +222,81 @@ export default function AdminDashboard() {
       )}
 
       {pipeline && pipeline.total_active > 0 && (
-        <Card className="border-clinical-info/40 bg-clinical-info-soft mb-6">
-          <CardContent className="p-4">
-            <div className="flex items-start gap-3 flex-wrap">
-              <div className="flex items-center gap-3 mr-2">
-                <div className="h-10 w-10 rounded-md bg-clinical-info/20 text-clinical-info flex items-center justify-center">
-                  <Users className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="font-semibold text-foreground">Patient pipeline</p>
-                  <p className="text-xs text-muted-foreground">Where each patient is in their journey</p>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2 ml-auto">
-                {(["needs_invite","invite_sent","onboarding","ready_to_schedule"] as const).map((key) => {
-                  const value = pipeline[key];
-                  if (!value) return null;
-                  return (
-                    <Link
-                      key={key}
-                      to={`/admin/patients?stage=${key}`}
-                      className="inline-flex items-center gap-2 rounded-md border border-clinical-info/40 bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted/50 transition-colors"
+        <Collapsible open={pipelineOpen} onOpenChange={setPipelineOpen}>
+          <Card className="border-clinical-info/40 bg-clinical-info-soft mb-6">
+            <CollapsibleTrigger asChild>
+              <CardContent className="p-4 cursor-pointer hover:bg-clinical-info/10 transition-colors">
+                <div className="flex items-start gap-3 flex-wrap">
+                  <div className="flex items-center gap-3 mr-2">
+                    <div className="h-10 w-10 rounded-md bg-clinical-info/20 text-clinical-info flex items-center justify-center">
+                      <Users className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-foreground">Patient pipeline</p>
+                      <p className="text-xs text-muted-foreground">Where each patient is in their journey</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2 ml-auto items-center">
+                    {(["needs_invite","invite_sent","onboarding","ready_to_schedule"] as const).map((key) => {
+                      const value = pipeline[key];
+                      if (!value) return null;
+                      return (
+                        <Link
+                          key={key}
+                          to={`/admin/patients?stage=${key}`}
+                          className="inline-flex items-center gap-2 rounded-md border border-clinical-info/40 bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted/50 transition-colors"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <span className="tabular-nums">{value}</span>
+                          <span className="text-muted-foreground">{STAGE_LABEL[key].toLowerCase()}</span>
+                        </Link>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      className="ml-2 inline-flex h-8 w-8 items-center justify-center rounded-md text-clinical-info hover:bg-clinical-info/20"
+                      aria-label={pipelineOpen ? "Hide details" : "Show details"}
                     >
-                      <span className="tabular-nums">{value}</span>
-                      <span className="text-muted-foreground">{STAGE_LABEL[key].toLowerCase()}</span>
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+                      {pipelineOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+              </CardContent>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="px-4 pb-4 pt-0">
+                {onboardingPatients.length > 0 ? (
+                  <div className="mt-2 space-y-1.5">
+                    <p className="text-sm font-medium text-foreground mb-2">
+                      Patients with outstanding onboarding forms
+                    </p>
+                    {onboardingPatients.map((patient) => (
+                      <Link
+                        key={patient.id}
+                        to={`/admin/patients/${patient.id}`}
+                        className="flex items-center gap-3 rounded-md border border-clinical-info/30 bg-card px-3 py-2 text-sm hover:bg-muted/40 transition-colors"
+                      >
+                        <span className="font-medium text-foreground truncate">
+                          {patient.first_name} {patient.last_name}
+                        </span>
+                        <span className="ml-auto text-xs text-muted-foreground truncate max-w-[60%]">
+                          {patient.pendingForms.length > 0
+                            ? `${patient.pendingForms.length} pending: ${patient.pendingForms.map((f) => f.name).join(", ")}`
+                            : "Onboarding in progress"}
+                        </span>
+                        <ArrowRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    No patients currently in onboarding.
+                  </p>
+                )}
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
       )}
 
       <DashboardActionsPanel />
