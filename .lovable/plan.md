@@ -1,49 +1,60 @@
 
 ## Goal
 
-Keep a patient's Onboarding tab in sync with the appointments booked for them, based on each appointment type's required forms — without ever duplicating a form or wiping one the patient has already completed.
+When anyone (patient, admin, or nurse) fills in an onboarding form, autosave their progress so they can close the form and come back later to continue — nothing typed is ever lost.
 
-## Current behaviour
+## How it will work
 
-- New patients get onboarding items only from the `create_onboarding_from_course` trigger (fires when a treatment course is created), plus a few "universal" templates.
-- Booking or deleting an appointment does **not** touch `onboarding_checklists` at all.
-- `form_templates.required_for_treatment_types` already stores the appointment-type IDs each form is required for — so the mapping we need is already there.
+**Drafts on `form_submissions`.** We already store completed forms in the `form_submissions` table with `status = 'submitted'`. We reuse the same table for in-progress work by adding a `status = 'draft'` record. Only one draft per patient + form template exists at a time — new keystrokes update that same row rather than creating new ones.
 
-## What to build
+**Opening a form:**
+1. When a form is opened for a checklist item, look for an existing draft for that patient + template.
+2. If a draft exists, load its saved `data` into the form (so the user sees exactly what they left).
+3. If no draft, use current prefill logic (patient record, medical history).
 
-Two database triggers on `public.appointments` that keep `onboarding_checklists` aligned with the patient's *pending* appointments. Doing this in the database (not the client) guarantees it fires no matter where the appointment is created or deleted from — Quick Create dialog, Recurring dialog, calendar drag-clone, admin backfill, etc.
+**While editing:**
+- Every change is debounced (~1.5s idle) and upserted into the draft row. A subtle "Saved" / "Saving…" indicator appears in the form's top bar.
+- Also save on window blur/tab close (`beforeunload` + `visibilitychange`) so a user closing the tab doesn't lose the last few keystrokes.
+- On unmount/close of the dialog, flush any pending save.
 
-### 1. After INSERT on appointments — add missing forms
+**Submitting:**
+- On submit, promote the same draft row to `status = 'submitted'` (with signature, timestamp, `submitted_by`) instead of inserting a new record. The onboarding checklist item is then marked completed as today.
 
-For the appointment's `appointment_type_id`, find every active `form_templates` row where that ID is in `required_for_treatment_types`, and insert a `pending` row into `onboarding_checklists` for `(patient_id, form_template_id)` **only if** no row already exists for that pair (any status). This is the "don't add if already there" rule and also protects completed forms from being reset.
+**Checklist state:**
+- Add a lightweight "In progress" indicator to `OnboardingProgress` and the admin/nurse onboarding lists when a draft exists but nothing is submitted yet. Purely visual — the checklist status stays `pending` until submission.
 
-### 2. After DELETE on appointments — remove now-orphaned forms
+**Scope of surfaces covered:**
+- Patient portal (`PatientDashboard` → `FullScreenFormDialog`)
+- Admin onboarding tab (`PatientDetail`)
+- Nurse `JobCardOnboarding` and `PatientKioskMode`
+- Admin amendment editing already works on submitted forms — unchanged.
+- Out of scope: the public tokenised form (`PublicForm` / `submit-public-form`) — that path has no authenticated identity to attribute a draft to, so it keeps its current behaviour. We can revisit later using a local-storage draft if you want.
 
-For the deleted appointment's `(patient_id, appointment_type_id)`:
+## Technical details
 
-1. Find the set of form templates that were required *because of* this appointment type.
-2. For each of those templates, check whether the patient still has **another** appointment (any status other than the one just deleted) whose type also requires the same template. If yes → keep the checklist item.
-3. If no other appointment justifies it, delete the checklist row **only when** its `status` is still `pending` (never touch `completed`, `in_progress`, or anything with a `form_submission_id`). Universal templates (`required_for_treatment_types IS NULL`) are never removed — they belong to the patient regardless of appointments.
+**Data model:** No schema change required. Reuse `form_submissions.status`. A DB partial unique index ensures at most one draft per `(patient_id, form_template_id)`:
 
-The user's phrasing "if it has not been fulfilled and has been deleted" maps directly to: only prune checklist items that are still pending.
+```
+CREATE UNIQUE INDEX form_submissions_one_draft_per_patient_template
+  ON public.form_submissions (patient_id, form_template_id)
+  WHERE status = 'draft';
+```
 
-### 3. No change on UPDATE
+**New hook `useFormDraft(patient_id, form_template_id)`:**
+- `loadDraft()` — fetches existing draft row (values + id).
+- `saveDraft(values)` — upserts on conflict of the partial-unique index; sets `submitted_by = auth.uid()` for RLS.
+- `promoteDraft(finalValues, signature)` — updates the draft row to `status='submitted'`.
+- `deleteDraft()` — used if the user cancels explicitly (not on plain close).
 
-Changing an appointment's time/chair/nurse doesn't affect required forms. If an admin edits the *appointment type* of an existing appointment we can leave that as a follow-up — it's rare and can be handled by delete+recreate; flag if you want it in scope.
+**`FullScreenFormDialog` changes:**
+- New optional props `autosave: { onSave, savedAt, isSaving }` so callers control persistence.
+- Header shows "Saving…" / "Saved • 2m ago".
+- Debounced effect on `values`, plus `beforeunload` / `visibilitychange` flush.
 
-## Client-side follow-ups
+**Caller changes:**
+- `PatientDashboard.handleOpenForm` — after opening, call `loadDraft`; wire autosave; on submit call `promoteDraft` instead of `createSubmission`.
+- `PatientDetail` onboarding tab, `JobCardOnboarding`, `PatientKioskMode` — same pattern.
 
-- After `useCreateAppointment` / `useDeleteAppointment` succeed, invalidate `["onboarding_checklists", patientId]` and `["form_submissions_readiness", patientId]` so the Onboarding tab and the "Start Treatment" readiness gate refresh without a manual reload.
-- No UI changes needed — the existing Onboarding tab already renders whatever is in `onboarding_checklists`.
+**RLS:** existing `form_submissions` policies already allow the patient (via `submitted_by = auth.uid()` / patient row) and clinic staff to read/write their own — no policy changes needed. Verified against existing 7 policies during implementation.
 
-## Out of scope (call out if you want them included)
-
-- Backfilling onboarding items for appointments that already exist today.
-- Handling appointment-type changes on an existing appointment.
-- Removing forms when an appointment is *cancelled* rather than deleted (currently only hard deletes prune).
-
-## Technical notes
-
-- Both triggers are `SECURITY DEFINER` with `SET search_path = public`, matching the existing `create_onboarding_from_course` / `auto_generate_onboarding_checklist` pattern.
-- Insert uses `ON CONFLICT DO NOTHING` against a partial unique index on `(patient_id, form_template_id)` (add the index if one doesn't already exist) to make the "no duplicates" guarantee race-safe.
-- Delete uses a `NOT EXISTS` subquery over sibling appointments joined to `form_templates.required_for_treatment_types` via `= ANY(...)`.
+**Query invalidation:** invalidate `form_submissions` and `onboarding_checklists` on promote; drafts don't need to invalidate the checklist since status stays `pending`.
