@@ -7,6 +7,7 @@ import { Lock, ShieldAlert } from "lucide-react";
 import FullScreenFormDialog from "@/components/forms/FullScreenFormDialog";
 import type { FormField } from "@/components/forms/FormRenderer";
 import type { OverlayField } from "@/components/forms/PdfOverlayRenderer";
+import type { AutosaveStatus } from "@/hooks/useFormDraft";
 
 const PIN_KEY = "nurseKioskPin";
 
@@ -25,6 +26,8 @@ interface PatientKioskModeProps {
   pdfPages?: string[];
   overlayFields?: OverlayField[];
   slug?: string;
+  autosaveStatus?: AutosaveStatus;
+  autosaveSavedAt?: Date | null;
 }
 
 /**
@@ -154,6 +157,8 @@ export default function PatientKioskMode(props: PatientKioskModeProps) {
         pdfPages={props.pdfPages}
         overlayFields={props.overlayFields}
         slug={props.slug}
+        autosaveStatus={props.autosaveStatus}
+        autosaveSavedAt={props.autosaveSavedAt}
       />
 
       <Dialog open={pinPromptOpen} onOpenChange={setPinPromptOpen}>
