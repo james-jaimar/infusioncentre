@@ -71,10 +71,35 @@ Deno.serve(async (req) => {
       ? settings.sms_reminder_send_hour as number
       : 17;
     const senderId = (settings.sms_sender_id as string) || "InfusionCtr";
-    const template = (settings.sms_reminder_template as string) ||
+    const legacyTemplate = (settings.sms_reminder_template as string) ||
       "Hi {{first_name}}, reminder of your {{treatment_type}} appointment tomorrow at {{time}}.";
     const confirmBase = ((settings.sms_confirm_base_url as string) ||
       "https://infusioncentre.jaimar.dev").replace(/\/$/, "");
+
+    // Per-offset reminder configuration.
+    const offsets: Array<{ days: number; key: string; template: string }> = [
+      {
+        days: 7,
+        key: "sms_7d",
+        template: (settings.sms_reminder_7d_template as string) || "",
+      },
+      {
+        days: 3,
+        key: "sms_3d",
+        template: (settings.sms_reminder_3d_template as string) || "",
+      },
+      {
+        days: 1,
+        key: "sms_1d",
+        template:
+          (settings.sms_reminder_1d_template as string) || legacyTemplate,
+      },
+    ].filter((o) => {
+      if (o.days === 7) return settings.sms_reminder_7d_enabled === true;
+      if (o.days === 3) return settings.sms_reminder_3d_enabled === true;
+      // 1-day defaults to on to preserve prior behavior.
+      return settings.sms_reminder_1d_enabled !== false;
+    }).filter((o) => o.template.trim().length > 0);
 
     if (!enabled) {
       return new Response(JSON.stringify({ skipped: true, reason: "sms disabled" }), {
@@ -95,49 +120,55 @@ Deno.serve(async (req) => {
       .maybeSingle();
     const clinic = (clinicName?.value as string) || "the Infusion Centre";
 
-    // Tomorrow window in SAST (UTC+2, no DST).
-    const now = new Date();
-    const sastNowMs = now.getTime() + 2 * 3600 * 1000;
-    const sastTomorrow = new Date(sastNowMs);
-    sastTomorrow.setUTCDate(sastTomorrow.getUTCDate() + 1);
-    const yyyy = sastTomorrow.getUTCFullYear();
-    const mm = String(sastTomorrow.getUTCMonth() + 1).padStart(2, "0");
-    const dd = String(sastTomorrow.getUTCDate()).padStart(2, "0");
-    const startUTC = new Date(`${yyyy}-${mm}-${dd}T00:00:00+02:00`).toISOString();
-    const endUTC = new Date(`${yyyy}-${mm}-${dd}T23:59:59+02:00`).toISOString();
-
-    const { data: appts, error: apptErr } = await admin
-      .from("appointments")
-      .select(
-        "id, scheduled_start, patient_id, confirmation_token, patients(id, first_name, phone), appointment_types(name), status",
-      )
-      .gte("scheduled_start", startUTC)
-      .lte("scheduled_start", endUTC)
-      .not("status", "in", "(cancelled,no_show)");
-
-    if (apptErr) throw apptErr;
-
     let sent = 0;
     let skipped = 0;
     let failed = 0;
     const details: Array<Record<string, unknown>> = [];
 
-    for (const a of appts ?? []) {
+    // Compute a SAST day-window `daysAhead` days from now.
+    const dayWindow = (daysAhead: number) => {
+      const now = new Date();
+      const sastNowMs = now.getTime() + 2 * 3600 * 1000;
+      const target = new Date(sastNowMs);
+      target.setUTCDate(target.getUTCDate() + daysAhead);
+      const yyyy = target.getUTCFullYear();
+      const mm = String(target.getUTCMonth() + 1).padStart(2, "0");
+      const dd = String(target.getUTCDate()).padStart(2, "0");
+      return {
+        startUTC: new Date(`${yyyy}-${mm}-${dd}T00:00:00+02:00`).toISOString(),
+        endUTC: new Date(`${yyyy}-${mm}-${dd}T23:59:59+02:00`).toISOString(),
+      };
+    };
+
+    for (const offset of offsets) {
+      const { startUTC, endUTC } = dayWindow(offset.days);
+      const { data: appts, error: apptErr } = await admin
+        .from("appointments")
+        .select(
+          "id, scheduled_start, patient_id, confirmation_token, patients(id, first_name, phone), appointment_types(name), status",
+        )
+        .gte("scheduled_start", startUTC)
+        .lte("scheduled_start", endUTC)
+        .not("status", "in", "(cancelled,no_show)");
+
+      if (apptErr) throw apptErr;
+
+      for (const a of appts ?? []) {
       const phone = (a as any).patients?.phone as string | null;
       const firstName = (a as any).patients?.first_name as string | null;
       const treatment = (a as any).appointment_types?.name as string | null;
-      if (!phone) { skipped++; details.push({ id: a.id, skipped: "no phone" }); continue; }
+      if (!phone) { skipped++; details.push({ id: a.id, offset: offset.key, skipped: "no phone" }); continue; }
 
-      // Idempotency check
+      // Idempotency check per offset
       const { data: existing } = await admin
         .from("appointment_reminders")
         .select("id")
         .eq("appointment_id", a.id)
-        .eq("reminder_type", "sms")
+        .eq("reminder_type", offset.key)
         .maybeSingle();
       if (existing) { skipped++; continue; }
 
-      const msg = fillTemplate(template, {
+      const msg = fillTemplate(offset.template, {
         first_name: firstName ?? "there",
         time: formatTime(a.scheduled_start as string),
         date: formatDate(a.scheduled_start as string),
@@ -158,7 +189,7 @@ Deno.serve(async (req) => {
           to: phone,
           message: msg,
           sender_id: senderId,
-          related_entity_type: "appointment",
+          related_entity_type: `appointment_${offset.key}`,
           related_entity_id: a.id,
           internal: true,
         }),
@@ -169,7 +200,7 @@ Deno.serve(async (req) => {
 
       await admin.from("appointment_reminders").insert({
         appointment_id: a.id,
-        reminder_type: "sms",
+        reminder_type: offset.key,
         scheduled_for: new Date().toISOString(),
         sent_at: ok ? new Date().toISOString() : null,
         status: ok ? "sent" : "failed",
@@ -178,7 +209,8 @@ Deno.serve(async (req) => {
       });
 
       if (ok) sent++; else failed++;
-      details.push({ id: a.id, ok, error: errTxt });
+      details.push({ id: a.id, offset: offset.key, ok, error: errTxt });
+      }
     }
 
     return new Response(

@@ -21,6 +21,12 @@ const SMS_KEYS = [
   "sms_reminder_template",
   "sms_reschedule_template",
   "sms_confirm_base_url",
+  "sms_reminder_7d_enabled",
+  "sms_reminder_7d_template",
+  "sms_reminder_3d_enabled",
+  "sms_reminder_3d_template",
+  "sms_reminder_1d_enabled",
+  "sms_reminder_1d_template",
 ] as const;
 
 type SmsKey = typeof SMS_KEYS[number];
@@ -170,9 +176,9 @@ export default function SmsSettingsTab() {
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs">Reminder message template</Label>
+            <Label className="text-xs">Legacy reminder template (fallback)</Label>
             <Textarea
-              rows={3}
+              rows={2}
               value={(vals.sms_reminder_template as string) ?? ""}
               onChange={(e) => setVal("sms_reminder_template", e.target.value)}
             />
@@ -208,7 +214,7 @@ export default function SmsSettingsTab() {
               );
             })()}
             <p className="text-[11px] text-muted-foreground">
-              Merge tags:{" "}
+              Used only if the 1-day template below is blank. Merge tags:{" "}
               <code className="text-[10px]">{`{{first_name}}`}</code>,{" "}
               <code className="text-[10px]">{`{{time}}`}</code>,{" "}
               <code className="text-[10px]">{`{{date}}`}</code>,{" "}
@@ -216,10 +222,52 @@ export default function SmsSettingsTab() {
               <code className="text-[10px]">{`{{clinic_name}}`}</code>,{" "}
               <code className="text-[10px]">{`{{confirm_link}}`}</code>.
             </p>
+          </div>
+
+          <div className="space-y-3 rounded-md border border-border/70 p-3">
+            <div>
+              <p className="text-sm font-medium">Reminder schedule</p>
+              <p className="text-[11px] text-muted-foreground">
+                Toggle and customise the SMS sent 7, 3, and 1 day before each appointment.
+                Each offset is dispatched independently and only once per appointment.
+              </p>
+            </div>
+            {([
+              { offset: "7d", label: "7 days before" },
+              { offset: "3d", label: "3 days before" },
+              { offset: "1d", label: "1 day before" },
+            ] as const).map(({ offset, label }) => {
+              const enabledKey = `sms_reminder_${offset}_enabled` as SmsKey;
+              const tplKey = `sms_reminder_${offset}_template` as SmsKey;
+              const on = vals[enabledKey] === true;
+              return (
+                <div key={offset} className="space-y-2 rounded-md bg-muted/30 p-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-medium">{label}</Label>
+                    <Switch
+                      checked={on}
+                      onCheckedChange={(v) => setVal(enabledKey, v)}
+                    />
+                  </div>
+                  <Textarea
+                    rows={3}
+                    disabled={!on}
+                    value={(vals[tplKey] as string) ?? ""}
+                    onChange={(e) => setVal(tplKey, e.target.value)}
+                  />
+                </div>
+              );
+            })}
             <p className="text-[11px] text-muted-foreground">
-              Include <code className="text-[10px]">{`{{confirm_link}}`}</code> to let the patient
-              tap a personal link and confirm they'll attend. Their confirmation is recorded
-              against the appointment.
+              Merge tags:{" "}
+              <code className="text-[10px]">{`{{first_name}}`}</code>,{" "}
+              <code className="text-[10px]">{`{{time}}`}</code>,{" "}
+              <code className="text-[10px]">{`{{date}}`}</code>,{" "}
+              <code className="text-[10px]">{`{{treatment_type}}`}</code>,{" "}
+              <code className="text-[10px]">{`{{clinic_name}}`}</code>,{" "}
+              <code className="text-[10px]">{`{{confirm_link}}`}</code>.
+              Include <code className="text-[10px]">{`{{confirm_link}}`}</code> so the patient
+              can confirm attendance from the SMS.
             </p>
           </div>
 
