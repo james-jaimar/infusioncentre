@@ -21,6 +21,12 @@ const SMS_KEYS = [
   "sms_reminder_template",
   "sms_reschedule_template",
   "sms_confirm_base_url",
+  "sms_reminder_7d_enabled",
+  "sms_reminder_7d_template",
+  "sms_reminder_3d_enabled",
+  "sms_reminder_3d_template",
+  "sms_reminder_1d_enabled",
+  "sms_reminder_1d_template",
 ] as const;
 
 type SmsKey = typeof SMS_KEYS[number];
