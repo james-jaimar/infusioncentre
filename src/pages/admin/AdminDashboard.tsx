@@ -62,7 +62,6 @@ function useDashboardStats() {
 export default function AdminDashboard() {
   const { profile } = useAuth();
   const { data: stats } = useDashboardStats();
-  const { data: activePatients } = useActivePatientsWithCourses(8);
   const attention = useReferralsAttentionCount();
   const { data: allReferrals = [] } = useReferrals();
   const needsSchedulingRefs = (allReferrals as any[]).filter((r) => {
@@ -82,19 +81,6 @@ export default function AdminDashboard() {
 
   const greeting = profile?.first_name ? `Welcome back, ${profile.first_name}` : "Welcome back";
 
-  const statCards = [
-    { name: "Patients", href: "/admin/patients", icon: Users, value: stats?.totalPatients ?? "—", description: "Active patients", variant: "success" as const },
-    { name: "Active Courses", href: "/admin/patients?state=has_active", icon: Layers, value: stats?.activeCourses ?? "—", description: "Treatment courses underway", variant: "warning" as const },
-    { name: "Appointments", href: "/admin/appointments", icon: Calendar, value: stats?.weekAppointments ?? "—", description: "This week", variant: "neutral" as const },
-  ];
-
-  const stateClasses: Record<string, string> = {
-    info: "bg-clinical-info-soft text-clinical-info",
-    success: "bg-clinical-success-soft text-clinical-success",
-    warning: "bg-clinical-warning-soft text-clinical-warning",
-    neutral: "bg-clinical-neutral-soft text-clinical-neutral",
-  };
-
   return (
     <div>
       <div className="mb-8">
@@ -102,6 +88,12 @@ export default function AdminDashboard() {
         <p className="mt-1 text-sm text-muted-foreground">
           Here's what's happening at The Johannesburg Infusion Centre
         </p>
+      </div>
+
+      {/* Today's & Tomorrow's Appointments */}
+      <div className="mb-8 grid gap-4 lg:grid-cols-2">
+        <AppointmentsPanel title="Today's Appointments" emptyText="No appointments scheduled for today." items={stats?.todayAppointments || []} requestByApptId={requestByApptId} />
+        <AppointmentsPanel title="Tomorrow's Appointments" emptyText="No appointments scheduled for tomorrow." items={stats?.tomorrowAppointments || []} requestByApptId={requestByApptId} />
       </div>
 
       {attention.total > 0 && (
@@ -259,34 +251,6 @@ export default function AdminDashboard() {
       )}
 
       <DashboardActionsPanel />
-
-      {/* Today's & Tomorrow's Appointments */}
-      <div className="mb-8 grid gap-4 lg:grid-cols-2">
-        <AppointmentsPanel title="Today's Appointments" emptyText="No appointments scheduled for today." items={stats?.todayAppointments || []} requestByApptId={requestByApptId} />
-        <AppointmentsPanel title="Tomorrow's Appointments" emptyText="No appointments scheduled for tomorrow." items={stats?.tomorrowAppointments || []} requestByApptId={requestByApptId} />
-      </div>
-
-      {/* Stats grid */}
-      <div className="grid gap-4 md:grid-cols-3">
-        {statCards.map((stat) => (
-          <Link key={stat.name} to={stat.href}>
-            <Card className="hover:shadow-clinical-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  {stat.name}
-                </CardTitle>
-                <div className={`h-9 w-9 rounded-md flex items-center justify-center ${stateClasses[stat.variant]}`}>
-                  <stat.icon className="h-4 w-4" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold tabular-nums">{stat.value}</div>
-                <p className="text-xs text-muted-foreground mt-1">{stat.description}</p>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
-      </div>
 
     </div>
   );
