@@ -75,6 +75,7 @@ export default function AdminDashboard() {
     return a === "needs_scheduling";
   });
   const { data: pipeline } = usePatientPipelineCounts();
+  const { data: onboardingPatients = [] } = usePatientsInOnboarding();
   const { data: pendingRequests } = usePendingChangeRequests();
   const requestByApptId = new Map<string, any>();
   (pendingRequests ?? []).forEach((r) => {
