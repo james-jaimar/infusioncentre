@@ -1,12 +1,10 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { MessageSquare, Users, Calendar, Activity, Layers, FileText, ArrowRight, UserPlus, ClipboardList, CalendarPlus, CheckCircle2, Stethoscope, RefreshCw } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Users, FileText, ArrowRight, UserPlus, ClipboardList, CalendarPlus, CheckCircle2, Stethoscope, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
-import { startOfDay, endOfDay, startOfWeek, endOfWeek, formatDistanceToNow, addDays } from "date-fns";
-import { useActivePatientsWithCourses } from "@/hooks/useTreatmentCourses";
-import { TreatmentCourseChip } from "@/components/shared/TreatmentCourseChip";
+import { startOfDay, endOfDay, startOfWeek, endOfWeek, addDays } from "date-fns";
 import { useReferralsAttentionCount } from "@/hooks/useReferralsAttentionCount";
 import { useReferrals } from "@/hooks/useReferrals";
 import { getReferralAttention } from "@/lib/referralProgress";
