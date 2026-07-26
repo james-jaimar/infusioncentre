@@ -3,6 +3,7 @@ import { CheckCircle2, Circle, ClipboardList } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { ChecklistItem } from "@/hooks/useOnboardingChecklist";
+import { usePatientDraftTemplateIds } from "@/hooks/useFormDraft";
 
 interface Props {
   checklist: ChecklistItem[];
@@ -14,6 +15,8 @@ export default function OnboardingProgress({ checklist, onOpenForm }: Props) {
   const completed = checklist.filter(c => c.status === "completed");
   const total = checklist.length;
   const percent = total > 0 ? Math.round((completed.length / total) * 100) : 0;
+  const patientId = checklist[0]?.patient_id;
+  const { data: draftIds } = usePatientDraftTemplateIds(patientId);
 
   if (total === 0) return null;
 
@@ -48,6 +51,9 @@ export default function OnboardingProgress({ checklist, onOpenForm }: Props) {
           </CardHeader>
           <CardContent className="space-y-2">
             {pending.map((item) => (
+              (() => {
+                const hasDraft = draftIds?.has(item.form_template_id);
+                return (
               <button
                 key={item.id}
                 onClick={() => onOpenForm(item)}
@@ -62,10 +68,19 @@ export default function OnboardingProgress({ checklist, onOpenForm }: Props) {
                     )}
                   </div>
                 </div>
-                <Badge variant="secondary" className="text-xs flex-shrink-0">
-                  {item.form_templates?.category?.replace("_", " ")}
-                </Badge>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  {hasDraft && (
+                    <Badge variant="outline" className="text-[10px] border-amber-500/40 text-amber-700 dark:text-amber-400">
+                      In progress
+                    </Badge>
+                  )}
+                  <Badge variant="secondary" className="text-xs">
+                    {item.form_templates?.category?.replace("_", " ")}
+                  </Badge>
+                </div>
               </button>
+                );
+              })()
             ))}
             <p className="text-xs text-muted-foreground pt-2">
               Click on a form to fill it in. You can also complete these at the clinic.

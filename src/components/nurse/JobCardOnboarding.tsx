@@ -12,7 +12,7 @@ import {
 import { ClipboardList, FileText, MoreHorizontal, ScanLine, UserPen } from "lucide-react";
 import { useOnboardingChecklist, useUpdateChecklistItem } from "@/hooks/useOnboardingChecklist";
 import { useFormTemplate } from "@/hooks/useFormTemplates";
-import { useCreateFormSubmission } from "@/hooks/useFormSubmissions";
+import { useAutosaveDraft } from "@/hooks/useFormDraft";
 import { usePatientMedicalHistory } from "@/hooks/usePatientMedicalHistory";
 import { useFeatureFlags } from "@/hooks/useClinicSettings";
 import { useAuth } from "@/contexts/AuthContext";
@@ -39,7 +39,6 @@ export default function JobCardOnboarding({ patientId, patientName }: JobCardOnb
   const { data: medicalHistory } = usePatientMedicalHistory(patientId);
   const { data: flags } = useFeatureFlags();
   const updateChecklistItem = useUpdateChecklistItem();
-  const createSubmission = useCreateFormSubmission();
 
   const assistEnabled =
     flags?.find((f) => f.key === "nurse_can_assist_forms")?.is_enabled ?? true;
@@ -53,6 +52,20 @@ export default function JobCardOnboarding({ patientId, patientName }: JobCardOnb
   const prefillAppliedRef = useRef<string | null>(null);
 
   const { data: activeTemplate } = useFormTemplate(activeTemplateId || undefined);
+
+  const autosave = useAutosaveDraft({
+    patientId,
+    formTemplateId: activeTemplateId || undefined,
+    values,
+    enabled: open && !!activeTemplateId,
+    submittedBy: user?.id,
+    onDraftLoaded: (draft) => {
+      if (draft?.data && typeof draft.data === "object") {
+        setValues(draft.data as Record<string, any>);
+        prefillAppliedRef.current = activeTemplateId;
+      }
+    },
+  });
 
   // Load patient record once for prefill purposes.
   useEffect(() => {
@@ -99,16 +112,12 @@ export default function JobCardOnboarding({ patientId, patientName }: JobCardOnb
   const handleSubmit = async () => {
     if (!activeTemplate || !activeChecklistItemId) return;
     try {
-      const submission = await createSubmission.mutateAsync({
-        form_template_id: activeTemplate.id,
-        patient_id: patientId,
-        data: {
+      const submission = await autosave.promote.mutateAsync({
+        finalData: {
           ...values,
           completed_with_nurse_assistance: mode === "nurse",
           completed_via: mode === "kiosk" ? "patient_kiosk" : "nurse_assisted",
         },
-        status: "submitted",
-        submitted_by: user?.id,
       });
       await updateChecklistItem.mutateAsync({
         id: activeChecklistItemId,
@@ -201,12 +210,14 @@ export default function JobCardOnboarding({ patientId, patientName }: JobCardOnb
           values={values}
           onChange={setValues}
           onSubmit={handleSubmit}
-          isSubmitting={createSubmission.isPending || updateChecklistItem.isPending}
+          isSubmitting={autosave.promote.isPending || updateChecklistItem.isPending}
           submitLabel="Submit Form"
           renderMode={renderMode}
           pdfPages={pdfPages}
           overlayFields={overlayFields}
           slug={activeTemplate?.slug || undefined}
+          autosaveStatus={autosave.status}
+          autosaveSavedAt={autosave.savedAt}
         />
       )}
 
@@ -216,7 +227,7 @@ export default function JobCardOnboarding({ patientId, patientName }: JobCardOnb
           open={open}
           onClose={closeForm}
           onSubmit={handleSubmit}
-          isSubmitting={createSubmission.isPending || updateChecklistItem.isPending}
+          isSubmitting={autosave.promote.isPending || updateChecklistItem.isPending}
           patientName={patientName}
           formTitle={activeTemplate?.name || ""}
           formDescription={activeTemplate?.description || undefined}
@@ -227,6 +238,8 @@ export default function JobCardOnboarding({ patientId, patientName }: JobCardOnb
           pdfPages={pdfPages}
           overlayFields={overlayFields}
           slug={activeTemplate?.slug || undefined}
+          autosaveStatus={autosave.status}
+          autosaveSavedAt={autosave.savedAt}
         />
       )}
     </>

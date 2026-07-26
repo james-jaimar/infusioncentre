@@ -6,7 +6,7 @@ import { Calendar, FileText, Phone, PartyPopper, ClipboardList } from "lucide-re
 import { Link } from "react-router-dom";
 import { useOnboardingChecklist, useUpdateChecklistItem } from "@/hooks/useOnboardingChecklist";
 import { useFormTemplate } from "@/hooks/useFormTemplates";
-import { useCreateFormSubmission } from "@/hooks/useFormSubmissions";
+import { useAutosaveDraft } from "@/hooks/useFormDraft";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -43,8 +43,21 @@ export default function PatientDashboard() {
   const { data: medicalHistory } = usePatientMedicalHistory(patientRecord?.id);
   const { data: checklist } = useOnboardingChecklist(patientRecord?.id);
   const { data: activeFormTemplate } = useFormTemplate(activeFormTemplateId);
-  const createSubmission = useCreateFormSubmission();
   const updateChecklistItem = useUpdateChecklistItem();
+
+  const autosave = useAutosaveDraft({
+    patientId: patientRecord?.id,
+    formTemplateId: activeFormTemplateId,
+    values: formValues,
+    enabled: formDialogOpen && !!patientRecord?.id && !!activeFormTemplateId,
+    submittedBy: user?.id,
+    onDraftLoaded: (draft) => {
+      if (draft?.data && typeof draft.data === "object") {
+        setFormValues(draft.data as Record<string, any>);
+        prefillAppliedRef.current = activeFormTemplateId ?? null;
+      }
+    },
+  });
 
   const allFormsComplete = checklist && checklist.length > 0 && checklist.every(c => c.status === "completed");
   const isNewPatient = checklist && checklist.length > 0 && checklist.every(c => c.status !== "completed");
@@ -73,13 +86,7 @@ export default function PatientDashboard() {
   const handleSubmitForm = async () => {
     if (!patientRecord?.id || !activeFormTemplate || !activeChecklistItemId) return;
     try {
-      const submission = await createSubmission.mutateAsync({
-        form_template_id: activeFormTemplate.id,
-        patient_id: patientRecord.id,
-        data: formValues,
-        status: "submitted",
-        submitted_by: user?.id,
-      });
+      const submission = await autosave.promote.mutateAsync({ finalData: formValues });
       await updateChecklistItem.mutateAsync({
         id: activeChecklistItemId,
         status: "completed",
@@ -220,8 +227,10 @@ export default function PatientDashboard() {
         values={formValues}
         onChange={setFormValues}
         onSubmit={handleSubmitForm}
-        isSubmitting={createSubmission.isPending}
+        isSubmitting={autosave.promote.isPending}
         submitLabel="Submit Form"
+        autosaveStatus={autosave.status}
+        autosaveSavedAt={autosave.savedAt}
       />
     </div>
   );
