@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
-import { Users, FileText, ArrowRight, UserPlus, ClipboardList, CalendarPlus, CheckCircle2, Stethoscope, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
+import { Users, FileText, ArrowRight, UserPlus, ClipboardList, CalendarPlus, CheckCircle2, Stethoscope, RefreshCw, ChevronDown, ChevronUp, ClipboardCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, addDays } from "date-fns";
@@ -34,8 +34,8 @@ function useDashboardStats() {
         supabase.from("contact_submissions").select("id", { count: "exact", head: true }).eq("status", "new"),
         supabase.from("patients").select("id", { count: "exact", head: true }).eq("status", "active"),
         supabase.from("appointments").select("id", { count: "exact", head: true }).gte("scheduled_start", weekStart).lte("scheduled_start", weekEnd),
-        supabase.from("appointments").select("id, status, scheduled_start, patient_confirmed_at, reschedule_reason, chair:treatment_chairs(name, display_order), patient:patients!inner(first_name, last_name, referring_doctor_name, referring_doctor_practice), appointment_type:appointment_types!inner(name)").gte("scheduled_start", todayStart).lte("scheduled_start", todayEnd).order("scheduled_start", { ascending: true }),
-        supabase.from("appointments").select("id, status, scheduled_start, patient_confirmed_at, reschedule_reason, chair:treatment_chairs(name, display_order), patient:patients!inner(first_name, last_name, referring_doctor_name, referring_doctor_practice), appointment_type:appointment_types!inner(name)").gte("scheduled_start", tomorrowStart).lte("scheduled_start", tomorrowEnd).order("scheduled_start", { ascending: true }),
+        supabase.from("appointments").select("id, status, scheduled_start, patient_confirmed_at, reschedule_reason, chair:treatment_chairs(name, display_order), patient:patients!inner(id, first_name, last_name, referring_doctor_name, referring_doctor_practice, onboarding_checklists(status)), appointment_type:appointment_types!inner(name)").gte("scheduled_start", todayStart).lte("scheduled_start", todayEnd).order("scheduled_start", { ascending: true }),
+        supabase.from("appointments").select("id, status, scheduled_start, patient_confirmed_at, reschedule_reason, chair:treatment_chairs(name, display_order), patient:patients!inner(id, first_name, last_name, referring_doctor_name, referring_doctor_practice, onboarding_checklists(status)), appointment_type:appointment_types!inner(name)").gte("scheduled_start", tomorrowStart).lte("scheduled_start", tomorrowEnd).order("scheduled_start", { ascending: true }),
         supabase.from("treatment_courses").select("id", { count: "exact", head: true }).in("status", ACTIVE_COURSE_STATUSES as any),
       ]);
 
@@ -347,6 +347,25 @@ function AppointmentsPanel({ title, emptyText, items, requestByApptId }: { title
                         {apt.patient.referring_doctor_name}
                       </span>
                     )}
+                    {(() => {
+                      const checklists = apt.patient?.onboarding_checklists ?? [];
+                      const total = checklists.length;
+                      if (total === 0) return null;
+                      const completed = checklists.filter((c: any) => c.status === "completed").length;
+                      const pending = total - completed;
+                      if (pending === 0) return null;
+                      return (
+                        <Link
+                          to={`/admin/patients/${apt.patient.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center gap-1 rounded-full border border-clinical-warning/40 bg-clinical-warning-soft px-1.5 py-0.5 text-[10px] font-medium text-clinical-warning hover:bg-clinical-warning/20"
+                          title={`${completed} of ${total} onboarding forms completed`}
+                        >
+                          <ClipboardCheck className="h-3 w-3" />
+                          {completed}/{total} forms
+                        </Link>
+                      );
+                    })()}
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     {req?.status === "pending" && (
