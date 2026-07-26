@@ -84,6 +84,7 @@ export default function AdminDashboard() {
   });
 
   const greeting = profile?.first_name ? `Welcome back, ${profile.first_name}` : "Welcome back";
+  const [pipelineOpen, setPipelineOpen] = useState(false);
 
   return (
     <div>
