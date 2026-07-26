@@ -1,11 +1,13 @@
 import { useEffect, useState, Suspense } from "react";
 import { Button } from "@/components/ui/button";
-import { X, ArrowLeft, Loader2, FileText, Printer, Edit2, Save } from "lucide-react";
+import { X, ArrowLeft, Loader2, FileText, Printer, Edit2, Save, Check, CloudUpload, AlertCircle } from "lucide-react";
 import FormRenderer, { FormField } from "./FormRenderer";
 import PdfOverlayRenderer, { OverlayField } from "./PdfOverlayRenderer";
 import { facsimileRegistry } from "./facsimile/registry";
 import { openPrintableForm } from "./PrintableFormView";
 import { toast } from "sonner";
+
+type AutosaveStatus = "idle" | "saving" | "saved" | "error";
 
 interface FullScreenFormDialogProps {
   open: boolean;
@@ -29,6 +31,9 @@ interface FullScreenFormDialogProps {
   /** Admin amendment tracking */
   amendments?: Record<string, any>;
   onSaveAmendments?: (updatedData: Record<string, any>, amendments: Record<string, any>) => Promise<void>;
+  /** Autosave indicator (drafts) */
+  autosaveStatus?: AutosaveStatus;
+  autosaveSavedAt?: Date | null;
 }
 
 export default function FullScreenFormDialog({
@@ -52,6 +57,8 @@ export default function FullScreenFormDialog({
   signatureData,
   amendments,
   onSaveAmendments,
+  autosaveStatus,
+  autosaveSavedAt,
 }: FullScreenFormDialogProps) {
   const [isEditingAmendment, setIsEditingAmendment] = useState(false);
   const [editValues, setEditValues] = useState<Record<string, any>>({});
@@ -117,6 +124,33 @@ export default function FullScreenFormDialog({
   const displayOnChange = isEditingAmendment ? setEditValues : onChange;
   const displayReadOnly = isEditingAmendment ? false : readOnly;
 
+  const renderAutosave = () => {
+    if (!autosaveStatus || readOnly) return null;
+    if (autosaveStatus === "saving") {
+      return (
+        <span className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground">
+          <CloudUpload className="h-3.5 w-3.5 animate-pulse" /> Saving…
+        </span>
+      );
+    }
+    if (autosaveStatus === "saved") {
+      return (
+        <span className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Check className="h-3.5 w-3.5 text-green-600" />
+          Saved{autosaveSavedAt ? ` · ${autosaveSavedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : ""}
+        </span>
+      );
+    }
+    if (autosaveStatus === "error") {
+      return (
+        <span className="hidden sm:flex items-center gap-1.5 text-xs text-destructive">
+          <AlertCircle className="h-3.5 w-3.5" /> Save failed
+        </span>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background">
       {/* Top bar */}
@@ -140,6 +174,7 @@ export default function FullScreenFormDialog({
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
+          {renderAutosave()}
           {/* Admin edit button — only show if readOnly, has save handler, and not currently editing */}
           {readOnly && onSaveAmendments && !isEditingAmendment && (
             <Button
